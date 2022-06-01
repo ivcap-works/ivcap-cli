@@ -6,11 +6,13 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/seehuhn/password"
 	"github.com/spf13/cobra"
 	log "go.uber.org/zap"
 )
 
 var loginName string
+var loginPassword string
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
@@ -21,21 +23,30 @@ var loginCmd = &cobra.Command{
 }
 
 type LoginCmd struct {
-	Name string `json:"auth"`
+	Name     string `json:"auth"`
+	Password string `json:"password"`
 }
 
 func loginF(_ *cobra.Command, _ []string) {
 	if loginName == "" {
-		cobra.CheckErr("Missing flag '--name'")
+		cobra.CheckErr("Missing flag '--login-name'")
 	}
-	cmd := &LoginCmd{loginName}
+	if loginPassword == "" {
+		input, err := password.Read("password: ")
+		if err != nil {
+			cobra.CheckErr(fmt.Sprintf("reading password failed - %s", err))
+			return
+		}
+		loginPassword = string(input)
+	}
+	cmd := &LoginCmd{Name: loginName, Password: loginPassword}
 	body, err := json.MarshalIndent(*cmd, "", "  ")
 	if err != nil {
 		logger.Fatal("error marshalling body.", log.Error(err))
 	}
 	adapter := *CreateAdapter(false)
 	adapter.ClearAuthorization() // remove any old authorization state
-	if pyld, err := adapter.Post(context.Background(), "/1/sessions", bytes.NewReader(body), logger); err != nil {
+	if pyld, err := adapter.Post(context.Background(), "/1/sessions", bytes.NewReader(body), nil, logger); err != nil {
 		cobra.CheckErr(fmt.Sprintf("login failed - %s", err))
 	} else {
 		token := string(pyld.AsBytes())
@@ -43,10 +54,12 @@ func loginF(_ *cobra.Command, _ []string) {
 		ctxt.Jwt = token
 		ctxt.AccountID = loginName
 		SetContext(ctxt, true)
+		fmt.Println("Login succeeded")
 	}
 }
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
-	loginCmd.Flags().StringVarP(&loginName, "name", "n", "", "Account name")
+	loginCmd.Flags().StringVarP(&loginName, "login-name", "n", "", "Account name")
+	loginCmd.Flags().StringVarP(&loginPassword, "login-password", "p", "", "Account password")
 }

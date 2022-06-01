@@ -16,8 +16,9 @@ import (
 
 var (
 	serviceCmd = &cobra.Command{
-		Use:   "service",
-		Short: "Create and manage services ",
+		Use:     "service",
+		Aliases: []string{"services"},
+		Short:   "Create and manage services ",
 		// 	Long: `A longer description that spans multiple lines and likely contains examples
 		// and usage of using your command. For example:
 	}
@@ -57,9 +58,10 @@ var (
 	}
 
 	readServiceCmd = &cobra.Command{
-		Use:   "read [flags] service_id",
-		Short: "Fetch details about a single service",
-		Args:  cobra.ExactArgs(1),
+		Use:     "read [flags] service_id",
+		Aliases: []string{"get"},
+		Short:   "Fetch details about a single service",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := args[0]
 			req := &sdk.ReadServiceRequest{Id: recordID}

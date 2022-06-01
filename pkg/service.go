@@ -97,7 +97,7 @@ func CreateServiceRaw(ctxt context.Context, cmd *CreateServiceRequest, adpt *ada
 	// fmt.Printf("RECORD %+v - %s\n", cmd, body)
 
 	path := servicePath(nil, adpt)
-	return (*adpt).Post(ctxt, path, bytes.NewReader(body), logger)
+	return (*adpt).Post(ctxt, path, bytes.NewReader(body), nil, logger)
 }
 
 /**** READ ****/

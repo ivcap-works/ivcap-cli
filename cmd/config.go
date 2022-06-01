@@ -3,7 +3,9 @@ package cmd
 import (
 	"fmt"
 	"net/url"
+	"os"
 
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
@@ -21,9 +23,9 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("config called")
-	},
+	// Run: func(cmd *cobra.Command, args []string) {
+	// 	fmt.Println("config called")
+	// },
 }
 
 var setContextCmd = &cobra.Command{
@@ -49,14 +51,83 @@ var setContextCmd = &cobra.Command{
 			URL:        ctxtUrl,
 		}
 		SetContext(ctxt, false)
+		fmt.Printf("Context '%s' created.\n", ctxtName)
+	},
+}
+
+var listContextCmd = &cobra.Command{
+	Use:   "get-contexts",
+	Short: "List all context",
+	// 	Long: `A longer description that spans multiple lines and likely contains examples
+	// and usage of using your command. For example: ',
+	Run: func(_ *cobra.Command, _ []string) {
+		config, _ := ReadConfigFile(false)
+		if config != nil {
+			t := table.NewWriter()
+			t.SetOutputMirror(os.Stdout)
+			t.AppendHeader(table.Row{"Current", "Name", "AccountID", "URL"})
+			active := config.ActiveContext
+			for _, c := range config.Contexts {
+				current := ""
+				if active == c.Name {
+					current = "*"
+				}
+				t.AppendRow(table.Row{current, c.Name, c.AccountID, c.URL})
+			}
+			t.Render()
+		}
+	},
+}
+
+var useContextCmd = &cobra.Command{
+	Use:   "use-context",
+	Short: "Set the current-context in the config file",
+	// 	Long: `A longer description that spans multiple lines and likely contains examples
+	// and usage of using your command. For example: ',
+	Run: func(_ *cobra.Command, _ []string) {
+		if ctxtName == "" {
+			cobra.CheckErr("Missing '--name' flag")
+		}
+		config, _ := ReadConfigFile(false)
+		ctxtExists := false
+		for _, c := range config.Contexts {
+			if c.Name == ctxtName {
+				ctxtExists = true
+				break
+			}
+		}
+		if ctxtExists {
+			config.ActiveContext = ctxtName
+			WriteConfigFile(config)
+			fmt.Printf("Switched to context '%s'.\n", ctxtName)
+		} else {
+			cobra.CheckErr(fmt.Sprintf("context '%s' is not defined", ctxtName))
+		}
+	},
+}
+
+var currentContextCmd = &cobra.Command{
+	Use:   "current-context",
+	Short: "Display the current-context",
+	Run: func(_ *cobra.Command, _ []string) {
+		config, _ := ReadConfigFile(false)
+		fmt.Println(config.ActiveContext)
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(configCmd)
 
+	configCmd.AddCommand(listContextCmd)
+
 	configCmd.AddCommand(setContextCmd)
 	setContextCmd.Flags().StringVar(&ctxtName, "name", "", "Name of context")
 	setContextCmd.Flags().StringVar(&ctxtUrl, "url", "", "url to the IVCAP deployment (e.g. https://api.green-cirrus.com)")
-	setContextCmd.Flags().IntVar(&ctxtApiVersion, "version", 1, "define API version [1]")
+	setContextCmd.Flags().IntVar(&ctxtApiVersion, "version", 1, "define API version")
+
+	configCmd.AddCommand(useContextCmd)
+	useContextCmd.Flags().StringVar(&ctxtName, "name", "", "Name of context")
+
+	configCmd.AddCommand(currentContextCmd)
+
 }

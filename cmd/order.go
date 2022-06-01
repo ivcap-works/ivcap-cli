@@ -20,8 +20,9 @@ var (
 	name string
 
 	orderCmd = &cobra.Command{
-		Use:   "order",
-		Short: "Create and manage orders ",
+		Use:     "order",
+		Aliases: []string{"orders"},
+		Short:   "Create and manage orders ",
 		// 	Long: `A longer description that spans multiple lines and likely contains examples
 		// and usage of using your command. For example:
 	}
@@ -58,9 +59,10 @@ var (
 	}
 
 	readOrderCmd = &cobra.Command{
-		Use:   "read [flags] order-id",
-		Short: "Fetch details about a single order",
-		Args:  cobra.ExactArgs(1),
+		Use:     "read [flags] order-id",
+		Aliases: []string{"get"},
+		Short:   "Fetch details about a single order",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := args[0]
 			req := &sdk.ReadOrderRequest{recordID}

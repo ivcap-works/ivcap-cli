@@ -2,7 +2,10 @@ package client
 
 import (
 	"context"
+	"encoding/base64"
+	"fmt"
 	_ "fmt"
+	"io"
 	"net/url"
 	"strconv"
 	"strings"
@@ -50,26 +53,44 @@ func ListArtifactsRaw(ctxt context.Context, cmd *ListArtifactRequest, adpt *adap
 
 // /**** CREATE ****/
 
-// type CreateArtifactRequest struct {
-// 	Id   string `json:"id"`
-// 	Name string `json:"name"`
-// }
+type CreateArtifactRequest struct {
+	Name       string            `json:"name"`
+	Collection string            `json:"collection"`
+	Meta       map[string]string `json:"meta"`
+}
 
-// func CreateArtifactRaw(ctxt context.Context, cmd *CreateArtifactRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-// 	if (*cmd).Id == "" {
-// 		(*cmd).Id = uuid.New().String()
-// 	}
+func CreateArtifact(ctxt context.Context, cmd *CreateArtifactRequest, reader io.Reader, adpt *adapter.Adapter, logger *log.Logger) (*api.UploadResponseBody, error) {
+	if res, err := CreateArtifactRaw(ctxt, cmd, reader, adpt, logger); err == nil {
+		var artifact api.UploadResponseBody
+		if err := res.AsType(&artifact); err != nil {
+			return nil, err
+		}
+		return &artifact, nil
+	} else {
+		return nil, err
+	}
+}
 
-// 	body, err := json.MarshalIndent(*cmd, "", "  ")
-// 	if err != nil {
-// 		logger.Error("error marshalling body.", log.Error(err))
-// 		return nil, err
-// 	}
-// 	// fmt.Printf("RECORD %+v - %s\n", cmd, body)
-
-// 	path := artifactPath(nil, adpt)
-// 	return (*adpt).Post(ctxt, path, bytes.NewReader(body), logger)
-// }
+func CreateArtifactRaw(ctxt context.Context, cmd *CreateArtifactRequest, reader io.Reader, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	path := artifactPath(nil, adpt)
+	headers := make(map[string]string)
+	if cmd.Name != "" {
+		headers["X-Name"] = cmd.Name
+	}
+	if cmd.Collection != "" {
+		headers["X-Collection"] = cmd.Name
+	}
+	var meta []string
+	for key, value := range cmd.Meta {
+		k := base64.StdEncoding.EncodeToString([]byte(key))
+		v := base64.StdEncoding.EncodeToString([]byte(value))
+		meta = append(meta, fmt.Sprintf("%s %s", k, v))
+	}
+	if len(meta) > 0 {
+		headers["Upload-Metadata"] = cmd.Name
+	}
+	return (*adpt).Post(ctxt, path, reader, &headers, logger)
+}
 
 /**** READ ****/
 

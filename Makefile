@@ -12,7 +12,7 @@ build:
 	go mod tidy
 	go build -ldflags "-X main.Version=${VERSION}" -o ivcap
 
-install: buildπ
+install: build
 	go install -ldflags "-X main.Version=${VERSION}" .
 
 test:

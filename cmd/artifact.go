@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bufio"
 	api "cayp/api_gateway/gen/http/artifact/client"
 	"context"
 	"fmt"
@@ -19,10 +20,12 @@ import (
 
 var (
 	outputFile string
+	inputFile  string
 
 	artifactCmd = &cobra.Command{
-		Use:   "artifact",
-		Short: "Create and manage artifacts ",
+		Use:     "artifact",
+		Short:   "Create and manage artifacts ",
+		Aliases: []string{"artifacts"},
 		// 	Long: `A longer description that spans multiple lines and likely contains examples
 		// and usage of using your command. For example:
 	}
@@ -58,9 +61,10 @@ var (
 	}
 
 	readArtifactCmd = &cobra.Command{
-		Use:   "read [flags] artifact_id",
-		Short: "Fetch details about a single artifact",
-		Args:  cobra.ExactArgs(1),
+		Use:     "read [flags] artifact_id",
+		Aliases: []string{"get"},
+		Short:   "Fetch details about a single artifact",
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := args[0]
 			req := &sdk.ReadArtifactRequest{Id: recordID}
@@ -120,14 +124,27 @@ var (
 		},
 	}
 
-	// createArtifactCmd = &cobra.Command{
-	// 	Use:   "create",
-	// 	Short: "Create a new artifact",
+	createArtifactCmd = &cobra.Command{
+		Use:   "create [key=value key=value] -f file",
+		Short: "Create a new artifact",
 
-	// 	Run: func(cmd *cobra.Command, args []string) {
-	// 		fmt.Printf("artifact called %v - %v\n", recordID, args)
-	// 	},
-	// }
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Printf("create artifact %s - %v\n", inputFile, args)
+			if file, err := os.Open(inputFile); err != nil {
+				cobra.CheckErr(fmt.Sprintf("while opening data file '%s' - %v", inputFile, err))
+			} else {
+				reader := bufio.NewReader(file)
+				adapter := CreateAdapter(true)
+				req := &sdk.CreateArtifactRequest{}
+				if resp, err := sdk.CreateArtifact(context.Background(), req, reader, adapter, logger); err == nil {
+					printUploadArtifactResponse(resp, false)
+				} else {
+					cobra.CompErrorln(fmt.Sprintf("while uploading data file '%s' - %v", inputFile, err))
+				}
+
+			}
+		},
+	}
 )
 
 func init() {
@@ -144,8 +161,9 @@ func init() {
 
 	artifactCmd.AddCommand(downloadArtifactCmd)
 	downloadArtifactCmd.Flags().StringVarP(&outputFile, "output", "o", "", "File to write content to [stdout]")
-	// artifactCmd.AddCommand(createCmd)
-	// createCmd.Flags().StringVarP(&recordID, "artifact-id", "i", "", "ID of artifact to manage")
+
+	artifactCmd.AddCommand(createArtifactCmd)
+	createArtifactCmd.Flags().StringVarP(&inputFile, "file", "f", "", "Path to file containing artifact content")
 }
 
 func printArtifactTable(list *api.ListResponseBody, wide bool) {
@@ -161,6 +179,28 @@ func printArtifactTable(list *api.ListResponseBody, wide bool) {
 }
 
 func printArtifact(artifact *api.ReadResponseBody, wide bool) {
+	tw := table.NewWriter()
+	tw.SetStyle(table.StyleLight)
+	tw.Style().Options.SeparateColumns = false
+	tw.Style().Options.SeparateRows = false
+	tw.Style().Options.DrawBorder = false
+	tw.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, Align: text.AlignRight},
+		{Number: 2, WidthMax: 80},
+	})
+	tw.AppendRows([]table.Row{
+		{"ID", *artifact.ID},
+		{"Name", safeString(artifact.Name)},
+		{"Status", safeString(artifact.Status)},
+		{"Size", safeNumber(artifact.Size)},
+		{"Mime-type", safeString(artifact.MimeType)},
+		{"Account ID", safeString(artifact.Account.ID)},
+	})
+	//fmt.Printf("META: %v\n", artifact.Metadata)
+	fmt.Printf("\n%s\n\n", tw.Render())
+}
+
+func printUploadArtifactResponse(artifact *api.UploadResponseBody, wide bool) {
 	tw := table.NewWriter()
 	tw.SetStyle(table.StyleLight)
 	tw.Style().Options.SeparateColumns = false

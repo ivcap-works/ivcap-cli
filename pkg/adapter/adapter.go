@@ -4,6 +4,7 @@ package adapter
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -83,23 +84,23 @@ type restAdapter struct {
 }
 
 func (a *restAdapter) Get(ctxt context.Context, path string, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "GET", path, nil, &a.ctxt, logger)
+	return connect(ctxt, "GET", path, nil, nil, &a.ctxt, logger)
 }
 
-func (a *restAdapter) Post(ctxt context.Context, path string, body io.Reader, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "POST", path, body, &a.ctxt, logger)
+func (a *restAdapter) Post(ctxt context.Context, path string, body io.Reader, headers *map[string]string, logger *log.Logger) (Payload, error) {
+	return connect(ctxt, "POST", path, body, headers, &a.ctxt, logger)
 }
 
 func (a *restAdapter) Put(ctxt context.Context, path string, body io.Reader, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "PUT", path, body, &a.ctxt, logger)
+	return connect(ctxt, "PUT", path, body, nil, &a.ctxt, logger)
 }
 
 func (a *restAdapter) Patch(ctxt context.Context, path string, body io.Reader, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "PATCH", path, body, &a.ctxt, logger)
+	return connect(ctxt, "PATCH", path, body, nil, &a.ctxt, logger)
 }
 
 func (a *restAdapter) Delete(ctxt context.Context, path string, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "DELETE", path, nil, &a.ctxt, logger)
+	return connect(ctxt, "DELETE", path, nil, nil, &a.ctxt, logger)
 }
 
 func (a *restAdapter) ClearAuthorization() {
@@ -111,6 +112,7 @@ func connect(
 	method string,
 	path string,
 	body io.Reader,
+	headers *map[string]string,
 	connCtxt *ConnectionCtxt,
 	logger *log.Logger,
 ) (Payload, error) {
@@ -131,6 +133,11 @@ func connect(
 	req.Header.Set("Cache-Control", "no-cache")
 	if connCtxt.JwtToken != "" {
 		req.Header.Set("Authorization", "Bearer "+connCtxt.JwtToken)
+	}
+	if headers != nil {
+		for key, val := range *headers {
+			req.Header.Set(key, base64.StdEncoding.EncodeToString([]byte(val)))
+		}
 	}
 
 	client := &http.Client{Timeout: time.Second * 10}
