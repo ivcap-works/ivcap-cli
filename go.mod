@@ -7,7 +7,6 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/jedib0t/go-pretty/v6 v6.3.1
-	github.com/seehuhn/password v0.0.0-20131211191456-9ed6612376fa
 	github.com/spf13/cobra v1.4.0
 	go.uber.org/zap v1.21.0
 	gopkg.in/yaml.v2 v2.4.0

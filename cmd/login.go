@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/seehuhn/password"
+	"github.com/reinventingscience/ivcap-client/pkg/util"
 	"github.com/spf13/cobra"
 	log "go.uber.org/zap"
 )
@@ -32,12 +32,7 @@ func loginF(_ *cobra.Command, _ []string) {
 		cobra.CheckErr("Missing flag '--login-name'")
 	}
 	if loginPassword == "" {
-		input, err := password.Read("password: ")
-		if err != nil {
-			cobra.CheckErr(fmt.Sprintf("reading password failed - %s", err))
-			return
-		}
-		loginPassword = string(input)
+		loginPassword = util.GetPassword("password: ")
 	}
 	cmd := &LoginCmd{Name: loginName, Password: loginPassword}
 	body, err := json.MarshalIndent(*cmd, "", "  ")
