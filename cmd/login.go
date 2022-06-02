@@ -3,8 +3,11 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/reinventingscience/ivcap-client/pkg/util"
 	"github.com/spf13/cobra"
@@ -15,11 +18,9 @@ var loginName string
 var loginPassword string
 
 var loginCmd = &cobra.Command{
-	Use:   "login",
+	Use:   "login [flags] [user-name]",
 	Short: "Authenticate with a specific deployment/context",
-	// 	Long: `A longer description that spans multiple lines and likely contains examples
-	// and usage of using your command. For example: ',
-	Run: loginF,
+	Run:   loginF,
 }
 
 type LoginCmd struct {
@@ -27,12 +28,29 @@ type LoginCmd struct {
 	Password string `json:"password"`
 }
 
-func loginF(_ *cobra.Command, _ []string) {
-	if loginName == "" {
-		cobra.CheckErr("Missing flag '--login-name'")
+type jwtInfo struct {
+	Sub        string `json:"sub"`
+	AccountID  string `json:"acc"`
+	ProviderID string `json:"prv"`
+	Expires    int    `json:"exp"`
+}
+
+func loginF(_ *cobra.Command, args []string) {
+	ctxt := GetActiveContext()
+	if len(args) > 0 {
+		loginName = args[0]
+	} else {
+		if ctxt != nil && ctxt.LoginName != "" {
+			loginName = ctxt.LoginName
+		} else {
+			cobra.CheckErr("Missing flag '--login-name'")
+		}
 	}
 	if loginPassword == "" {
-		loginPassword = util.GetPassword("password: ")
+		loginPassword = os.Getenv("IVCAP_PASSWORD")
+		if loginPassword == "" {
+			loginPassword = util.GetPassword("password: ")
+		}
 	}
 	cmd := &LoginCmd{Name: loginName, Password: loginPassword}
 	body, err := json.MarshalIndent(*cmd, "", "  ")
@@ -45,9 +63,21 @@ func loginF(_ *cobra.Command, _ []string) {
 		cobra.CheckErr(fmt.Sprintf("login failed - %s", err))
 	} else {
 		token := string(pyld.AsBytes())
-		ctxt := GetActiveContext()
+		var jwt jwtInfo
+		jmid := strings.Split(token, ".")[1]
+		ass, err := base64.RawStdEncoding.DecodeString(jmid)
+		if err != nil {
+			cobra.CheckErr(fmt.Sprintf("cannot decode JWT - %s", err))
+			return
+		}
+		logger.Debug("jwt", log.ByteString("assertions", ass))
+		if err = json.Unmarshal(ass, &jwt); err != nil {
+			cobra.CheckErr(fmt.Sprintf("cannot parse JWT - %s", err))
+			return
+		}
 		ctxt.Jwt = token
-		ctxt.AccountID = loginName
+		ctxt.AccountID = jwt.AccountID
+		ctxt.LoginName = loginName
 		SetContext(ctxt, true)
 		fmt.Println("Login succeeded")
 	}
@@ -55,6 +85,5 @@ func loginF(_ *cobra.Command, _ []string) {
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
-	loginCmd.Flags().StringVarP(&loginName, "login-name", "n", "", "Account name")
-	loginCmd.Flags().StringVarP(&loginPassword, "login-password", "p", "", "Account password")
+	loginCmd.Flags().StringVarP(&loginPassword, "password", "p", "", "Account password [IVCAP_PASSWORD]")
 }

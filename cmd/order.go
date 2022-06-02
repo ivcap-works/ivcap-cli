@@ -2,7 +2,6 @@ package cmd
 
 import (
 	api "cayp/api_gateway/gen/http/order/client"
-	//svcapi "cayp/api_gateway/gen/http/service/client"
 	"context"
 	"fmt"
 	"os"
@@ -23,8 +22,6 @@ var (
 		Use:     "order",
 		Aliases: []string{"orders"},
 		Short:   "Create and manage orders ",
-		// 	Long: `A longer description that spans multiple lines and likely contains examples
-		// and usage of using your command. For example:
 	}
 
 	listOrderCmd = &cobra.Command{
@@ -95,7 +92,7 @@ contains spaces, put it into quotes which will not be removed by your shell.
 
 An example:
 
-  ivcap order create --name "test order" cayp:service:testing.com:gradient-image msg="Hello World"
+  ivcap order create --name "test order" cayp:service:d939b74d-0070-59a4-a832-36c5c07e657d msg="Hello World"
 	
 `,
 		Args: cobra.MinimumNArgs(1),
@@ -163,7 +160,6 @@ func init() {
 
 	orderCmd.AddCommand(readOrderCmd)
 	readOrderCmd.Flags().StringVarP(&format, "output", "o", "short", "format to use for list (short, yaml, json)")
-	// readOrderCmd.Flags().StringVarP(&recordID, "order-id", "i", "", "ID of order to retrieve")
 
 	orderCmd.AddCommand(createOrderCmd)
 	createOrderCmd.Flags().StringVarP(&name, "name", "n", "", "Optional name/title attached to order")
@@ -180,9 +176,6 @@ func printOrdersTable(list *api.ListResponseBody, wide bool) {
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"ID", "Name", "Status", "Order At", "Service ID"})
 	t.AppendRows(rows)
-	// t.AppendSeparator()
-	// t.AppendRow([]interface{}{300, "Tyrion", "Lannister", 5000})
-	// t.AppendFooter(table.Row{"", "", "Total", 10000})
 	t.Render()
 
 }
@@ -190,7 +183,7 @@ func printOrdersTable(list *api.ListResponseBody, wide bool) {
 func printOrder(order *api.ReadResponseBody, wide bool) {
 	tw2 := table.NewWriter()
 	tw2.SetStyle(table.StyleLight)
-	tw2.SetColumnConfigs([]table.ColumnConfig{table.ColumnConfig{Number: 1, Align: text.AlignRight}})
+	tw2.SetColumnConfigs([]table.ColumnConfig{{Number: 1, Align: text.AlignRight}})
 	tw2.Style().Options.SeparateColumns = false
 	tw2.Style().Options.SeparateRows = false
 	tw2.Style().Options.DrawBorder = true

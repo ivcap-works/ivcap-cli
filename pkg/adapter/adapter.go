@@ -141,6 +141,7 @@ func connect(
 	}
 
 	client := &http.Client{Timeout: time.Second * 10}
+	logger.Debug("calling api")
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.Warn("HTTP request failed.", log.Error(err))
@@ -153,6 +154,7 @@ func connect(
 		logger.Warn("Accessing response body failed.", log.Error(err))
 		return nil, &ClientError{AdapterError{path}, err}
 	}
+	logger.Debug("successful reply", log.Int("statusCode", resp.StatusCode), log.Int("body-length", len(respBody)))
 
 	if resp.StatusCode >= 300 {
 		if len(respBody) > 0 {

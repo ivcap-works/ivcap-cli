@@ -50,6 +50,7 @@ type Context struct {
 	ApiVersion int    `yaml:"api-version"`
 	Name       string `yaml:"name"`
 	URL        string `yaml:"url"`
+	LoginName  string `yaml:"login-name"`
 	AccountID  string `yaml:"account-id"`
 	Jwt        string `yaml:"jwt"`
 }
@@ -83,8 +84,6 @@ func Execute(version string) {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// rootCmd.PersistentFlags().StringVar(&url, "url", "", "url to the IVCAP deployment (e.g. https://api.green-cirrus.com)")
-	// rootCmd.PersistentFlags().StringVar(&jwt, "jwt", "", "Authentication token")
 	rootCmd.PersistentFlags().StringVar(&contextName, "context", "", "Context (deployment) to use")
 	rootCmd.PersistentFlags().StringVar(&accountID, "account-id", "", "Account ID to use with requests. Most likely defined in context")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logging level to DEBUG")
@@ -147,6 +146,9 @@ func CreateAdapter(requiresAuth bool) (adapter *adpt.Adapter) {
 		}
 	}
 
+	if !requiresAuth {
+		jwt = ""
+	}
 	logger.Debug("Adapter config", log.String("url", url), log.String("jwt", jwt))
 	if url == "" {
 		cobra.CheckErr("required context 'url' not set")
@@ -200,33 +202,6 @@ func SetContext(ctxt *Context, failIfNotExist bool) {
 		WriteConfigFile(config)
 	}
 }
-
-// func CreateContext(ctxt *Context) {
-// 	config, _ := ReadConfigFile(true)
-// 	// if err != nil {
-// 	// 	if _, ok := err.(*os.PathError); !ok {
-// 	// 		// if perr := err.(fs.PathError); perr != nil {
-// 	// 		fmt.Printf("ERROR %v", err)
-// 	// 	}
-// 	// }
-// 	// if config == nil {
-// 	// 	config = &Config{
-// 	// 		Version: "v1",
-// 	// 	}
-// 	// }
-// 	cxa := config.Contexts
-// 	for i, c := range cxa {
-// 		if c.Name == ctxt.Name {
-// 			config.Contexts[i] = *ctxt
-// 			WriteConfigFile(config)
-// 			return
-// 		}
-// 	}
-// 	// First context, make it the active/default one as well
-// 	config.Contexts = append(config.Contexts, *ctxt)
-// 	config.ActiveContext = ctxt.Name
-// 	WriteConfigFile(config)
-// }
 
 func ReadConfigFile(createIfNoConfig bool) (config *Config, configFile string) {
 	configFile = os.Getenv("HOME") + "/.ivcap"

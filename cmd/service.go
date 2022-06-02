@@ -19,8 +19,6 @@ var (
 		Use:     "service",
 		Aliases: []string{"services"},
 		Short:   "Create and manage services ",
-		// 	Long: `A longer description that spans multiple lines and likely contains examples
-		// and usage of using your command. For example:
 	}
 
 	listServiceCmd = &cobra.Command{
@@ -35,9 +33,7 @@ var (
 			if limit > 0 {
 				req.Limit = limit
 			}
-			if res, err := sdk.ListServicesRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
-				// var list api.ServiceListRT
-				// json.Unmarshal(res.AsBytes(), &list)
+			if res, err := sdk.ListServicesRaw(context.Background(), req, CreateAdapter(false), logger); err == nil {
 				switch format {
 				case "json":
 					a.ReplyPrinter(res, false)
@@ -48,10 +44,8 @@ var (
 					res.AsType(&list)
 					printServiceTable(&list, false)
 				}
-				//fmt.Printf("service called %v\n", list)
 				return nil
 			} else {
-				//fmt.Fprintf(os.Stderr, "ERROR: %v\n", err)
 				return err
 			}
 		},
