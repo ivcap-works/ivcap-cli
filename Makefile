@@ -13,10 +13,12 @@ build:
 	go build -ldflags "-X main.Version=${VERSION}" -o ivcap
 
 install: build
-	go install -ldflags "-X main.Version=${VERSION}" .
+	cp ivcap $(shell go env GOBIN)
+#	go install -ldflags "-X main.Version=${VERSION}" -o ivcap
 
 test:
 	go test -v ./...
 
 release:
+  # git tag -a v0.4.0 -m "..."
 	goreleaser release --rm-dist
