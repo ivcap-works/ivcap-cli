@@ -5,8 +5,10 @@ import (
 	api "cayp/api_gateway/gen/http/artifact/client"
 	"context"
 	"fmt"
+	"io"
 	"io/fs"
 	"io/ioutil"
+	"net/http"
 	"net/url"
 	"os"
 
@@ -16,16 +18,20 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
+	log "go.uber.org/zap"
 )
 
 var (
-	outputFile string
-	inputFile  string
+	artifactName       string
+	artifactCollection string
+	outputFile         string
+	inputFile          string
+	contentType        string
 
 	artifactCmd = &cobra.Command{
 		Use:     "artifact",
 		Short:   "Create and manage artifacts ",
-		Aliases: []string{"artifacts"},
+		Aliases: []string{"a", "artifacts"},
 		// 	Long: `A longer description that spans multiple lines and likely contains examples
 		// and usage of using your command. For example:
 	}
@@ -88,7 +94,7 @@ var (
 	}
 
 	downloadArtifactCmd = &cobra.Command{
-		Use:   "download [flags] artifact_id",
+		Use:   "download [flags] artifact_id [-o file|-]",
 		Short: "Download the content associated with this artifact",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -125,23 +131,22 @@ var (
 	}
 
 	createArtifactCmd = &cobra.Command{
-		Use:   "create [key=value key=value] -f file",
+		Use:   "create [key=value key=value] -f file|-",
 		Short: "Create a new artifact",
 
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("create artifact %s - %v\n", inputFile, args)
-			if file, err := os.Open(inputFile); err != nil {
-				cobra.CheckErr(fmt.Sprintf("while opening data file '%s' - %v", inputFile, err))
+			var reader io.Reader
+			reader, contentType = getReader(inputFile, contentType)
+			logger.Debug("create artifact", log.String("content-type", contentType), log.String("inputFile", inputFile))
+			adapter := CreateAdapter(true)
+			req := &sdk.CreateArtifactRequest{
+				Name:       artifactName,
+				Collection: artifactCollection,
+			}
+			if resp, err := sdk.CreateArtifact(context.Background(), req, contentType, reader, adapter, logger); err == nil {
+				printUploadArtifactResponse(resp, false)
 			} else {
-				reader := bufio.NewReader(file)
-				adapter := CreateAdapter(true)
-				req := &sdk.CreateArtifactRequest{}
-				if resp, err := sdk.CreateArtifact(context.Background(), req, reader, adapter, logger); err == nil {
-					printUploadArtifactResponse(resp, false)
-				} else {
-					cobra.CompErrorln(fmt.Sprintf("while uploading data file '%s' - %v", inputFile, err))
-				}
-
+				cobra.CompErrorln(fmt.Sprintf("while uploading data file '%s' - %v", inputFile, err))
 			}
 		},
 	}
@@ -163,7 +168,10 @@ func init() {
 	downloadArtifactCmd.Flags().StringVarP(&outputFile, "output", "o", "", "File to write content to [stdout]")
 
 	artifactCmd.AddCommand(createArtifactCmd)
+	createArtifactCmd.Flags().StringVarP(&artifactName, "name", "n", "", "Human friendly name")
+	createArtifactCmd.Flags().StringVarP(&artifactCollection, "collection", "c", "", "Assigns artifact to a specific collection")
 	createArtifactCmd.Flags().StringVarP(&inputFile, "file", "f", "", "Path to file containing artifact content")
+	createArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact")
 }
 
 func printArtifactTable(list *api.ListResponseBody, wide bool) {
@@ -218,4 +226,41 @@ func printUploadArtifactResponse(artifact *api.UploadResponseBody, wide bool) {
 		{"Account ID", safeString(artifact.Account.ID)},
 	})
 	fmt.Printf("\n%s\n\n", tw.Render())
+}
+
+func getReader(fileName string, proposedFormat string) (reader io.Reader, format string) {
+	if fileName == "" {
+		cobra.CheckErr("Missing file name '-f'")
+	}
+	format = proposedFormat
+	var file *os.File
+	var err error
+	if fileName == "-" {
+		file = os.Stdin
+	} else {
+		if file, err = os.Open(fileName); err != nil {
+			cobra.CheckErr(fmt.Sprintf("while opening data file '%s' - %v", fileName, err))
+		}
+		if proposedFormat == "" {
+			if format, err = getFileContentType(file); err != nil {
+				cobra.CheckErr(fmt.Sprintf("while checking content type of file '%s' - %v", fileName, err))
+			}
+		}
+	}
+	if format == "" {
+		cobra.CheckErr("Missing content type [-t]")
+	}
+	reader = bufio.NewReader(file)
+	return
+}
+
+func getFileContentType(file *os.File) (contentType string, err error) {
+	buf := make([]byte, 512)
+	_, err = file.Read(buf)
+	if err != nil {
+		return
+	}
+	contentType = http.DetectContentType(buf)
+	_, err = file.Seek(0, 0)
+	return
 }

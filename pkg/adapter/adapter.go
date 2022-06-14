@@ -128,20 +128,29 @@ func connect(
 		logger.Error("Creating http request", log.Error(err))
 		return nil, &ClientError{AdapterError{path}, err}
 	}
-
-	req.Header.Set("Content-Type", "application/json")
+	contentType := "application/json"
+	if headers != nil {
+		if ct, ok := (*headers)["Content-Type"]; ok {
+			contentType = ct
+		}
+	}
+	req.Header.Set("Content-Type", contentType)
 	req.Header.Set("Cache-Control", "no-cache")
 	if connCtxt.JwtToken != "" {
 		req.Header.Set("Authorization", "Bearer "+connCtxt.JwtToken)
 	}
 	if headers != nil {
 		for key, val := range *headers {
-			req.Header.Set(key, base64.StdEncoding.EncodeToString([]byte(val)))
+			if key != "Content-Type" {
+				logger.Debug("header", log.String("key", key), log.String("val", val))
+				v := base64.StdEncoding.EncodeToString([]byte(val))
+				req.Header.Set(key, v)
+			}
 		}
 	}
 
 	client := &http.Client{Timeout: time.Second * 10}
-	logger.Debug("calling api")
+	logger.Debug("calling api", log.Reflect("headers", req.Header))
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.Warn("HTTP request failed.", log.Error(err))
@@ -176,6 +185,6 @@ func connect(
 
 		//ResourceNotFoundError
 	}
-	contentType := resp.Header.Get("Content-Type")
-	return ToPayload(respBody, contentType, logger)
+	ct := resp.Header.Get("Content-Type")
+	return ToPayload(respBody, ct, logger)
 }

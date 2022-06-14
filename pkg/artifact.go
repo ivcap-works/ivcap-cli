@@ -59,8 +59,15 @@ type CreateArtifactRequest struct {
 	Meta       map[string]string `json:"meta"`
 }
 
-func CreateArtifact(ctxt context.Context, cmd *CreateArtifactRequest, reader io.Reader, adpt *adapter.Adapter, logger *log.Logger) (*api.UploadResponseBody, error) {
-	if res, err := CreateArtifactRaw(ctxt, cmd, reader, adpt, logger); err == nil {
+func CreateArtifact(
+	ctxt context.Context,
+	cmd *CreateArtifactRequest,
+	contentType string,
+	reader io.Reader,
+	adpt *adapter.Adapter,
+	logger *log.Logger,
+) (*api.UploadResponseBody, error) {
+	if res, err := CreateArtifactRaw(ctxt, cmd, contentType, reader, adpt, logger); err == nil {
 		var artifact api.UploadResponseBody
 		if err := res.AsType(&artifact); err != nil {
 			return nil, err
@@ -71,14 +78,22 @@ func CreateArtifact(ctxt context.Context, cmd *CreateArtifactRequest, reader io.
 	}
 }
 
-func CreateArtifactRaw(ctxt context.Context, cmd *CreateArtifactRequest, reader io.Reader, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+func CreateArtifactRaw(
+	ctxt context.Context,
+	cmd *CreateArtifactRequest,
+	contentType string,
+	reader io.Reader,
+	adpt *adapter.Adapter,
+	logger *log.Logger,
+) (adapter.Payload, error) {
 	path := artifactPath(nil, adpt)
 	headers := make(map[string]string)
+	headers["Content-Type"] = contentType
 	if cmd.Name != "" {
 		headers["X-Name"] = cmd.Name
 	}
 	if cmd.Collection != "" {
-		headers["X-Collection"] = cmd.Name
+		headers["X-Collection"] = cmd.Collection
 	}
 	var meta []string
 	for key, value := range cmd.Meta {
