@@ -6,7 +6,7 @@ __IVCAP__ has an extensive REST API which is usually called directly from applic
 
 ## Install
 
-There are ready to use binaries for some architectures available at the repo's [release](https://github.com/reinventingscience/ivcap-cli/releases) tab, but if you have go installed, you can easily build & install it with:
+There are [ready to use binaries](https://github.com/reinventingscience/ivcap-cli/releases/latest) for some architectures available at the repo's [release](https://github.com/reinventingscience/ivcap-cli/releases) tab, but if you have go installed, you can easily build & install it with:
 
     go install https://github.com/reinventingscience/ivcap-cli@latest
 
