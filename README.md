@@ -68,12 +68,11 @@ The following command lists all the configured contexts:
 +---------+-----------+-----------------------------+------------------------------+
 ```
 
-To obtain an authorisation token, some deployments provide a username/password based identity provider. The
-respective password is requested separately if not provided through the `--login-password` or the `IVCAP_PASSWORD` environment variable.
+To obtain an authorisation token, some deployments provide a username/password based identity provider.
 
 ```
 % ivcap login max@testing.com
-password: ...
+...
 Login succeeded
 ```
 
