@@ -6,10 +6,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
-	"github.com/reinventingscience/ivcap-client/pkg/util"
 	"github.com/spf13/cobra"
 	log "go.uber.org/zap"
 )
@@ -46,12 +44,12 @@ func loginF(_ *cobra.Command, args []string) {
 			cobra.CheckErr("Missing flag '--login-name'")
 		}
 	}
-	if loginPassword == "" {
-		loginPassword = os.Getenv("IVCAP_PASSWORD")
-		if loginPassword == "" {
-			loginPassword = util.GetPassword("password: ")
-		}
-	}
+	// if loginPassword == "" {
+	// 	loginPassword = os.Getenv("IVCAP_PASSWORD")
+	// 	if loginPassword == "" {
+	// 		loginPassword = util.GetPassword("password: ")
+	// 	}
+	// }
 	cmd := &LoginCmd{Name: loginName, Password: loginPassword}
 	body, err := json.MarshalIndent(*cmd, "", "  ")
 	if err != nil {
@@ -85,5 +83,5 @@ func loginF(_ *cobra.Command, args []string) {
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
-	loginCmd.Flags().StringVarP(&loginPassword, "password", "p", "", "Account password [IVCAP_PASSWORD]")
+	//loginCmd.Flags().StringVarP(&loginPassword, "password", "p", "", "Account password [IVCAP_PASSWORD]")
 }
