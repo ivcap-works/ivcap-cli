@@ -17,7 +17,7 @@ import (
 var (
 	serviceCmd = &cobra.Command{
 		Use:     "service",
-		Aliases: []string{"services"},
+		Aliases: []string{"s", "services"},
 		Short:   "Create and manage services ",
 	}
 

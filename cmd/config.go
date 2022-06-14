@@ -15,8 +15,9 @@ var ctxtApiVersion int
 
 // configCmd represents the config command
 var configCmd = &cobra.Command{
-	Use:   "config",
-	Short: "A brief description of your command",
+	Use:     "config",
+	Short:   "A brief description of your command",
+	Aliases: []string{"c"},
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
@@ -55,8 +56,9 @@ var setContextCmd = &cobra.Command{
 }
 
 var listContextCmd = &cobra.Command{
-	Use:   "get-contexts",
-	Short: "List all context",
+	Use:     "get-contexts",
+	Short:   "List all context",
+	Aliases: []string{"get-context", "list"},
 	Run: func(_ *cobra.Command, _ []string) {
 		config, _ := ReadConfigFile(false)
 		if config != nil {
@@ -77,8 +79,9 @@ var listContextCmd = &cobra.Command{
 }
 
 var useContextCmd = &cobra.Command{
-	Use:   "use-context name",
-	Short: "Set the current-context in the config file",
+	Use:     "use-context name",
+	Short:   "Set the current-context in the config file",
+	Aliases: []string{"use"},
 	Run: func(_ *cobra.Command, args []string) {
 		if len(args) < 1 {
 			cobra.CheckErr("Missing 'name' arg")
@@ -103,8 +106,9 @@ var useContextCmd = &cobra.Command{
 }
 
 var currentContextCmd = &cobra.Command{
-	Use:   "current-context",
-	Short: "Display the current-context",
+	Use:     "current-context",
+	Short:   "Display the current-context",
+	Aliases: []string{"get"},
 	Run: func(_ *cobra.Command, _ []string) {
 		config, _ := ReadConfigFile(false)
 		fmt.Println(config.ActiveContext)
