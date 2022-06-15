@@ -16,8 +16,9 @@ import (
 )
 
 type ConnectionCtxt struct {
-	URL      string
-	JwtToken string
+	URL        string
+	JwtToken   string
+	TimeoutSec int
 }
 
 func CreateJwtToken(userID *string, signingSecret *string) (string, error) {
@@ -149,7 +150,7 @@ func connect(
 		}
 	}
 
-	client := &http.Client{Timeout: time.Second * 10}
+	client := &http.Client{Timeout: time.Second * time.Duration(connCtxt.TimeoutSec)}
 	logger.Debug("calling api", log.Reflect("headers", req.Header))
 	resp, err := client.Do(req)
 	if err != nil {

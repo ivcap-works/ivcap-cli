@@ -29,6 +29,7 @@ const MAX_NAME_COL_LEN = 30
 var (
 	contextName string
 	accountID   string
+	timeout     int
 	debug       bool
 
 	// common, but not global flags
@@ -86,6 +87,7 @@ func init() {
 
 	rootCmd.PersistentFlags().StringVar(&contextName, "context", "", "Context (deployment) to use")
 	rootCmd.PersistentFlags().StringVar(&accountID, "account-id", "", "Account ID to use with requests. Most likely defined in context")
+	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 10, "Max. number of seconds to wait for completion")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logging level to DEBUG")
 
 }
@@ -125,6 +127,10 @@ func GetAccountID() string {
 }
 
 func CreateAdapter(requiresAuth bool) (adapter *adpt.Adapter) {
+	return CreateAdapterWithTimeout(requiresAuth, timeout)
+}
+
+func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.Adapter) {
 	if contextName == "" {
 		contextName = os.Getenv(ENV_PREFIX + "_CONTEXT")
 	}
@@ -153,7 +159,7 @@ func CreateAdapter(requiresAuth bool) (adapter *adpt.Adapter) {
 	if url == "" {
 		cobra.CheckErr("required context 'url' not set")
 	}
-	adp, err := NewAdapter(url, jwt)
+	adp, err := NewAdapter(url, jwt, timeoutSec)
 	if adp == nil || err != nil {
 		cobra.CheckErr(fmt.Sprintf("cannot create adapter for '%s' - %s", url, err))
 	}
@@ -237,9 +243,9 @@ func WriteConfigFile(config *Config) {
 	}
 }
 
-func NewAdapter(url string, jwtToken string) (*adpt.Adapter, error) {
+func NewAdapter(url string, jwtToken string, timeoutSec int) (*adpt.Adapter, error) {
 	adapter := adpt.RestAdapter(adpt.ConnectionCtxt{
-		URL: url, JwtToken: jwtToken,
+		URL: url, JwtToken: jwtToken, TimeoutSec: timeoutSec,
 	})
 	return &adapter, nil
 }
