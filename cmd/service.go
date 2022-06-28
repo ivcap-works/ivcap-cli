@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 
 	sdk "github.com/reinventingscience/ivcap-client/pkg"
 	a "github.com/reinventingscience/ivcap-client/pkg/adapter"
@@ -13,6 +14,9 @@ import (
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 )
+
+var createAnyway bool
+var inputFormat string
 
 var (
 	serviceCmd = &cobra.Command{
@@ -34,7 +38,7 @@ var (
 				req.Limit = limit
 			}
 			if res, err := sdk.ListServicesRaw(context.Background(), req, CreateAdapter(false), logger); err == nil {
-				switch format {
+				switch outputFormat {
 				case "json":
 					a.ReplyPrinter(res, false)
 				case "yaml":
@@ -52,18 +56,18 @@ var (
 	}
 
 	readServiceCmd = &cobra.Command{
-		Use:     "read [flags] service_id",
-		Aliases: []string{"get"},
+		Use:     "get [flags] service_id",
+		Aliases: []string{"read"},
 		Short:   "Fetch details about a single service",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := args[0]
 			req := &sdk.ReadServiceRequest{Id: recordID}
 
-			switch format {
+			switch outputFormat {
 			case "json", "yaml":
 				if res, err := sdk.ReadServiceRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
-					a.ReplyPrinter(res, format == "yaml")
+					a.ReplyPrinter(res, outputFormat == "yaml")
 				} else {
 					return err
 				}
@@ -73,6 +77,76 @@ var (
 				} else {
 					return err
 				}
+			}
+			return nil
+		},
+	}
+
+	createServiceCmd = &cobra.Command{
+		Use:   "create [flags] service-file",
+		Short: "Create a new service",
+		Long: `Define a new service to available on the platform. The service is
+described in a service definition file. If the service definition is provided 
+through 'stdin' use '-' as the file name and also include the --format flag`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			ctxt := context.Background()
+			serviceFile := args[0]
+
+			isYaml := inputFormat == "yaml" || strings.HasSuffix(serviceFile, ".yaml") || strings.HasSuffix(serviceFile, ".yml")
+			var pyld a.Payload
+			if serviceFile != "-" {
+				pyld, err = a.LoadPayloadFromFile(serviceFile, isYaml)
+			} else {
+				pyld, err = a.LoadPayloadFromStdin(isYaml)
+			}
+			if err != nil {
+				cobra.CheckErr(fmt.Sprintf("While reading service file '%s' - %s", serviceFile, err))
+			}
+			var req api.CreateRequestBody
+			if err = pyld.AsType(&req); err != nil {
+				return
+			}
+			if res, err := sdk.CreateServiceRaw(ctxt, &req, CreateAdapter(true), logger); err == nil {
+				a.ReplyPrinter(res, outputFormat == "yaml")
+			} else {
+				return err
+			}
+			return nil
+		},
+	}
+
+	updateServiceCmd = &cobra.Command{
+		Use:   "update [flags] service-id service-file",
+		Short: "Update an existing service",
+		Long: `Update an existing service description or create it if it does not exist 
+AND the --create flag is set. If the service definition is provided 
+through 'stdin' use '-' as the file name and also include the --format flag `,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			ctxt := context.Background()
+			serviceID := args[0]
+			serviceFile := args[1]
+
+			isYaml := inputFormat == "yaml" || strings.HasSuffix(serviceFile, ".yaml") || strings.HasSuffix(serviceFile, ".yml")
+			var pyld a.Payload
+			if serviceFile != "-" {
+				pyld, err = a.LoadPayloadFromFile(serviceFile, isYaml)
+			} else {
+				pyld, err = a.LoadPayloadFromStdin(isYaml)
+			}
+			if err != nil {
+				cobra.CheckErr(fmt.Sprintf("While reading service file '%s' - %s", serviceFile, err))
+			}
+
+			var req api.UpdateRequestBody
+			if err = pyld.AsType(&req); err != nil {
+				return
+			}
+			if res, err := sdk.UpdateServiceRaw(ctxt, serviceID, createAnyway, &req, CreateAdapter(true), logger); err == nil {
+				a.ReplyPrinter(res, outputFormat == "yaml")
+			} else {
+				return err
 			}
 			return nil
 		},
@@ -94,10 +168,17 @@ func init() {
 	serviceCmd.AddCommand(listServiceCmd)
 	listServiceCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
 	listServiceCmd.Flags().IntVar(&limit, "limit", -1, "max number of records to be returned")
-	listServiceCmd.Flags().StringVarP(&format, "output", "o", "short", "format to use for list (short, yaml, json)")
+	listServiceCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
 	serviceCmd.AddCommand(readServiceCmd)
 	readServiceCmd.Flags().StringVarP(&recordID, "service-id", "i", "", "ID of service to retrieve")
+
+	serviceCmd.AddCommand(createServiceCmd)
+	createServiceCmd.Flags().StringVar(&inputFormat, "format", "", "Format of service description file [json, yaml]")
+
+	serviceCmd.AddCommand(updateServiceCmd)
+	updateServiceCmd.Flags().BoolVarP(&createAnyway, "create", "", false, "Create service record if it doesn't exist")
+	updateServiceCmd.Flags().StringVar(&inputFormat, "format", "", "Format of service description file [json, yaml]")
 
 	// serviceCmd.AddCommand(createCmd)
 	// createCmd.Flags().StringVarP(&recordID, "service-id", "i", "", "ID of service to manage")
