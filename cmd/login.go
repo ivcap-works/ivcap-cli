@@ -41,7 +41,7 @@ func loginF(_ *cobra.Command, args []string) {
 		if ctxt != nil && ctxt.LoginName != "" {
 			loginName = ctxt.LoginName
 		} else {
-			cobra.CheckErr("Missing flag '--login-name'")
+			cobra.CheckErr("Missing 'user-name'")
 		}
 	}
 	// if loginPassword == "" {
@@ -83,5 +83,5 @@ func loginF(_ *cobra.Command, args []string) {
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
-	//loginCmd.Flags().StringVarP(&loginPassword, "password", "p", "", "Account password [IVCAP_PASSWORD]")
+	//loginCmd.Flags().StringVarP(&loginName, "name", "n", "", "Account name [IVCAP_NAME]")
 }

@@ -49,7 +49,7 @@ var (
 				req.Limit = limit
 			}
 			if res, err := sdk.ListArtifactsRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
-				switch format {
+				switch outputFormat {
 				case "json":
 					a.ReplyPrinter(res, false)
 				case "yaml":
@@ -67,18 +67,18 @@ var (
 	}
 
 	readArtifactCmd = &cobra.Command{
-		Use:     "read [flags] artifact_id",
-		Aliases: []string{"get"},
+		Use:     "get [flags] artifact_id",
+		Aliases: []string{"read"},
 		Short:   "Fetch details about a single artifact",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := args[0]
 			req := &sdk.ReadArtifactRequest{Id: recordID}
 
-			switch format {
+			switch outputFormat {
 			case "json", "yaml":
 				if res, err := sdk.ReadArtifactRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
-					a.ReplyPrinter(res, format == "yaml")
+					a.ReplyPrinter(res, outputFormat == "yaml")
 				} else {
 					return err
 				}
@@ -158,11 +158,11 @@ func init() {
 	artifactCmd.AddCommand(listArtifactCmd)
 	listArtifactCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
 	listArtifactCmd.Flags().IntVar(&limit, "limit", -1, "max number of records to be returned")
-	listArtifactCmd.Flags().StringVarP(&format, "output", "o", "short", "format to use for list (short, yaml, json)")
+	listArtifactCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
 	artifactCmd.AddCommand(readArtifactCmd)
 	//readArtifactCmd.Flags().StringVarP(&recordID, "artifact-id", "i", "", "ID of artifact to retrieve")
-	readArtifactCmd.Flags().StringVarP(&format, "output", "o", "short", "format to use for list (short, yaml, json)")
+	readArtifactCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
 	artifactCmd.AddCommand(downloadArtifactCmd)
 	downloadArtifactCmd.Flags().StringVarP(&outputFile, "output", "o", "", "File to write content to [stdout]")

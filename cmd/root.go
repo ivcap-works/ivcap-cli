@@ -33,17 +33,17 @@ var (
 	debug       bool
 
 	// common, but not global flags
-	recordID string
-	offset   int
-	limit    int
-	format   string
+	recordID     string
+	offset       int
+	limit        int
+	outputFormat string
 )
 
 var logger *log.Logger
 
 type Config struct {
 	Version       string    `yaml:"version"`
-	ActiveContext string    `yaml:"active-context""`
+	ActiveContext string    `yaml:"active-context"`
 	Contexts      []Context `yaml:"contexts"`
 }
 
@@ -89,6 +89,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&accountID, "account-id", "", "Account ID to use with requests. Most likely defined in context")
 	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 10, "Max. number of seconds to wait for completion")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logging level to DEBUG")
+	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Set format for displaying output [json, yaml]")
 
 }
 

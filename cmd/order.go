@@ -16,7 +16,8 @@ import (
 )
 
 var (
-	name string
+	name               string
+	skipParameterCheck bool
 
 	orderCmd = &cobra.Command{
 		Use:     "order",
@@ -37,10 +38,10 @@ var (
 				req.Limit = limit
 			}
 
-			switch format {
+			switch outputFormat {
 			case "json", "yaml":
 				if res, err := sdk.ListOrdersRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
-					a.ReplyPrinter(res, format == "yaml")
+					a.ReplyPrinter(res, outputFormat == "yaml")
 				} else {
 					return err
 				}
@@ -56,18 +57,18 @@ var (
 	}
 
 	readOrderCmd = &cobra.Command{
-		Use:     "read [flags] order-id",
-		Aliases: []string{"get"},
+		Use:     "get [flags] order-id",
+		Aliases: []string{"read"},
 		Short:   "Fetch details about a single order",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := args[0]
 			req := &sdk.ReadOrderRequest{recordID}
 
-			switch format {
+			switch outputFormat {
 			case "json", "yaml":
 				if res, err := sdk.ReadOrderRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
-					a.ReplyPrinter(res, format == "yaml")
+					a.ReplyPrinter(res, outputFormat == "yaml")
 				} else {
 					return err
 				}
@@ -100,14 +101,17 @@ An example:
 			ctxt := context.Background()
 			serviceId := args[0]
 
-			// fetch defined parameters to do some early verification
-			service, err := sdk.ReadService(ctxt, &sdk.ReadServiceRequest{Id: serviceId}, CreateAdapter(true), logger)
-			if err != nil {
-				return err
-			}
-			paramSet := map[string]bool{}
-			for _, p := range service.Parameters {
-				paramSet[*p.Name] = true
+			var paramSet map[string]bool
+			if !skipParameterCheck {
+				// fetch defined parameters to do some early verification
+				service, err := sdk.ReadService(ctxt, &sdk.ReadServiceRequest{Id: serviceId}, CreateAdapter(true), logger)
+				if err != nil {
+					return err
+				}
+				paramSet := map[string]bool{}
+				for _, p := range service.Parameters {
+					paramSet[*p.Name] = true
+				}
 			}
 			params := make([]*api.ParameterT, len(args)-1)
 			for i, ps := range args[1:] {
@@ -117,8 +121,10 @@ An example:
 				}
 				name := pa[0]
 				value := pa[1]
-				if _, ok := paramSet[name]; !ok {
-					cobra.CheckErr(fmt.Sprintf("parameter '%s' is not defined by the requested service", name))
+				if !skipParameterCheck {
+					if _, ok := paramSet[name]; !ok {
+						cobra.CheckErr(fmt.Sprintf("parameter '%s' is not defined by the requested service", name))
+					}
 				}
 				params[i] = &api.ParameterT{Name: &name, Value: &value}
 			}
@@ -131,10 +137,10 @@ An example:
 			if name != "" {
 				req.Name = &name
 			}
-			switch format {
+			switch outputFormat {
 			case "json", "yaml":
 				if res, err := sdk.CreateOrderRaw(ctxt, req, CreateAdapter(true), logger); err == nil {
-					a.ReplyPrinter(res, format == "yaml")
+					a.ReplyPrinter(res, outputFormat == "yaml")
 				} else {
 					return err
 				}
@@ -156,15 +162,15 @@ func init() {
 	orderCmd.AddCommand(listOrderCmd)
 	listOrderCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
 	listOrderCmd.Flags().IntVar(&limit, "limit", -1, "max number of records to be returned")
-	listOrderCmd.Flags().StringVarP(&format, "output", "o", "short", "format to use for list (short, yaml, json)")
+	listOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
 	orderCmd.AddCommand(readOrderCmd)
-	readOrderCmd.Flags().StringVarP(&format, "output", "o", "short", "format to use for list (short, yaml, json)")
+	readOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
 	orderCmd.AddCommand(createOrderCmd)
 	createOrderCmd.Flags().StringVarP(&name, "name", "n", "", "Optional name/title attached to order")
-	createOrderCmd.Flags().StringVarP(&format, "output", "o", "short", "format to use for list (short, yaml, json)")
-
+	createOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
+	createOrderCmd.Flags().BoolVar(&skipParameterCheck, "skip-parameter-check", false, "fskip checking order paramters first ONLY USE FOR TESTING")
 }
 
 func printOrdersTable(list *api.ListResponseBody, wide bool) {
