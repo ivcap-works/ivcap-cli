@@ -5,7 +5,6 @@ go 1.18
 require (
 	cayp/api_gateway v0.0.0
 	github.com/golang-jwt/jwt v3.2.2+incompatible
-	github.com/google/uuid v1.3.0
 	github.com/jedib0t/go-pretty/v6 v6.3.1
 	github.com/spf13/cobra v1.4.0
 	go.uber.org/zap v1.21.0
@@ -14,6 +13,7 @@ require (
 
 require (
 	github.com/dimfeld/httptreemux/v5 v5.4.0 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/mattn/go-runewidth v0.0.13 // indirect
