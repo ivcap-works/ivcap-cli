@@ -11,7 +11,7 @@ import (
 type Adapter interface {
 	Get(ctxt context.Context, path string, logger *log.Logger) (Payload, error)
 	Post(ctxt context.Context, path string, body io.Reader, headers *map[string]string, logger *log.Logger) (Payload, error)
-	Put(ctxt context.Context, path string, body io.Reader, logger *log.Logger) (Payload, error)
+	Put(ctxt context.Context, path string, body io.Reader, headers *map[string]string, logger *log.Logger) (Payload, error)
 	Patch(ctxt context.Context, path string, body io.Reader, logger *log.Logger) (Payload, error)
 	Delete(ctxt context.Context, path string, logger *log.Logger) (Payload, error)
 	ClearAuthorization() // no longer add authorization info to calls

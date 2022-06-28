@@ -92,8 +92,8 @@ func (a *restAdapter) Post(ctxt context.Context, path string, body io.Reader, he
 	return connect(ctxt, "POST", path, body, headers, &a.ctxt, logger)
 }
 
-func (a *restAdapter) Put(ctxt context.Context, path string, body io.Reader, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "PUT", path, body, nil, &a.ctxt, logger)
+func (a *restAdapter) Put(ctxt context.Context, path string, body io.Reader, headers *map[string]string, logger *log.Logger) (Payload, error) {
+	return connect(ctxt, "PUT", path, body, headers, &a.ctxt, logger)
 }
 
 func (a *restAdapter) Patch(ctxt context.Context, path string, body io.Reader, logger *log.Logger) (Payload, error) {

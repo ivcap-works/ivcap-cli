@@ -5,9 +5,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
+
+	"gopkg.in/yaml.v2"
 
 	log "go.uber.org/zap"
 )
@@ -53,7 +54,10 @@ func LoadPayloadFromBytes(data []byte, isYAML bool) (pyld Payload, err error) {
 }
 
 func yamlToJSON(yamlData map[interface{}]interface{}) ([]byte, error) {
-	cleanedYaml := cleanYaml(yamlData)
+	cleanedYaml, err := cleanYaml(yamlData)
+	if err != nil {
+		return nil, err
+	}
 	output, err := json.Marshal(cleanedYaml)
 	if err != nil {
 		return nil, fmt.Errorf("error converting yaml to json: %s", err.Error())
@@ -62,8 +66,8 @@ func yamlToJSON(yamlData map[interface{}]interface{}) ([]byte, error) {
 }
 
 // fixed version from the one found in "github.com/jdockerty/yaml-to-json-go/conversion"
-func cleanYaml(in map[interface{}]interface{}) map[string]interface{} {
-	output := make(map[string]interface{})
+func cleanYaml(in map[interface{}]interface{}) (output map[string]interface{}, err error) {
+	output = make(map[string]interface{})
 	for key, value := range in {
 		skey := key.(string) // expected to be 'string'
 		output[skey] = value
@@ -72,18 +76,34 @@ func cleanYaml(in map[interface{}]interface{}) map[string]interface{} {
 		sval, isSlice := value.([]interface{})
 
 		if isMap {
-			output[skey] = cleanYaml(mval)
+			if output[skey], err = cleanYaml(mval); err != nil {
+				return
+			}
 		} else if isSlice {
-			for i, item := range sval {
-				mitem, isInnerMap := item.(map[interface{}]interface{})
-				if isInnerMap {
-					sval[i] = cleanYaml(mitem)
-				}
-				// otherwise do nothing
+			if output[skey], err = cleanArrayYaml(sval); err != nil {
+				return
 			}
 		}
 	}
-	return output
+	return
+}
+
+func cleanArrayYaml(in []interface{}) (output []interface{}, err error) {
+	output = make([]interface{}, len(in))
+	for i, item := range in {
+		if mslice, isSlice := item.([]interface{}); isSlice {
+			if output[i], err = cleanArrayYaml(mslice); err != nil {
+				return
+			}
+		} else if mitem, isMap := item.(map[interface{}]interface{}); isMap {
+			if output[i], err = cleanYaml(mitem); err != nil {
+				return
+			}
+		} else {
+			output[i] = item
+		}
+	}
+	return
 }
 
 func ReplyPrinter(pld Payload, useYAML bool) (err error) {
