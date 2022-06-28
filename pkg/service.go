@@ -13,7 +13,7 @@ import (
 
 	"github.com/reinventingscience/ivcap-client/pkg/adapter"
 
-	"github.com/google/uuid"
+	// "github.com/google/uuid"
 	log "go.uber.org/zap"
 )
 
@@ -79,16 +79,12 @@ func ListServicesRaw(ctxt context.Context, cmd *ListServiceRequest, adpt *adapte
 
 /**** CREATE ****/
 
-type CreateServiceRequest struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-}
+// type CreateServiceRequest struct {
+// 	Id   string `json:"id"`
+// 	Name string `json:"name"`
+// }
 
-func CreateServiceRaw(ctxt context.Context, cmd *CreateServiceRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	if (*cmd).Id == "" {
-		(*cmd).Id = uuid.New().String()
-	}
-
+func CreateServiceRaw(ctxt context.Context, cmd *api.CreateRequestBody, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	body, err := json.MarshalIndent(*cmd, "", "  ")
 	if err != nil {
 		logger.Error("error marshalling body.", log.Error(err))
@@ -98,6 +94,28 @@ func CreateServiceRaw(ctxt context.Context, cmd *CreateServiceRequest, adpt *ada
 
 	path := servicePath(nil, adpt)
 	return (*adpt).Post(ctxt, path, bytes.NewReader(body), nil, logger)
+}
+
+/**** UPDATE ****/
+
+// type CreateServiceRequest struct {
+// 	Id   string `json:"id"`
+// 	Name string `json:"name"`
+// }
+
+func UpdateServiceRaw(ctxt context.Context, id string, createAnyway bool, cmd *api.UpdateRequestBody, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	body, err := json.MarshalIndent(*cmd, "", "  ")
+	if err != nil {
+		logger.Error("error marshalling body.", log.Error(err))
+		return nil, err
+	}
+	// fmt.Printf("RECORD %+v - %s\n", cmd, body)
+
+	path := servicePath(&id, adpt)
+	if createAnyway {
+		path += "?force-create=true"
+	}
+	return (*adpt).Put(ctxt, path, bytes.NewReader(body), nil, logger)
 }
 
 /**** READ ****/
