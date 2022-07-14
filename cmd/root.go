@@ -100,7 +100,7 @@ func initConfig() {
 	// cfg := zap.NewProductionConfig()
 	cfg.OutputPaths = []string{"stdout"}
 
-	logLevel := zapcore.InfoLevel
+	logLevel := zapcore.ErrorLevel
 	if debug {
 		logLevel = zapcore.DebugLevel
 	}
