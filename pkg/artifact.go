@@ -55,6 +55,7 @@ func ListArtifactsRaw(ctxt context.Context, cmd *ListArtifactRequest, adpt *adap
 
 type CreateArtifactRequest struct {
 	Name       string            `json:"name"`
+	Size       int64             `json:"size"`
 	Collection string            `json:"collection"`
 	Meta       map[string]string `json:"meta"`
 }
@@ -104,7 +105,7 @@ func CreateArtifactRaw(
 	if len(meta) > 0 {
 		headers["Upload-Metadata"] = cmd.Name
 	}
-	return (*adpt).Post(ctxt, path, reader, &headers, logger)
+	return (*adpt).Post(ctxt, path, reader, cmd.Size, &headers, logger)
 }
 
 /**** READ ****/

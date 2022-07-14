@@ -136,11 +136,13 @@ var (
 
 		Run: func(cmd *cobra.Command, args []string) {
 			var reader io.Reader
-			reader, contentType = getReader(inputFile, contentType)
+			var size int64
+			reader, contentType, size = getReader(inputFile, contentType)
 			logger.Debug("create artifact", log.String("content-type", contentType), log.String("inputFile", inputFile))
 			adapter := CreateAdapter(true)
 			req := &sdk.CreateArtifactRequest{
 				Name:       artifactName,
+				Size:       size,
 				Collection: artifactCollection,
 			}
 			if resp, err := sdk.CreateArtifact(context.Background(), req, contentType, reader, adapter, logger); err == nil {
@@ -228,18 +230,22 @@ func printUploadArtifactResponse(artifact *api.UploadResponseBody, wide bool) {
 	fmt.Printf("\n%s\n\n", tw.Render())
 }
 
-func getReader(fileName string, proposedFormat string) (reader io.Reader, format string) {
+func getReader(fileName string, proposedFormat string) (reader io.Reader, format string, size int64) {
 	if fileName == "" {
 		cobra.CheckErr("Missing file name '-f'")
 	}
 	format = proposedFormat
 	var file *os.File
 	var err error
+	size = -1 // -1 indicates that we can't obtain size
 	if fileName == "-" {
 		file = os.Stdin
 	} else {
 		if file, err = os.Open(fileName); err != nil {
 			cobra.CheckErr(fmt.Sprintf("while opening data file '%s' - %v", fileName, err))
+		}
+		if info, err := file.Stat(); err == nil {
+			size = info.Size()
 		}
 		if proposedFormat == "" {
 			if format, err = getFileContentType(file); err != nil {
