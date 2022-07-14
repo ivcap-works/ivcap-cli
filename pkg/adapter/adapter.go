@@ -85,23 +85,23 @@ type restAdapter struct {
 }
 
 func (a *restAdapter) Get(ctxt context.Context, path string, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "GET", path, nil, nil, &a.ctxt, logger)
+	return connect(ctxt, "GET", path, nil, -1, nil, &a.ctxt, logger)
 }
 
-func (a *restAdapter) Post(ctxt context.Context, path string, body io.Reader, headers *map[string]string, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "POST", path, body, headers, &a.ctxt, logger)
+func (a *restAdapter) Post(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error) {
+	return connect(ctxt, "POST", path, body, length, headers, &a.ctxt, logger)
 }
 
-func (a *restAdapter) Put(ctxt context.Context, path string, body io.Reader, headers *map[string]string, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "PUT", path, body, headers, &a.ctxt, logger)
+func (a *restAdapter) Put(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error) {
+	return connect(ctxt, "PUT", path, body, length, headers, &a.ctxt, logger)
 }
 
-func (a *restAdapter) Patch(ctxt context.Context, path string, body io.Reader, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "PATCH", path, body, nil, &a.ctxt, logger)
+func (a *restAdapter) Patch(ctxt context.Context, path string, body io.Reader, length int64, logger *log.Logger) (Payload, error) {
+	return connect(ctxt, "PATCH", path, body, length, nil, &a.ctxt, logger)
 }
 
 func (a *restAdapter) Delete(ctxt context.Context, path string, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "DELETE", path, nil, nil, &a.ctxt, logger)
+	return connect(ctxt, "DELETE", path, nil, -1, nil, &a.ctxt, logger)
 }
 
 func (a *restAdapter) ClearAuthorization() {
@@ -113,6 +113,7 @@ func connect(
 	method string,
 	path string,
 	body io.Reader,
+	length int64,
 	headers *map[string]string,
 	connCtxt *ConnectionCtxt,
 	logger *log.Logger,
@@ -128,6 +129,9 @@ func connect(
 	if err != nil {
 		logger.Error("Creating http request", log.Error(err))
 		return nil, &ClientError{AdapterError{path}, err}
+	}
+	if length > 0 {
+		req.ContentLength = length
 	}
 	contentType := "application/json"
 	if headers != nil {
@@ -154,7 +158,7 @@ func connect(
 	logger.Debug("calling api", log.Reflect("headers", req.Header))
 	resp, err := client.Do(req)
 	if err != nil {
-		logger.Warn("HTTP request failed.", log.Error(err))
+		logger.Warn("HTTP request failed.", log.Error(err), log.Reflect("err2", err))
 		return nil, &ClientError{AdapterError{path}, err}
 	}
 	defer resp.Body.Close()
@@ -164,7 +168,8 @@ func connect(
 		logger.Warn("Accessing response body failed.", log.Error(err))
 		return nil, &ClientError{AdapterError{path}, err}
 	}
-	logger.Debug("successful reply", log.Int("statusCode", resp.StatusCode), log.Int("body-length", len(respBody)))
+	logger.Debug("successful reply", log.Int("statusCode", resp.StatusCode),
+		log.Int("body-length", len(respBody)), log.Reflect("headers", resp.Header))
 
 	if resp.StatusCode >= 300 {
 		if len(respBody) > 0 {
