@@ -93,7 +93,7 @@ func CreateServiceRaw(ctxt context.Context, cmd *api.CreateRequestBody, adpt *ad
 	// fmt.Printf("RECORD %+v - %s\n", cmd, body)
 
 	path := servicePath(nil, adpt)
-	return (*adpt).Post(ctxt, path, bytes.NewReader(body), nil, logger)
+	return (*adpt).Post(ctxt, path, bytes.NewReader(body), int64(len(body)), nil, logger)
 }
 
 /**** UPDATE ****/
@@ -115,7 +115,7 @@ func UpdateServiceRaw(ctxt context.Context, id string, createAnyway bool, cmd *a
 	if createAnyway {
 		path += "?force-create=true"
 	}
-	return (*adpt).Put(ctxt, path, bytes.NewReader(body), nil, logger)
+	return (*adpt).Put(ctxt, path, bytes.NewReader(body), int64(len(body)), nil, logger)
 }
 
 /**** READ ****/

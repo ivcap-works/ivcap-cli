@@ -57,7 +57,7 @@ func loginF(_ *cobra.Command, args []string) {
 	}
 	adapter := *CreateAdapter(false)
 	adapter.ClearAuthorization() // remove any old authorization state
-	if pyld, err := adapter.Post(context.Background(), "/1/sessions", bytes.NewReader(body), nil, logger); err != nil {
+	if pyld, err := adapter.Post(context.Background(), "/1/sessions", bytes.NewReader(body), int64(len(body)), nil, logger); err != nil {
 		cobra.CheckErr(fmt.Sprintf("login failed - %s", err))
 	} else {
 		token := string(pyld.AsBytes())
