@@ -101,14 +101,13 @@ An example:
 			ctxt := context.Background()
 			serviceId := args[0]
 
-			var paramSet map[string]bool
+			var paramSet = map[string]bool{}
 			if !skipParameterCheck {
 				// fetch defined parameters to do some early verification
 				service, err := sdk.ReadService(ctxt, &sdk.ReadServiceRequest{Id: serviceId}, CreateAdapter(true), logger)
 				if err != nil {
 					return err
 				}
-				paramSet := map[string]bool{}
 				for _, p := range service.Parameters {
 					paramSet[*p.Name] = true
 				}
