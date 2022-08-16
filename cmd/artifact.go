@@ -6,11 +6,14 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/fs"
-	"io/ioutil"
+
+	// "io/fs"
+	// "io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
+	"strings"
 
 	sdk "github.com/reinventingscience/ivcap-client/pkg"
 	a "github.com/reinventingscience/ivcap-client/pkg/adapter"
@@ -21,12 +24,29 @@ import (
 	log "go.uber.org/zap"
 )
 
+const DEF_CHUNK_SIZE = -1 // -1 ... no chunking
+
+type ArtifactPostResponse struct {
+	// Artifact ID
+	ID string `form:"id" json:"id" xml:"id"`
+	// Optional name
+	Name string `form:"name,omitempty" json:"name,omitempty" xml:"name,omitempty"`
+	// Artifact status
+	Status string `form:"status" json:"status" xml:"status"`
+	// Mime-type of data
+	MimeType string `form:"mime-type,omitempty" json:"mime-type,omitempty" xml:"mime-type,omitempty"`
+	// Size of data
+	Size int64 `form:"size,omitempty" json:"size,omitempty" xml:"size,omitempty"`
+}
+
 var (
 	artifactName       string
+	artifactID         string
 	artifactCollection string
 	outputFile         string
 	inputFile          string
 	contentType        string
+	chunkSize          int64
 
 	artifactCmd = &cobra.Command{
 		Use:     "artifact",
@@ -97,37 +117,7 @@ var (
 		Use:   "download [flags] artifact_id [-o file|-]",
 		Short: "Download the content associated with this artifact",
 		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			recordID := args[0]
-			req := &sdk.ReadArtifactRequest{Id: recordID}
-			adapter := CreateAdapter(true)
-			artifact, err := sdk.ReadArtifact(context.Background(), req, adapter, logger)
-			if err != nil {
-				return err
-			}
-			data := artifact.Data
-			if data == nil || data.Self == nil {
-				cobra.CheckErr("No data available")
-			}
-			url, err := url.ParseRequestURI(*data.Self)
-			if err != nil {
-				return err
-			}
-			pyld, err := (*adapter).Get(context.Background(), url.Path, logger)
-			if err != nil {
-				return err
-			}
-			content := pyld.AsBytes()
-			if outputFile == "" || outputFile == "-" {
-				os.Stdout.Write(content)
-			} else {
-				if err := ioutil.WriteFile(outputFile, content, fs.FileMode(0644)); err != nil {
-					cobra.CheckErr(fmt.Sprintf("while writing data to file '%s' - %v", outputFile, err))
-				}
-				fmt.Printf("Successfully wrote %d bytes to %s\n", len(content), outputFile)
-			}
-			return nil
-		},
+		RunE:  downloadArtifact,
 	}
 
 	createArtifactCmd = &cobra.Command{
@@ -139,20 +129,142 @@ var (
 			var size int64
 			reader, contentType, size = getReader(inputFile, contentType)
 			logger.Debug("create artifact", log.String("content-type", contentType), log.String("inputFile", inputFile))
-			adapter := CreateAdapter(true)
+			adapter := CreateAdapterWithTimeout(true, 100000)
 			req := &sdk.CreateArtifactRequest{
 				Name:       artifactName,
 				Size:       size,
 				Collection: artifactCollection,
 			}
-			if resp, err := sdk.CreateArtifact(context.Background(), req, contentType, reader, adapter, logger); err == nil {
-				printUploadArtifactResponse(resp, false)
-			} else {
-				cobra.CompErrorln(fmt.Sprintf("while uploading data file '%s' - %v", inputFile, err))
+			ctxt := context.Background()
+			resp, err := sdk.CreateArtifact(ctxt, req, contentType, nil, adapter, logger)
+			if err != nil {
+				cobra.CompErrorln(fmt.Sprintf("while creating record for '%s'- %v", inputFile, err))
+				return
 			}
+			artifactID := *resp.ID
+			fmt.Printf("Created artifact '%s'\n", artifactID)
+			path, err := (*adapter).GetPath(*resp.Data.Self)
+			if err != nil {
+				cobra.CompErrorln(fmt.Sprintf("while parsing API reply - %v", err))
+				return
+			}
+			upload(ctxt, reader, artifactID, path, size, 0, adapter)
+		},
+	}
+
+	uploadArtifactCmd = &cobra.Command{
+		Use:     "upload artifactID -f file|-",
+		Short:   "Resume uploading artifact content",
+		Aliases: []string{"resume"},
+		Args:    cobra.ExactArgs(1),
+
+		Run: func(cmd *cobra.Command, args []string) {
+			artifactID := args[0]
+			reader, contentType, size := getReader(inputFile, contentType)
+			logger.Debug("upload artifact", log.String("content-type", contentType), log.String("inputFile", inputFile))
+			adapter := CreateAdapter(true)
+			ctxt := context.Background()
+
+			offset := int64(0)
+
+			read_req := &sdk.ReadArtifactRequest{Id: artifactID}
+			readResp, err := sdk.ReadArtifact(ctxt, read_req, adapter, logger)
+			if err != nil {
+				cobra.CompErrorln(fmt.Sprintf("while getting a status update on '%s' - %v", artifactID, err))
+				return
+			}
+			path, err := (*adapter).GetPath(*readResp.Data.Self)
+			if err != nil {
+				cobra.CompErrorln(fmt.Sprintf("while parsing API reply - %v", err))
+				return
+			}
+
+			headers := map[string]string{
+				"Tus-Resumable": "1.0.0",
+			}
+			pyld, err := (*adapter).Head(ctxt, path, &headers, logger)
+			if err != nil {
+				cobra.CompErrorln(fmt.Sprintf("while checking on upload status of artifact '%s' - %v", artifactID, err))
+				return
+			}
+			offset, err = strconv.ParseInt(pyld.Header("Upload-Offset"), 10, 64)
+			if err != nil {
+				cobra.CompErrorln(fmt.Sprintf("problems parsing 'Upload-Offset' in return header '%s' - %v", pyld.Header("Upload-Offset"), err))
+				return
+			}
+
+			if size > 0 && offset >= size {
+				// already done
+				fmt.Printf("Artifact '%s' already fully uploaded\n", artifactID)
+				return
+			}
+
+			upload(ctxt, reader, artifactID, path, size, offset, adapter)
 		},
 	}
 )
+
+func upload(
+	ctxt context.Context,
+	reader io.Reader,
+	artifactID string,
+	path string,
+	size int64,
+	offset int64,
+	adapter *a.Adapter,
+) (err error) {
+	if err = sdk.UploadArtifact(ctxt, reader, size, offset, chunkSize, path, adapter, logger); err != nil {
+		cobra.CompErrorln(fmt.Sprintf("while uploading data file '%s' - %v", inputFile, err))
+		return
+	}
+	fmt.Printf("Completed uploading '%s'\n", artifactID)
+
+	readReq := &sdk.ReadArtifactRequest{Id: artifactID}
+	var readResp *api.ReadResponseBody
+	if readResp, err = sdk.ReadArtifact(ctxt, readReq, adapter, logger); err == nil {
+		printArtifact(readResp, false)
+	} else {
+		cobra.CompErrorln(fmt.Sprintf("while getting a status update on '%s' - %v", artifactID, err))
+		return
+	}
+	return
+}
+
+func downloadArtifact(cmd *cobra.Command, args []string) error {
+	recordID := args[0]
+	req := &sdk.ReadArtifactRequest{Id: recordID}
+	adapter := CreateAdapter(true)
+	ctxt := context.Background()
+	artifact, err := sdk.ReadArtifact(ctxt, req, adapter, logger)
+	if err != nil {
+		return err
+	}
+	data := artifact.Data
+	if data == nil || data.Self == nil {
+		cobra.CheckErr("No data available")
+	}
+	url, err := url.ParseRequestURI(*data.Self)
+	if err != nil {
+		return err
+	}
+
+	downloadHandler := func(resp *http.Response) (err error) {
+		outFile, err := os.Create(outputFile)
+		if err != nil {
+			return
+		}
+		reader := sdk.AddProgressBar("... downloading file", resp.ContentLength, resp.Body)
+		_, err = io.Copy(outFile, reader)
+		return
+	}
+
+	err = (*adapter).Get2(ctxt, url.Path, nil, downloadHandler, logger)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("\n") // To move past progress bar
+	return nil
+}
 
 func init() {
 	rootCmd.AddCommand(artifactCmd)
@@ -174,6 +286,14 @@ func init() {
 	createArtifactCmd.Flags().StringVarP(&artifactCollection, "collection", "c", "", "Assigns artifact to a specific collection")
 	createArtifactCmd.Flags().StringVarP(&inputFile, "file", "f", "", "Path to file containing artifact content")
 	createArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact")
+	createArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
+
+	artifactCmd.AddCommand(uploadArtifactCmd)
+	uploadArtifactCmd.Flags().StringVarP(&artifactName, "name", "n", "", "Human friendly name")
+	uploadArtifactCmd.Flags().StringVarP(&artifactID, "resume", "r", "", "Resume uploading previously created artifact")
+	uploadArtifactCmd.Flags().StringVarP(&inputFile, "file", "f", "", "Path to file containing artifact content")
+	uploadArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact")
+	uploadArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
 }
 
 func printArtifactTable(list *api.ListResponseBody, wide bool) {
@@ -267,6 +387,13 @@ func getFileContentType(file *os.File) (contentType string, err error) {
 		return
 	}
 	contentType = http.DetectContentType(buf)
+	if contentType == "application/octet-stream" {
+		// see if we can do better
+		n := file.Name()
+		if strings.HasSuffix(n, ".nc") {
+			contentType = "application/netcdf"
+		}
+	}
 	_, err = file.Seek(0, 0)
 	return
 }

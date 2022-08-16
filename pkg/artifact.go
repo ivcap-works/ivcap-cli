@@ -1,16 +1,18 @@
 package client
 
 import (
+	api "cayp/api_gateway/gen/http/artifact/client"
 	"context"
 	"encoding/base64"
 	"fmt"
-	_ "fmt"
 	"io"
+	"io/ioutil"
 	"net/url"
 	"strconv"
 	"strings"
 
-	api "cayp/api_gateway/gen/http/artifact/client"
+	"github.com/k0kubun/go-ansi"
+	"github.com/schollz/progressbar/v3"
 
 	"github.com/reinventingscience/ivcap-client/pkg/adapter"
 
@@ -79,6 +81,78 @@ func CreateArtifact(
 	}
 }
 
+func UploadArtifact(
+	ctxt context.Context,
+	reader io.Reader,
+	size int64,
+	offset int64,
+	chunkSize int64,
+	path string,
+	adpt *adapter.Adapter,
+	logger *log.Logger,
+) (err error) {
+	if offset > 0 {
+		switch r := reader.(type) {
+		case io.Seeker:
+			r.Seek(offset, io.SeekCurrent)
+		default:
+			io.CopyN(ioutil.Discard, r, offset)
+		}
+	}
+
+	remaining := size - offset
+	fragSize := chunkSize
+	if fragSize < 0 {
+		fragSize = remaining // no chunking
+	}
+	reader = AddProgressBar("... uploading file", remaining, reader)
+	// var pyld adapter.Payload
+	for remaining > 0 {
+		psize := remaining
+		if psize > fragSize {
+			psize = fragSize
+		}
+		off := size - remaining
+		r := &io.LimitedReader{R: reader, N: psize}
+		h := map[string]string{
+			"Content-Type":  "application/offset+octet-stream",
+			"Upload-Offset": fmt.Sprintf("%d", off),
+			"Tus-Resumable": "1.0.0",
+		}
+		// var pyld adapter.Payload
+		_, err = (*adpt).Patch(context.Background(), path, r, psize, &h, logger)
+		if err != nil {
+			fmt.Printf("\n") // To move past progress bar
+			return
+		}
+		remaining -= psize - r.N
+	}
+	fmt.Printf("\n") // To move past progress bar
+	return
+}
+
+func AddProgressBar(description string, size int64, reader io.Reader) io.Reader {
+	bar := GetProgressBar(description, size)
+	return io.TeeReader(reader, bar)
+}
+
+func GetProgressBar(description string, size int64) io.Writer {
+	return progressbar.NewOptions64(size,
+		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
+		progressbar.OptionEnableColorCodes(true),
+		progressbar.OptionShowBytes(true),
+		progressbar.OptionSetWidth(30),
+		progressbar.OptionSetDescription(description),
+		progressbar.OptionSetTheme(progressbar.Theme{
+			Saucer:        "[green]=[reset]",
+			SaucerHead:    "[green]>[reset]",
+			SaucerPadding: " ",
+			BarStart:      "[",
+			BarEnd:        "]",
+		}),
+	)
+}
+
 func CreateArtifactRaw(
 	ctxt context.Context,
 	cmd *CreateArtifactRequest,
@@ -89,23 +163,35 @@ func CreateArtifactRaw(
 ) (adapter.Payload, error) {
 	path := artifactPath(nil, adpt)
 	headers := make(map[string]string)
-	headers["Content-Type"] = contentType
+	contentLength := cmd.Size
+	if reader == nil {
+		headers["X-Content-Type"] = contentType
+		headers["Upload-Length"] = fmt.Sprintf("%d", cmd.Size)
+		headers["Tus-Resumable"] = "1.0.0"
+		contentLength = 0
+	} else {
+		headers["Content-Type"] = contentType
+	}
 	if cmd.Name != "" {
-		headers["X-Name"] = cmd.Name
+		headers["X-Name"] = BaseEncode(cmd.Name)
 	}
 	if cmd.Collection != "" {
-		headers["X-Collection"] = cmd.Collection
+		headers["X-Collection"] = BaseEncode(cmd.Collection)
 	}
 	var meta []string
 	for key, value := range cmd.Meta {
-		k := base64.StdEncoding.EncodeToString([]byte(key))
-		v := base64.StdEncoding.EncodeToString([]byte(value))
+		k := BaseEncode(key)
+		v := BaseEncode(value)
 		meta = append(meta, fmt.Sprintf("%s %s", k, v))
 	}
 	if len(meta) > 0 {
 		headers["Upload-Metadata"] = cmd.Name
 	}
-	return (*adpt).Post(ctxt, path, reader, cmd.Size, &headers, logger)
+	return (*adpt).Post(ctxt, path, reader, contentLength, &headers, logger)
+}
+
+func BaseEncode(value string) string {
+	return base64.StdEncoding.EncodeToString([]byte(value))
 }
 
 /**** READ ****/

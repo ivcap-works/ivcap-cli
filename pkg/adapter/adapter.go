@@ -4,11 +4,11 @@ package adapter
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -84,31 +84,53 @@ type restAdapter struct {
 	ctxt ConnectionCtxt
 }
 
+func (a *restAdapter) Head(ctxt context.Context, path string, headers *map[string]string, logger *log.Logger) (Payload, error) {
+	return Connect(ctxt, "HEAD", path, nil, -1, headers, &a.ctxt, nil, logger)
+}
+
 func (a *restAdapter) Get(ctxt context.Context, path string, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "GET", path, nil, -1, nil, &a.ctxt, logger)
+	return Connect(ctxt, "GET", path, nil, -1, nil, &a.ctxt, nil, logger)
+}
+
+func (a *restAdapter) Get2(ctxt context.Context, path string, headers *map[string]string, respHandler ResponseHandler, logger *log.Logger) error {
+	_, err := Connect(ctxt, "GET", path, nil, -1, headers, &a.ctxt, respHandler, logger)
+	return err
 }
 
 func (a *restAdapter) Post(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "POST", path, body, length, headers, &a.ctxt, logger)
+	return Connect(ctxt, "POST", path, body, length, headers, &a.ctxt, nil, logger)
 }
 
 func (a *restAdapter) Put(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "PUT", path, body, length, headers, &a.ctxt, logger)
+	return Connect(ctxt, "PUT", path, body, length, headers, &a.ctxt, nil, logger)
 }
 
-func (a *restAdapter) Patch(ctxt context.Context, path string, body io.Reader, length int64, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "PATCH", path, body, length, nil, &a.ctxt, logger)
+func (a *restAdapter) Patch(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error) {
+	return Connect(ctxt, "PATCH", path, body, length, headers, &a.ctxt, nil, logger)
 }
 
 func (a *restAdapter) Delete(ctxt context.Context, path string, logger *log.Logger) (Payload, error) {
-	return connect(ctxt, "DELETE", path, nil, -1, nil, &a.ctxt, logger)
+	return Connect(ctxt, "DELETE", path, nil, -1, nil, &a.ctxt, nil, logger)
 }
 
 func (a *restAdapter) ClearAuthorization() {
 	a.ctxt.JwtToken = ""
 }
 
-func connect(
+func (a *restAdapter) SetUrl(url string) {
+	a.ctxt.URL = url
+}
+
+func (a *restAdapter) GetPath(url string) (path string, err error) {
+	if strings.HasPrefix(url, a.ctxt.URL) {
+		path = url[len(a.ctxt.URL):]
+	} else {
+		err = fmt.Errorf("url '%s' is not for this deployment '%s'", url, a.ctxt.URL)
+	}
+	return
+}
+
+func Connect(
 	ctxt context.Context,
 	method string,
 	path string,
@@ -116,6 +138,7 @@ func connect(
 	length int64,
 	headers *map[string]string,
 	connCtxt *ConnectionCtxt,
+	respHandler ResponseHandler,
 	logger *log.Logger,
 ) (Payload, error) {
 	logger = logger.With(log.String("method", method), log.String("path", path))
@@ -139,7 +162,9 @@ func connect(
 			contentType = ct
 		}
 	}
-	req.Header.Set("Content-Type", contentType)
+	if length > 0 {
+		req.Header.Set("Content-Type", contentType)
+	}
 	req.Header.Set("Cache-Control", "no-cache")
 	if connCtxt.JwtToken != "" {
 		req.Header.Set("Authorization", "Bearer "+connCtxt.JwtToken)
@@ -148,8 +173,8 @@ func connect(
 		for key, val := range *headers {
 			if key != "Content-Type" {
 				logger.Debug("header", log.String("key", key), log.String("val", val))
-				v := base64.StdEncoding.EncodeToString([]byte(val))
-				req.Header.Set(key, v)
+				// v := base64.StdEncoding.EncodeToString([]byte(val))
+				req.Header.Set(key, val)
 			}
 		}
 	}
@@ -163,6 +188,10 @@ func connect(
 	}
 	defer resp.Body.Close()
 
+	if respHandler != nil {
+		err := respHandler(resp)
+		return nil, err
+	}
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		logger.Warn("Accessing response body failed.", log.Error(err))
@@ -191,6 +220,5 @@ func connect(
 
 		//ResourceNotFoundError
 	}
-	ct := resp.Header.Get("Content-Type")
-	return ToPayload(respBody, ct, logger)
+	return ToPayload(respBody, resp, logger)
 }

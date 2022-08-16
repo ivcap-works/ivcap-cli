@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 
 	"gopkg.in/yaml.v2"
@@ -16,11 +17,19 @@ import (
 type payload struct {
 	contentType string
 	body        []byte
+	headers     *http.Header
+	statusCode  int
 }
 
-func ToPayload(body []byte, contentType string, logger *log.Logger) (Payload, error) {
+func ToPayload(body []byte, resp *http.Response, logger *log.Logger) (Payload, error) {
+	contentType := resp.Header.Get("Content-Type")
 	logger.Debug("Received", log.String("content-type", contentType))
-	return &payload{body: body, contentType: contentType}, nil
+	return &payload{
+		body:        body,
+		contentType: contentType,
+		headers:     &resp.Header,
+		statusCode:  resp.StatusCode,
+	}, nil
 }
 
 func LoadPayloadFromStdin(isYAML bool) (Payload, error) {
@@ -160,6 +169,18 @@ func (p *payload) AsArray() ([]interface{}, error) {
 
 func (p *payload) AsBytes() []byte {
 	return p.body
+}
+
+func (p *payload) Header(key string) string {
+	if p.headers != nil {
+		return p.headers.Get(key)
+	} else {
+		return ""
+	}
+}
+
+func (p *payload) StatusCode() int {
+	return p.statusCode
 }
 
 // type JsonObjPayload struct {
