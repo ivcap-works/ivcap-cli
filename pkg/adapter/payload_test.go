@@ -4,25 +4,23 @@ import (
 	_ "fmt"
 	_ "regexp"
 	"testing"
-
 )
 
-func TestYaml(t *testing.T) {
+func TestUpload(t *testing.T) {
 	y := `
 foo: 1
 `
 	p, _ := LoadPayloadFromBytes([]byte(y), true)
 	m, _ := p.AsObject()
-	switch v := m[`foo`].(type) { 
+	switch v := m[`foo`].(type) {
 	default:
 		t.Fatalf("unexpected type %T for 'foo'", v)
 	case float64:
 		if int(v) != 1 {
 			t.Fatalf("Expected '1', but is '%f'", v)
 		}
-	} 
+	}
 }
-
 
 func TestYamlArray(t *testing.T) {
 	type A struct {
@@ -50,8 +48,8 @@ foo:
 		t.Fatalf("Expected array of length 2, but got %v", res.Foo)
 	}
 	for i, item := range res.Foo {
-		if item.Value != i + 1 {
-			t.Fatalf("Expected item value of %d, but got %d", i + 1, item.Value)
+		if item.Value != i+1 {
+			t.Fatalf("Expected item value of %d, but got %d", i+1, item.Value)
 		}
 	}
 }
@@ -92,8 +90,8 @@ a:
 		t.Fatalf("Expected array of length 1, but got %v", e1.List)
 	}
 	for i, item := range e1.List[0].Value {
-		if item != i + 1 {
-			t.Fatalf("Expected item value of %d, but got %d", i + 1, item)
+		if item != i+1 {
+			t.Fatalf("Expected item value of %d, but got %d", i+1, item)
 		}
 	}
 }
