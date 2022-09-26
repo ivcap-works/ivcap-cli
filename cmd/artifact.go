@@ -9,6 +9,8 @@ import (
 
 	// "io/fs"
 	// "io/ioutil"
+	"bytes"
+	"encoding/json"
 	"net/http"
 	"net/url"
 	"os"
@@ -325,9 +327,40 @@ func printArtifact(artifact *api.ReadResponseBody, wide bool) {
 		{"Size", safeNumber(artifact.Size)},
 		{"Mime-type", safeString(artifact.MimeType)},
 		{"Account ID", safeString(artifact.Account.ID)},
+		{"Metadata", printMetadata(artifact.Metadata)},
 	})
-	//fmt.Printf("META: %v\n", artifact.Metadata)
+	// fmt.Printf("META: %v\n", artifact.Metadata)
 	fmt.Printf("\n%s\n\n", tw.Render())
+}
+
+func printMetadata(meta []*api.ParameterTResponseBody) string {
+	if len(meta) == 0 {
+		return "---"
+	}
+
+	lines := make([]string, 0)
+	for _, m := range meta {
+		schema := m.Name
+		if schema == nil {
+			continue // shouldn't happen
+		}
+		value := prettyPrintJson(m.Value)
+		lines = append(lines, fmt.Sprintf("%s\n%s", *schema, value))
+	}
+	return strings.Join(lines, "\n---\n")
+}
+
+func prettyPrintJson(sp *string) string {
+	if sp == nil {
+		return "???"
+	}
+	var prettyJSON bytes.Buffer
+	prefix := "  "
+	error := json.Indent(&prettyJSON, []byte(*sp), prefix, "  ")
+	if error != nil {
+		return "???"
+	}
+	return prefix + prettyJSON.String()
 }
 
 func printUploadArtifactResponse(artifact *api.UploadResponseBody, wide bool) {
