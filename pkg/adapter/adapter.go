@@ -211,10 +211,14 @@ func Connect(
 			return nil, &UnauthorizedError{AdapterError{path}}
 		default:
 			logger.Warn("HTTP response", log.Int("statusCode", resp.StatusCode))
+			msg := string(respBody)
+			if msg == "" {
+				msg = resp.Status
+			}
 			return nil, &ApiError{
-				AdapterError{path},
-				resp.StatusCode,
-				string(respBody),
+				AdapterError: AdapterError{path},
+				StatusCode:   resp.StatusCode,
+				Message:      msg,
 			}
 		}
 
