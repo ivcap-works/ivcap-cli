@@ -228,7 +228,7 @@ func printService(service *api.ReadResponseBody, wide bool) {
 	tw.Style().Options.DrawBorder = false
 	tw.SetColumnConfigs([]table.ColumnConfig{
 		{Number: 1, Align: text.AlignRight},
-		{Number: 2, WidthMax: 80},
+		// {Number: 2, WidthMax: 80},
 	})
 	tw.AppendRows([]table.Row{
 		{"ID", *service.ID},
