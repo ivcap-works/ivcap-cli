@@ -6,9 +6,7 @@ __IVCAP__ has an extensive REST API which is usually called directly from applic
 
 ## Install
 
-There are [ready to use binaries](https://github.com/reinventingscience/ivcap-cli/releases/latest) for some architectures available at the repo's [release](https://github.com/reinventingscience/ivcap-cli/releases) tab, but if you have go installed, you can easily build & install it with:
-
-    go install https://github.com/reinventingscience/ivcap-cli@latest
+There are [ready to use binaries](https://github.com/reinventingscience/ivcap-cli/releases/latest) for some architectures available at the repo's [release](https://github.com/reinventingscience/ivcap-cli/releases) tab.
 
 Please be aware that the tool will currently NOT work on Windows as I can't find a working solution for requesting a login password without echoing to the terminal. If anyone would know how I can do that, please add an issue.
 
