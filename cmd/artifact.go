@@ -26,7 +26,7 @@ import (
 	log "go.uber.org/zap"
 )
 
-const DEF_CHUNK_SIZE = -1 // -1 ... no chunking
+const DEF_CHUNK_SIZE = 1000000 // -1 ... no chunking
 
 type ArtifactPostResponse struct {
 	// Artifact ID
