@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -53,6 +54,7 @@ type Context struct {
 	URL        string `yaml:"url"`
 	LoginName  string `yaml:"login-name"`
 	AccountID  string `yaml:"account-id"`
+	ProviderID string `yaml:"provider-id"`
 	Jwt        string `yaml:"jwt"`
 }
 
@@ -184,6 +186,11 @@ func GetActiveContext() (ctxt *Context) {
 				cobra.CheckErr(fmt.Sprintf("unknown context '%s' in config '%s'", contextName, configFile))
 			}
 		}
+	}
+	if ctxt.ProviderID == "" {
+		// Use same ID for provider ID as account ID
+		parts := strings.Split(ctxt.AccountID, ":")
+		ctxt.ProviderID = fmt.Sprintf("%s:provider:%s", parts[0], parts[2])
 	}
 	return ctxt
 }

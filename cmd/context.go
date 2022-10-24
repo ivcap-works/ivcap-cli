@@ -13,6 +13,11 @@ var ctxtName string
 var ctxtUrl string
 var ctxtApiVersion int
 
+var printJWT bool
+var printAccountID bool
+var printProviderID bool
+var printURL bool
+
 // configCmd represents the config command
 var configCmd = &cobra.Command{
 	Use:     "context",
@@ -100,13 +105,23 @@ var useContextCmd = &cobra.Command{
 	},
 }
 
-var currentContextCmd = &cobra.Command{
+var getContextCmd = &cobra.Command{
 	Use:     "get",
 	Short:   "Display the current context",
 	Aliases: []string{"current", "show"},
 	Run: func(_ *cobra.Command, _ []string) {
-		config, _ := ReadConfigFile(false)
-		fmt.Println(config.ActiveContext)
+		context := GetActiveContext()
+		if printJWT {
+			fmt.Println(context.Jwt)
+		} else if printAccountID {
+			fmt.Println(context.AccountID)
+		} else if printProviderID {
+			fmt.Println(context.ProviderID)
+		} else if printURL {
+			fmt.Println(context.URL)
+		} else {
+			fmt.Println(context.Name)
+		}
 	},
 }
 
@@ -121,6 +136,9 @@ func init() {
 
 	configCmd.AddCommand(useContextCmd)
 
-	configCmd.AddCommand(currentContextCmd)
-
+	configCmd.AddCommand(getContextCmd)
+	getContextCmd.Flags().BoolVar(&printJWT, "jwt", false, "Print the currently active JWT token")
+	getContextCmd.Flags().BoolVar(&printAccountID, "account-id", false, "Print the currently active account ID")
+	getContextCmd.Flags().BoolVar(&printProviderID, "provider-id", false, "Print the currently active provider ID")
+	getContextCmd.Flags().BoolVar(&printURL, "url", false, "Print the URL of the currently active deployment")
 }
