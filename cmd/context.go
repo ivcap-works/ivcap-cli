@@ -15,15 +15,15 @@ var ctxtApiVersion int
 
 // configCmd represents the config command
 var configCmd = &cobra.Command{
-	Use:     "config",
+	Use:     "context",
 	Short:   "Manage and set access to various IVCAP deployments",
 	Aliases: []string{"c"},
 }
 
 var setContextCmd = &cobra.Command{
-	Use:     "create-context ctxtName --url https://ivcap.net",
-	Short:   "Create a new context",
-	Aliases: []string{"create"},
+	Use:   "create ctxtName --url https://ivcap.net",
+	Short: "Create a new context",
+	//Aliases: []string{"create"},
 	Run: func(_ *cobra.Command, args []string) {
 		if ctxtName == "" {
 			if len(args) > 0 {
@@ -51,9 +51,9 @@ var setContextCmd = &cobra.Command{
 }
 
 var listContextCmd = &cobra.Command{
-	Use:     "get-contexts",
-	Short:   "List all context",
-	Aliases: []string{"get-context", "list"},
+	Use:   "list",
+	Short: "List all context",
+	//Aliases: []string{"get-context", "list"},
 	Run: func(_ *cobra.Command, _ []string) {
 		config, _ := ReadConfigFile(false)
 		if config != nil {
@@ -74,8 +74,8 @@ var listContextCmd = &cobra.Command{
 }
 
 var useContextCmd = &cobra.Command{
-	Use:     "use-context name",
-	Short:   "Set the current-context in the config file",
+	Use:     "set name",
+	Short:   "Set the current context in the config file",
 	Aliases: []string{"use"},
 	Run: func(_ *cobra.Command, args []string) {
 		if len(args) < 1 {
@@ -101,9 +101,9 @@ var useContextCmd = &cobra.Command{
 }
 
 var currentContextCmd = &cobra.Command{
-	Use:     "current-context",
-	Short:   "Display the current-context",
-	Aliases: []string{"get"},
+	Use:     "get",
+	Short:   "Display the current context",
+	Aliases: []string{"current", "show"},
 	Run: func(_ *cobra.Command, _ []string) {
 		config, _ := ReadConfigFile(false)
 		fmt.Println(config.ActiveContext)
