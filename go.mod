@@ -4,6 +4,7 @@ go 1.18
 
 require (
 	cayp/api_gateway v0.0.0
+	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/jedib0t/go-pretty/v6 v6.3.1
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
