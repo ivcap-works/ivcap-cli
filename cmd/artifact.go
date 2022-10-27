@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"io"
 
-	// "io/fs"
-	// "io/ioutil"
 	"bytes"
 	"encoding/json"
 	"net/http"

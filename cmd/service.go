@@ -92,15 +92,8 @@ through 'stdin' use '-' as the file name and also include the --format flag`,
 		Args: cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
-			// serviceFile := args[0]
 
-			isYaml := inputFormat == "yaml" || strings.HasSuffix(serviceFile, ".yaml") || strings.HasSuffix(serviceFile, ".yml")
-			var pyld a.Payload
-			if serviceFile != "-" {
-				pyld, err = a.LoadPayloadFromFile(serviceFile, isYaml)
-			} else {
-				pyld, err = a.LoadPayloadFromStdin(isYaml)
-			}
+			pyld, err := payloadFromFile(serviceFile, inputFormat)
 			if err != nil {
 				cobra.CheckErr(fmt.Sprintf("While reading service file '%s' - %s", serviceFile, err))
 			}
@@ -152,15 +145,6 @@ through 'stdin' use '-' as the file name and also include the --format flag `,
 			return nil
 		},
 	}
-
-	// createServiceCmd = &cobra.Command{
-	// 	Use:   "create",
-	// 	Short: "Create a new service",
-
-	// 	Run: func(cmd *cobra.Command, args []string) {
-	// 		fmt.Printf("service called %v - %v\n", recordID, args)
-	// 	},
-	// }
 )
 
 func init() {
@@ -182,9 +166,6 @@ func init() {
 	updateServiceCmd.Flags().BoolVarP(&createAnyway, "create", "", false, "Create service record if it doesn't exist")
 	updateServiceCmd.Flags().StringVarP(&serviceFile, "file", "f", "", "Path to service description file")
 	updateServiceCmd.Flags().StringVar(&inputFormat, "format", "", "Format of service description file [json, yaml]")
-
-	// serviceCmd.AddCommand(createCmd)
-	// createCmd.Flags().StringVarP(&recordID, "service-id", "i", "", "ID of service to manage")
 }
 
 func printServiceTable(list *api.ListResponseBody, wide bool) {
