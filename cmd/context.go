@@ -13,17 +13,22 @@ var ctxtName string
 var ctxtUrl string
 var ctxtApiVersion int
 
+var printJWT bool
+var printAccountID bool
+var printProviderID bool
+var printURL bool
+
 // configCmd represents the config command
 var configCmd = &cobra.Command{
-	Use:     "config",
+	Use:     "context",
 	Short:   "Manage and set access to various IVCAP deployments",
 	Aliases: []string{"c"},
 }
 
 var setContextCmd = &cobra.Command{
-	Use:     "create-context ctxtName --url https://ivcap.net",
-	Short:   "Create a new context",
-	Aliases: []string{"create"},
+	Use:   "create ctxtName --url https://ivcap.net",
+	Short: "Create a new context",
+	//Aliases: []string{"create"},
 	Run: func(_ *cobra.Command, args []string) {
 		if ctxtName == "" {
 			if len(args) > 0 {
@@ -51,9 +56,9 @@ var setContextCmd = &cobra.Command{
 }
 
 var listContextCmd = &cobra.Command{
-	Use:     "get-contexts",
-	Short:   "List all context",
-	Aliases: []string{"get-context", "list"},
+	Use:   "list",
+	Short: "List all context",
+	//Aliases: []string{"get-context", "list"},
 	Run: func(_ *cobra.Command, _ []string) {
 		config, _ := ReadConfigFile(false)
 		if config != nil {
@@ -74,8 +79,8 @@ var listContextCmd = &cobra.Command{
 }
 
 var useContextCmd = &cobra.Command{
-	Use:     "use-context name",
-	Short:   "Set the current-context in the config file",
+	Use:     "set name",
+	Short:   "Set the current context in the config file",
 	Aliases: []string{"use"},
 	Run: func(_ *cobra.Command, args []string) {
 		if len(args) < 1 {
@@ -100,13 +105,23 @@ var useContextCmd = &cobra.Command{
 	},
 }
 
-var currentContextCmd = &cobra.Command{
-	Use:     "current-context",
-	Short:   "Display the current-context",
-	Aliases: []string{"get"},
+var getContextCmd = &cobra.Command{
+	Use:     "get",
+	Short:   "Display the current context",
+	Aliases: []string{"current", "show"},
 	Run: func(_ *cobra.Command, _ []string) {
-		config, _ := ReadConfigFile(false)
-		fmt.Println(config.ActiveContext)
+		context := GetActiveContext()
+		if printJWT {
+			fmt.Println(context.Jwt)
+		} else if printAccountID {
+			fmt.Println(context.AccountID)
+		} else if printProviderID {
+			fmt.Println(context.ProviderID)
+		} else if printURL {
+			fmt.Println(context.URL)
+		} else {
+			fmt.Println(context.Name)
+		}
 	},
 }
 
@@ -121,6 +136,9 @@ func init() {
 
 	configCmd.AddCommand(useContextCmd)
 
-	configCmd.AddCommand(currentContextCmd)
-
+	configCmd.AddCommand(getContextCmd)
+	getContextCmd.Flags().BoolVar(&printJWT, "jwt", false, "Print the currently active JWT token")
+	getContextCmd.Flags().BoolVar(&printAccountID, "account-id", false, "Print the currently active account ID")
+	getContextCmd.Flags().BoolVar(&printProviderID, "provider-id", false, "Print the currently active provider ID")
+	getContextCmd.Flags().BoolVar(&printURL, "url", false, "Print the URL of the currently active deployment")
 }

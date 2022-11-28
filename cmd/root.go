@@ -6,12 +6,11 @@ import (
 	"io/ioutil"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
-
-	// "github.com/spf13/viper"
 
 	adpt "github.com/reinventingscience/ivcap-client/pkg/adapter"
 
@@ -56,6 +55,7 @@ type Context struct {
 	Name       string `yaml:"name"`
 	URL        string `yaml:"url"`
 	AccountID  string `yaml:"account-id"`
+	ProviderID string `yaml:"provider-id"`
 
 	// User Information
 	AccountName     string `yaml:"account-name"`
@@ -111,7 +111,6 @@ func init() {
 	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 10, "Max. number of seconds to wait for completion")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logging level to DEBUG")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Set format for displaying output [json, yaml]")
-
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -206,6 +205,11 @@ func GetActiveContext() (ctxt *Context) {
 				cobra.CheckErr(fmt.Sprintf("unknown context '%s' in config '%s'", contextName, configFile))
 			}
 		}
+	}
+	if ctxt.ProviderID == "" {
+		// Use same ID for provider ID as account ID
+		parts := strings.Split(ctxt.AccountID, ":")
+		ctxt.ProviderID = fmt.Sprintf("%s:provider:%s", parts[0], parts[2])
 	}
 	return ctxt
 }
@@ -349,4 +353,14 @@ func safeNumber(n *int64) string {
 	} else {
 		return "???"
 	}
+}
+
+func payloadFromFile(fileName string, inputFormat string) (pyld adpt.Payload, err error) {
+	isYaml := inputFormat == "yaml" || strings.HasSuffix(fileName, ".yaml") || strings.HasSuffix(fileName, ".yml")
+	if fileName != "-" {
+		pyld, err = adpt.LoadPayloadFromFile(fileName, isYaml)
+	} else {
+		pyld, err = adpt.LoadPayloadFromStdin(isYaml)
+	}
+	return
 }
