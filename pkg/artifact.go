@@ -138,7 +138,7 @@ func AddProgressBar(description string, size int64, reader io.Reader) io.Reader 
 
 func GetProgressBar(description string, size int64) io.Writer {
 	return progressbar.NewOptions64(size,
-		progressbar.OptionSetWriter(ansi.NewAnsiStdout()),
+		progressbar.OptionSetWriter(ansi.NewAnsiStderr()),
 		progressbar.OptionEnableColorCodes(true),
 		progressbar.OptionShowBytes(true),
 		progressbar.OptionSetWidth(30),
@@ -215,6 +215,48 @@ func ReadArtifact(ctxt context.Context, cmd *ReadArtifactRequest, adpt *adapter.
 func ReadArtifactRaw(ctxt context.Context, cmd *ReadArtifactRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	path := artifactPath(&cmd.Id, adpt)
 	return (*adpt).Get(ctxt, path, logger)
+}
+
+/**** COLLECTION ****/
+
+func AddArtifactToCollection(
+	ctxt context.Context,
+	artifactID string,
+	collectionName string,
+	adpt *adapter.Adapter,
+	logger *log.Logger,
+) (adapter.Payload, error) {
+	path := artifactPath(&artifactID, adpt)
+	path = fmt.Sprintf("%s/.collections/%s", path, url.PathEscape(collectionName))
+	return (*adpt).Put(ctxt, path, nil, -1, nil, logger)
+}
+
+func RemoveArtifactToCollection(
+	ctxt context.Context,
+	artifactID string,
+	collectionName string,
+	adpt *adapter.Adapter,
+	logger *log.Logger,
+) (adapter.Payload, error) {
+	path := artifactPath(&artifactID, adpt)
+	path = fmt.Sprintf("%s/.collections/%s", path, url.PathEscape(collectionName))
+	return (*adpt).Delete(ctxt, path, logger)
+}
+
+/**** METADATA ****/
+
+func AddArtifactMeta(
+	ctxt context.Context,
+	artifactID string,
+	schemaName string,
+	schema io.Reader,
+	size int64,
+	adpt *adapter.Adapter,
+	logger *log.Logger,
+) (adapter.Payload, error) {
+	path := artifactPath(&artifactID, adpt)
+	path = fmt.Sprintf("%s/.metadata/%s", path, url.PathEscape(schemaName))
+	return (*adpt).Put(ctxt, path, schema, size, nil, logger)
 }
 
 /**** UTILS ****/

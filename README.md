@@ -6,9 +6,7 @@ __IVCAP__ has an extensive REST API which is usually called directly from applic
 
 ## Install
 
-There are [ready to use binaries](https://github.com/reinventingscience/ivcap-cli/releases/latest) for some architectures available at the repo's [release](https://github.com/reinventingscience/ivcap-cli/releases) tab, but if you have go installed, you can easily build & install it with:
-
-    go install https://github.com/reinventingscience/ivcap-cli@latest
+There are [ready to use binaries](https://github.com/reinventingscience/ivcap-cli/releases/latest) for some architectures available at the repo's [release](https://github.com/reinventingscience/ivcap-cli/releases) tab.
 
 Please be aware that the tool will currently NOT work on Windows as I can't find a working solution for requesting a login password without echoing to the terminal. If anyone would know how I can do that, please add an issue.
 
@@ -25,7 +23,7 @@ Usage:
 Available Commands:
   artifact    Create and manage artifacts 
   completion  Generate the autocompletion script for the specified shell
-  config      A brief description of your command
+  context     Manage and set access to various IVCAP deployments
   help        Help about any command
   login       Authenticate with a specific deployment/context
   order       Create and manage orders 
@@ -36,6 +34,8 @@ Flags:
       --context string      Context (deployment) to use
       --debug               Set logging level to DEBUG
   -h, --help                help for ivcap
+  -o, --output string       Set format for displaying output [json, yaml]
+      --timeout int         Max. number of seconds to wait for completion (default 10)
   -v, --version             version for ivcap
 
 Use "ivcap [command] --help" for more information about a command.
@@ -46,21 +46,21 @@ Use "ivcap [command] --help" for more information about a command.
 With the following command we are creating a context named `cip-2` for the IVCAP deployment at `https://api2.green-cirrus.com`
 
 ```
-% ivcap config create-context cip-2 --url https://api2.green-cirrus.com
+% ivcap context create cip-2 --url https://api2.green-cirrus.com
 Context 'cip-2' created.
 ```
 
-If we have multiple contexts, we can easily switch with `config use-context`
+If we have multiple contexts, we can easily switch with `context set`
 
 ```
-% ivcap config use-context cip-2
+% ivcap context set cip-2
 Switched to context 'cip-2'.
 ```
 
 The following command lists all the configured contexts:
 
 ```
-% ivcap config get-contexts                                           
+% ivcap context list                                           
 +---------+-----------+-----------------------------+------------------------------+
 | CURRENT | NAME      | ACCOUNTID                   | URL                          |
 +---------+-----------+-----------------------------+------------------------------+

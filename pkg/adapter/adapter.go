@@ -77,7 +77,7 @@ type ClientError struct {
 }
 
 func (e *ClientError) Error() string {
-	return fmt.Sprintf("while connecting to cayp registry - %s", e.err.Error())
+	return fmt.Sprintf("while connecting to IVCAP cluster - %s", e.err.Error())
 }
 
 type restAdapter struct {
