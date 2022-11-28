@@ -55,9 +55,26 @@ type Context struct {
 	ApiVersion int    `yaml:"api-version"`
 	Name       string `yaml:"name"`
 	URL        string `yaml:"url"`
-	LoginName  string `yaml:"login-name"`
 	AccountID  string `yaml:"account-id"`
-	Jwt        string `yaml:"jwt"`
+
+	// User Information
+	AccountName     string `yaml:"account-name"`
+	AccountNickName string `yaml:"account-nickname"`
+	Email           string `yaml:"email"`
+
+	// Login Service Information
+	codeURL  string `yaml:"codeURL"`
+	TokenURL string `yaml:"tokenURL"`
+	ClientID string `yaml:"clientID"`
+
+	// Cached Credentials
+	AccessToken       string    `yaml:"access-token"`
+	AccessTokenExpiry time.Time `yaml:"access-token-expiry"`
+	RefreshToken      string    `yaml:"refresh-token"`
+
+	// Deprecated
+	LoginName string `yaml:"login-name"`
+	Jwt       string `yaml:"jwt"`
 }
 
 type AppError struct {
@@ -113,6 +130,7 @@ func initConfig() {
 	if err != nil {
 		panic(err)
 	}
+
 	SetLogger(logger)
 }
 
@@ -242,7 +260,7 @@ func WriteConfigFile(config *Config) {
 		cobra.CheckErr(fmt.Sprintf("cannot marshall content of config file - %v", err))
 		return
 	}
-	
+
 	configFile := GetConfigFilePath()
 
 	if err = ioutil.WriteFile(configFile, b, fs.FileMode(0644)); err != nil {
