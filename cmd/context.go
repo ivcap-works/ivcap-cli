@@ -13,7 +13,7 @@ var ctxtName string
 var ctxtUrl string
 var ctxtApiVersion int
 
-var printJWT bool
+var printAccessToken bool
 var printAccountID bool
 var printProviderID bool
 var printURL bool
@@ -111,8 +111,9 @@ var getContextCmd = &cobra.Command{
 	Aliases: []string{"current", "show"},
 	Run: func(_ *cobra.Command, _ []string) {
 		context := GetActiveContext()
-		if printJWT {
-			fmt.Println(context.Jwt)
+		if printAccessToken {
+			fmt.Println(context.AccessToken)
+			fmt.Println(context.AccessTokenExpiry)
 		} else if printAccountID {
 			fmt.Println(context.AccountID)
 		} else if printProviderID {
@@ -137,7 +138,7 @@ func init() {
 	configCmd.AddCommand(useContextCmd)
 
 	configCmd.AddCommand(getContextCmd)
-	getContextCmd.Flags().BoolVar(&printJWT, "jwt", false, "Print the currently active JWT token")
+	getContextCmd.Flags().BoolVar(&printAccessToken, "access-token", false, "Print the currently active Access token and its expiry")
 	getContextCmd.Flags().BoolVar(&printAccountID, "account-id", false, "Print the currently active account ID")
 	getContextCmd.Flags().BoolVar(&printProviderID, "provider-id", false, "Print the currently active provider ID")
 	getContextCmd.Flags().BoolVar(&printURL, "url", false, "Print the URL of the currently active deployment")

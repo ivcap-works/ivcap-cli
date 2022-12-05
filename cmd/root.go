@@ -158,9 +158,9 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 	}
 
 	url := os.Getenv(ENV_PREFIX + "_URL")
-	jwt := os.Getenv(ENV_PREFIX + "_JWT")
+	accessToken := os.Getenv(ENV_PREFIX + "_ACCESSTOKEN")
 
-	if url == "" || jwt == "" {
+	if url == "" || accessToken == "" {
 		// check config file
 		ctxt := GetActiveContext()
 		if ctxt == nil {
@@ -169,19 +169,21 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 		if url == "" {
 			url = ctxt.URL
 		}
-		if jwt == "" {
-			jwt = ctxt.Jwt
+		if accessToken == "" {
+			accessToken = ctxt.AccessToken
 		}
 	}
 
 	if !requiresAuth {
-		jwt = ""
+		accessToken = ""
+	} else {
+		logger.Warn("Adapter requires Auth but no Access Token Provided")
 	}
-	logger.Debug("Adapter config", log.String("url", url), log.String("jwt", jwt))
+	logger.Debug("Adapter config", log.String("url", url), log.String("accessToken", accessToken))
 	if url == "" {
 		cobra.CheckErr("required context 'url' not set")
 	}
-	adp, err := NewAdapter(url, jwt, timeoutSec)
+	adp, err := NewAdapter(url, accessToken, timeoutSec)
 	if adp == nil || err != nil {
 		cobra.CheckErr(fmt.Sprintf("cannot create adapter for '%s' - %s", url, err))
 	}
@@ -296,9 +298,9 @@ func GetConfigFilePath() (configFile string) {
 	return
 }
 
-func NewAdapter(url string, jwtToken string, timeoutSec int) (*adpt.Adapter, error) {
+func NewAdapter(url string, accessToken string, timeoutSec int) (*adpt.Adapter, error) {
 	adapter := adpt.RestAdapter(adpt.ConnectionCtxt{
-		URL: url, JwtToken: jwtToken, TimeoutSec: timeoutSec,
+		URL: url, AccessToken: accessToken, TimeoutSec: timeoutSec,
 	})
 	return &adapter, nil
 }

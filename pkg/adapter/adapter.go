@@ -16,9 +16,9 @@ import (
 )
 
 type ConnectionCtxt struct {
-	URL        string
-	JwtToken   string
-	TimeoutSec int
+	URL         string
+	AccessToken string
+	TimeoutSec  int
 }
 
 func CreateJwtToken(userID *string, signingSecret *string) (string, error) {
@@ -114,7 +114,7 @@ func (a *restAdapter) Delete(ctxt context.Context, path string, logger *log.Logg
 }
 
 func (a *restAdapter) ClearAuthorization() {
-	a.ctxt.JwtToken = ""
+	a.ctxt.AccessToken = ""
 }
 
 func (a *restAdapter) SetUrl(url string) {
@@ -166,8 +166,8 @@ func Connect(
 		req.Header.Set("Content-Type", contentType)
 	}
 	req.Header.Set("Cache-Control", "no-cache")
-	if connCtxt.JwtToken != "" {
-		req.Header.Set("Authorization", "Bearer "+connCtxt.JwtToken)
+	if connCtxt.AccessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+connCtxt.AccessToken)
 	}
 	if headers != nil {
 		for key, val := range *headers {
