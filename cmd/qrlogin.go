@@ -16,19 +16,20 @@ import (
 )
 
 var qrLoginCmd = &cobra.Command{
-	Use:   "qrlogin codeURL tokenURL clientID",
+	Use:   "qrlogin",
 	Short: "Authenticate with a specific deployment/context",
 	Run:   loginQR,
 }
 
 type QRAuthInfo struct {
-	codeURL      string
-	tokenURL     string
-	clientID     string
-	refreshToken string
-	audience     string
-	scopes       string
-	grantType    string
+	LoginURL  string `json:"login-url"`
+	TokenURL  string `json:"token-url"`
+	CodeURL   string `json:"code-url"`
+	JwksURL   string `json:"jwks-url"`
+	ClientID  string `json:"client-id"`
+	audience  string
+	scopes    string
+	grantType string
 }
 
 type DeviceCode struct {
@@ -62,21 +63,28 @@ type deviceTokenResponse struct {
 func refreshAccessToken() error {
 	ctxt := GetActiveContext()
 
+	if ctxt.RefreshToken == "" {
+		return fmt.Errorf("No Refresh Token to refresh the access token with")
+	}
+
+	authInfo, err := getLoginInformation(http.DefaultClient, ctxt)
+
+	if err != nil {
+		cobra.CheckErr(fmt.Sprintf("Could not connect to %s to login - %s", ctxt.URL, err))
+		return err
+	}
+
 	accessTokenExpiry := ctxt.AccessTokenExpiry
 	if time.Now().After(accessTokenExpiry) {
 		// Access token has expired, we have to refresh it
-		authInfo := QRAuthInfo{}
-		authInfo.tokenURL = ctxt.TokenURL
 		authInfo.grantType = "refresh_token"
-		authInfo.clientID = ctxt.ClientID
-		authInfo.refreshToken = ctxt.RefreshToken
 
-		if (authInfo.tokenURL != "") && (authInfo.clientID != "") && (authInfo.refreshToken != "") {
+		if (authInfo.TokenURL != "") && (authInfo.ClientID != "") {
 
-			response, err := http.PostForm(authInfo.tokenURL,
+			response, err := http.PostForm(authInfo.TokenURL,
 				url.Values{"grant_type": {authInfo.grantType},
-					"client_id":     {authInfo.clientID},
-					"refresh_token": {authInfo.refreshToken}})
+					"client_id":     {authInfo.ClientID},
+					"refresh_token": {ctxt.RefreshToken}})
 
 			if err != nil {
 				return fmt.Errorf("Cannot refresh access token - %s", err)
@@ -103,7 +111,7 @@ func refreshAccessToken() error {
 				ctxt.AccessTokenExpiry = time.Now().Add(time.Second * time.Duration(tokenResponse.ExpiresIn-10))
 
 				// We also get an updated ID token, let's make sure we have the latest info
-				ParseIDToken(&tokenResponse, ctxt)
+				ParseIDToken(&tokenResponse, ctxt, authInfo.JwksURL)
 
 				fmt.Println(fmt.Sprintf("Successfully acquired new access token. Expiry: %s", ctxt.AccessTokenExpiry))
 
@@ -117,9 +125,28 @@ func refreshAccessToken() error {
 
 }
 
+func getLoginInformation(client *http.Client, ctxt *Context) (authInfo *QRAuthInfo, err error) {
+	if ctxt == nil {
+		return nil, fmt.Errorf("Invalid config set. Please set a valid config with the config command.")
+	}
+
+	response, err := http.Get(ctxt.URL + "/logininfo")
+
+	if err != nil {
+		return nil, fmt.Errorf("Cannot request login info - %s", err)
+	}
+
+	jsonDecoder := json.NewDecoder(response.Body)
+	if err := jsonDecoder.Decode(&authInfo); err != nil {
+		return nil, err
+	}
+
+	return authInfo, nil
+}
+
 func requestDeviceCode(client *http.Client, authInfo *QRAuthInfo) (*DeviceCode, error) {
-	response, err := http.PostForm(authInfo.codeURL,
-		url.Values{"client_id": {authInfo.clientID},
+	response, err := http.PostForm(authInfo.CodeURL,
+		url.Values{"client_id": {authInfo.ClientID},
 			"scope":    {authInfo.scopes},
 			"audience": {authInfo.audience}})
 
@@ -148,9 +175,9 @@ func waitForTokens(client *http.Client, authInfo *QRAuthInfo, deviceCode *Device
 	startTime := time.Now()
 	lastElapsedTime := int64(0)
 	for {
-		response, err := http.PostForm(authInfo.tokenURL,
+		response, err := http.PostForm(authInfo.TokenURL,
 			url.Values{"grant_type": {authInfo.grantType},
-				"client_id":   {authInfo.clientID},
+				"client_id":   {authInfo.ClientID},
 				"device_code": {deviceCode.DeviceCode}})
 
 		if err != nil {
@@ -219,9 +246,8 @@ func waitForTokens(client *http.Client, authInfo *QRAuthInfo, deviceCode *Device
 
 }
 
-func ParseIDToken(tokenResponse *deviceTokenResponse, ctxt *Context) error {
+func ParseIDToken(tokenResponse *deviceTokenResponse, ctxt *Context, jwksURL string) error {
 	// Lookup the public key to verify the signature (and check we have a valid token)
-	jwksURL := "https://ivap.au.auth0.com/.well-known/jwks.json"
 
 	// Todo look at keyfunc options, to get a cancellable context
 	jwks, err := keyfunc.Get(jwksURL, keyfunc.Options{})
@@ -254,49 +280,26 @@ func ParseIDToken(tokenResponse *deviceTokenResponse, ctxt *Context) error {
 func loginQR(_ *cobra.Command, args []string) {
 	ctxt := GetActiveContext()
 
+	httpClient := http.DefaultClient
+
 	if ctxt == nil {
 		cobra.CheckErr("Invalid config set. Please set a valid config with the config command.")
 		return
 	}
-	authInfo := QRAuthInfo{}
+	authInfo, err := getLoginInformation(httpClient, ctxt)
+
+	if err != nil {
+		cobra.CheckErr(fmt.Sprintf("Could not connect to %s to login - %s", ctxt.URL, err))
+		return
+	}
 
 	// offline_access is required for the refresh tokens to be sent through
 	authInfo.scopes = "openid profile email offline_access"
 	authInfo.grantType = "urn:ietf:params:oauth:grant-type:device_code"
 	authInfo.audience = "https://ivap.au.auth0.com/api/v2/"
 
-	if len(args) > 1 {
-		authInfo.codeURL = args[0]
-		authInfo.tokenURL = args[1]
-		authInfo.clientID = args[2]
-	} else {
-		if ctxt != nil {
-			if ctxt.codeURL != "" {
-				authInfo.codeURL = ctxt.codeURL
-			} else {
-				cobra.CheckErr("Missing 'codeURL'")
-				return
-			}
-			if ctxt.TokenURL != "" {
-				authInfo.tokenURL = ctxt.TokenURL
-			} else {
-				cobra.CheckErr("Missing 'tokenURL'")
-				return
-			}
-			if ctxt.ClientID != "" {
-				authInfo.clientID = ctxt.ClientID
-				return
-			} else {
-				cobra.CheckErr("Missing 'clientID'")
-				return
-			}
-		}
-	}
-
-	httpClient := http.DefaultClient
-
 	// First request a device code for this command line tool
-	deviceCode, err := requestDeviceCode(httpClient, &authInfo)
+	deviceCode, err := requestDeviceCode(httpClient, authInfo)
 
 	if err != nil {
 		cobra.CheckErr(fmt.Sprintf("Cannot request authentication device code - %s", err))
@@ -315,21 +318,20 @@ func loginQR(_ *cobra.Command, args []string) {
 	fmt.Println("or scan the QR Code to be taken to the login page")
 	fmt.Println("Waiting for authorisation...")
 
-	tokenResponse, err := waitForTokens(httpClient, &authInfo, deviceCode)
+	tokenResponse, err := waitForTokens(httpClient, authInfo, deviceCode)
 	if err != nil {
 		cobra.CheckErr(fmt.Sprintf("Cannot request authorisation tokens - %s", err))
 		return
 	}
 
 	fmt.Println(fmt.Sprintf("Command Line Tool Authorised."))
-	err = ParseIDToken(tokenResponse, ctxt)
+	err = ParseIDToken(tokenResponse, ctxt, authInfo.JwksURL)
 	if err != nil {
 		cobra.CheckErr(fmt.Sprintf("Cannot parse identity information - %s", err))
 		return
 	}
 
-	ctxt.ClientID = authInfo.clientID
-	ctxt.TokenURL = authInfo.tokenURL
+	ctxt.ClientID = authInfo.ClientID
 	ctxt.AccessToken = tokenResponse.AccessToken
 	// Add a 10 second buffer to expiry to account for differences in clock time between client
 	// server and message transport time (oauth2 library does the same thing)
