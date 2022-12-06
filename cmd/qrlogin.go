@@ -47,6 +47,7 @@ type CustomIdClaims struct {
 	Email         string `json:"email,omitempty"`
 	EmailVerified bool   `json:"email_verified,omitempty"`
 	Picture       string `json:"picture,omitempty"`
+	AccountID     string `json:"ivap/claims/account-id,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -271,6 +272,7 @@ func ParseIDToken(tokenResponse *deviceTokenResponse, ctxt *Context, jwksURL str
 			ctxt.AccountName = claims.Name
 			ctxt.Email = claims.Email
 			ctxt.AccountNickName = claims.Nickname
+			ctxt.AccountID = claims.AccountID
 		}
 	}
 
