@@ -63,8 +63,6 @@ type Context struct {
 	Email           string `yaml:"email"`
 
 	// Login Service Information
-	codeURL  string `yaml:"codeURL"`
-	TokenURL string `yaml:"tokenURL"`
 	ClientID string `yaml:"clientID"`
 
 	// Cached Credentials
