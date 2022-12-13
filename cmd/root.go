@@ -27,7 +27,6 @@ const MAX_NAME_COL_LEN = 30
 // flags
 var (
 	contextName string
-	accountID   string
 	timeout     int
 	debug       bool
 
@@ -54,6 +53,7 @@ type Context struct {
 	AccountID  string `yaml:"account-id"`
 	ProviderID string `yaml:"provider-id"`
 	Jwt        string `yaml:"jwt"`
+	Host       string `yaml:"host"` // set Host header if necessary
 }
 
 type AppError struct {
@@ -86,7 +86,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&contextName, "context", "", "Context (deployment) to use")
-	rootCmd.PersistentFlags().StringVar(&accountID, "account-id", "", "Account ID to use with requests. Most likely defined in context")
+	// rootCmd.PersistentFlags().StringVar(&accountID, "account-id", "", "Account ID to use with requests. Most likely defined in context")
 	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 10, "Max. number of seconds to wait for completion")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logging level to DEBUG")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Set format for displaying output [json, yaml]")
@@ -180,7 +180,7 @@ func GetActiveContext() (ctxt *Context) {
 			}
 		}
 	}
-	if ctxt.ProviderID == "" {
+	if ctxt.ProviderID == "" && ctxt.AccountID != "" {
 		// Use same ID for provider ID as account ID
 		parts := strings.Split(ctxt.AccountID, ":")
 		ctxt.ProviderID = fmt.Sprintf("%s:provider:%s", parts[0], parts[2])
