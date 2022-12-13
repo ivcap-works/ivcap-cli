@@ -134,32 +134,28 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 	if contextName == "" {
 		contextName = os.Getenv(ENV_PREFIX + "_CONTEXT")
 	}
-
-	url := os.Getenv(ENV_PREFIX + "_URL")
 	jwt := os.Getenv(ENV_PREFIX + "_JWT")
 
-	if url == "" || jwt == "" {
-		// check config file
-		ctxt := GetActiveContext()
-		if ctxt == nil {
-			cobra.CheckErr("cannot find a respective context")
-		}
-		if url == "" {
-			url = ctxt.URL
-		}
-		if jwt == "" {
-			jwt = ctxt.Jwt
-		}
+	// check config file
+	ctxt := GetActiveContext()
+	if ctxt == nil {
+		cobra.CheckErr("cannot find a respective context")
+	}
+	if jwt == "" {
+		jwt = ctxt.Jwt
 	}
 
 	if !requiresAuth {
 		jwt = ""
 	}
-	logger.Debug("Adapter config", log.String("url", url), log.String("jwt", jwt))
-	if url == "" {
-		cobra.CheckErr("required context 'url' not set")
+	url := ctxt.URL
+	var headers *map[string]string
+	if ctxt.Host != "" {
+		headers = &(map[string]string{"Host": ctxt.Host})
 	}
-	adp, err := NewAdapter(url, jwt, timeoutSec)
+	logger.Debug("Adapter config", log.String("url", url))
+
+	adp, err := NewAdapter(url, jwt, timeoutSec, headers)
 	if adp == nil || err != nil {
 		cobra.CheckErr(fmt.Sprintf("cannot create adapter for '%s' - %s", url, err))
 	}
@@ -248,9 +244,14 @@ func WriteConfigFile(config *Config) {
 	}
 }
 
-func NewAdapter(url string, jwtToken string, timeoutSec int) (*adpt.Adapter, error) {
+func NewAdapter(
+	url string,
+	jwtToken string,
+	timeoutSec int,
+	headers *map[string]string,
+) (*adpt.Adapter, error) {
 	adapter := adpt.RestAdapter(adpt.ConnectionCtxt{
-		URL: url, JwtToken: jwtToken, TimeoutSec: timeoutSec,
+		URL: url, JwtToken: jwtToken, TimeoutSec: timeoutSec, Headers: headers,
 	})
 	return &adapter, nil
 }
