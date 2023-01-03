@@ -31,7 +31,6 @@ const CONFIG_FILE_NAME = ".ivcap-cli"
 // flags
 var (
 	contextName string
-	accountID   string
 	timeout     int
 	debug       bool
 
@@ -58,6 +57,7 @@ type Context struct {
 	AccountID  string `yaml:"account-id"`
 	ProviderID string `yaml:"provider-id"`
 	Jwt        string `yaml:"jwt"`
+	Host       string `yaml:"host"` // set Host header if necessary
 }
 
 type AppError struct {
@@ -90,7 +90,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&contextName, "context", "", "Context (deployment) to use")
-	rootCmd.PersistentFlags().StringVar(&accountID, "account-id", "", "Account ID to use with requests. Most likely defined in context")
+	// rootCmd.PersistentFlags().StringVar(&accountID, "account-id", "", "Account ID to use with requests. Most likely defined in context")
 	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 10, "Max. number of seconds to wait for completion")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logging level to DEBUG")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Set format for displaying output [json, yaml]")
@@ -138,32 +138,28 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 	if contextName == "" {
 		contextName = os.Getenv(ENV_PREFIX + "_CONTEXT")
 	}
-
-	url := os.Getenv(ENV_PREFIX + "_URL")
 	jwt := os.Getenv(ENV_PREFIX + "_JWT")
 
-	if url == "" || jwt == "" {
-		// check config file
-		ctxt := GetActiveContext()
-		if ctxt == nil {
-			cobra.CheckErr("cannot find a respective context")
-		}
-		if url == "" {
-			url = ctxt.URL
-		}
-		if jwt == "" {
-			jwt = ctxt.Jwt
-		}
+	// check config file
+	ctxt := GetActiveContext()
+	if ctxt == nil {
+		cobra.CheckErr("cannot find a respective context")
+	}
+	if jwt == "" {
+		jwt = ctxt.Jwt
 	}
 
 	if !requiresAuth {
 		jwt = ""
 	}
-	logger.Debug("Adapter config", log.String("url", url), log.String("jwt", jwt))
-	if url == "" {
-		cobra.CheckErr("required context 'url' not set")
+	url := ctxt.URL
+	var headers *map[string]string
+	if ctxt.Host != "" {
+		headers = &(map[string]string{"Host": ctxt.Host})
 	}
-	adp, err := NewAdapter(url, jwt, timeoutSec)
+	logger.Debug("Adapter config", log.String("url", url))
+
+	adp, err := NewAdapter(url, jwt, timeoutSec, headers)
 	if adp == nil || err != nil {
 		cobra.CheckErr(fmt.Sprintf("cannot create adapter for '%s' - %s", url, err))
 	}
@@ -188,7 +184,7 @@ func GetActiveContext() (ctxt *Context) {
 			}
 		}
 	}
-	if ctxt.ProviderID == "" {
+	if ctxt.ProviderID == "" && ctxt.AccountID != "" {
 		// Use same ID for provider ID as account ID
 		parts := strings.Split(ctxt.AccountID, ":")
 		ctxt.ProviderID = fmt.Sprintf("%s:provider:%s", parts[0], parts[2])
@@ -278,9 +274,14 @@ func GetConfigFilePath() (configFile string) {
 	return
 }
 
-func NewAdapter(url string, jwtToken string, timeoutSec int) (*adpt.Adapter, error) {
+func NewAdapter(
+	url string,
+	jwtToken string,
+	timeoutSec int,
+	headers *map[string]string,
+) (*adpt.Adapter, error) {
 	adapter := adpt.RestAdapter(adpt.ConnectionCtxt{
-		URL: url, JwtToken: jwtToken, TimeoutSec: timeoutSec,
+		URL: url, JwtToken: jwtToken, TimeoutSec: timeoutSec, Headers: headers,
 	})
 	return &adapter, nil
 }

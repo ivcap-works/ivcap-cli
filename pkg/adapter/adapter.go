@@ -19,6 +19,7 @@ type ConnectionCtxt struct {
 	URL        string
 	JwtToken   string
 	TimeoutSec int
+	Headers    *map[string]string // default headers
 }
 
 func CreateJwtToken(userID *string, signingSecret *string) (string, error) {
@@ -169,6 +170,11 @@ func Connect(
 	if connCtxt.JwtToken != "" {
 		req.Header.Set("Authorization", "Bearer "+connCtxt.JwtToken)
 	}
+	if connCtxt.Headers != nil {
+		for key, val := range *connCtxt.Headers {
+			req.Header.Set(key, val)
+		}
+	}
 	if headers != nil {
 		for key, val := range *headers {
 			if key != "Content-Type" {
@@ -178,7 +184,10 @@ func Connect(
 			}
 		}
 	}
-
+	host := req.Header.Get("Host")
+	if host != "" {
+		req.Host = host
+	}
 	client := &http.Client{Timeout: time.Second * time.Duration(connCtxt.TimeoutSec)}
 	logger.Debug("calling api", log.Reflect("headers", req.Header))
 	resp, err := client.Do(req)
