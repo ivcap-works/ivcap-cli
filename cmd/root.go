@@ -24,6 +24,10 @@ const ENV_PREFIX = "IVCAP"
 // Max characters to limit name to
 const MAX_NAME_COL_LEN = 30
 
+// Names for config dir and file - stored in the os.UserConfigDir() directory
+const CONFIG_FILE_DIR = "ivcap-cli"
+const CONFIG_FILE_NAME = ".ivcap-cli"
+
 // flags
 var (
 	contextName string
@@ -211,7 +215,7 @@ func SetContext(ctxt *Context, failIfNotExist bool) {
 }
 
 func ReadConfigFile(createIfNoConfig bool) (config *Config, configFile string) {
-	configFile = os.Getenv("HOME") + "/.ivcap"
+	configFile = GetConfigFilePath()
 	var data []byte
 	data, err := ioutil.ReadFile(configFile)
 	if err != nil {
@@ -238,10 +242,36 @@ func WriteConfigFile(config *Config) {
 		cobra.CheckErr(fmt.Sprintf("cannot marshall content of config file - %v", err))
 		return
 	}
-	configFile := os.Getenv("HOME") + "/.ivcap"
+	
+	configFile := GetConfigFilePath()
+
 	if err = ioutil.WriteFile(configFile, b, fs.FileMode(0644)); err != nil {
 		cobra.CheckErr(fmt.Sprintf("cannot write to config file %s - %v", configFile, err))
 	}
+}
+
+func GetConfigDir(createIfNoExist bool) (configDir string) {
+	userConfigDir, err := os.UserConfigDir()
+	if err != nil {
+		cobra.CheckErr(fmt.Sprintf("Cannot find the user configuration directory - %v", err))
+		return
+	}
+	configDir = userConfigDir + string(os.PathSeparator) + CONFIG_FILE_DIR
+	// Create it if it doesn't exist
+	if createIfNoExist {
+		err = os.MkdirAll(configDir, 0644)
+		if err != nil && !os.IsExist(err) {
+			cobra.CheckErr(fmt.Sprintf("Could not create configuration directory %s - %v", configDir, err))
+			return
+		}
+	}
+	return
+}
+
+func GetConfigFilePath() (configFile string) {
+	configDir := GetConfigDir(true) // Create the configuration directory if it doesn't exist
+	configFile = configDir + string(os.PathSeparator) + CONFIG_FILE_NAME
+	return
 }
 
 func NewAdapter(

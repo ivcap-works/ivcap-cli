@@ -9,8 +9,8 @@ require (
 	github.com/jedib0t/go-pretty/v6 v6.3.1
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/schollz/progressbar/v3 v3.9.0
-	github.com/spf13/cobra v1.4.0
-	go.uber.org/zap v1.21.0
+	github.com/spf13/cobra v1.5.0
+	go.uber.org/zap v1.23.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
