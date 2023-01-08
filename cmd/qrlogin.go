@@ -232,6 +232,8 @@ func waitForTokens(client *http.Client, authInfo *QRAuthInfo, deviceCode *Device
 			return nil, fmt.Errorf("The login process was not completed in time - please login again")
 		case "access_denied":
 			return nil, fmt.Errorf("Could not login - access was denied")
+		case "invalid_grant":
+			return nil, fmt.Errorf("Could not login - invalid credentials")
 		case "":
 			// No Errors:
 			return &tokenResponse, nil
@@ -252,7 +254,8 @@ func waitForTokens(client *http.Client, authInfo *QRAuthInfo, deviceCode *Device
 func ParseIDToken(tokenResponse *deviceTokenResponse, ctxt *Context, jwksURL string) error {
 	// Lookup the public key to verify the signature (and check we have a valid token)
 
-	// Todo look at keyfunc options, to get a cancellable context
+	// TODO: Download and cache the jwks data rather than download it on every login / token
+	// refresh
 	jwks, err := keyfunc.Get(jwksURL, keyfunc.Options{})
 
 	idToken, err := jwt.ParseWithClaims(tokenResponse.IDToken, &CustomIdClaims{}, jwks.Keyfunc)
