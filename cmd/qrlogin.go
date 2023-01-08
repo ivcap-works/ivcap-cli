@@ -61,22 +61,23 @@ type deviceTokenResponse struct {
 
 // If we already have a refresh token, we don't need to go through the whole device code
 // interaction. We can simply use the refresh token to request another access token.
-func refreshAccessToken() error {
+func refreshAccessToken() (accessToken string, err error) {
 	ctxt := GetActiveContext()
-
-	if ctxt.RefreshToken == "" {
-		return fmt.Errorf("No Refresh Token to refresh the access token with")
-	}
-
-	authInfo, err := getLoginInformation(http.DefaultClient, ctxt)
-
-	if err != nil {
-		cobra.CheckErr(fmt.Sprintf("Could not connect to %s to login - %s", ctxt.URL, err))
-		return err
-	}
 
 	accessTokenExpiry := ctxt.AccessTokenExpiry
 	if time.Now().After(accessTokenExpiry) {
+		if ctxt.RefreshToken == "" {
+			// We don't have a refresh token for this context, so we fail early
+			return "", fmt.Errorf("Could not login - invalid credentials. Please use the login command to refresh your credentials")
+		}
+
+		authInfo, err := getLoginInformation(http.DefaultClient, ctxt)
+
+		if err != nil {
+			cobra.CheckErr(fmt.Sprintf("Could not connect to %s - %s", ctxt.URL, err))
+			return "", err
+		}
+
 		// Access token has expired, we have to refresh it
 		authInfo.grantType = "refresh_token"
 
@@ -88,22 +89,24 @@ func refreshAccessToken() error {
 					"refresh_token": {ctxt.RefreshToken}})
 
 			if err != nil {
-				return fmt.Errorf("Cannot refresh access token - %s", err)
+				return "", fmt.Errorf("Cannot refresh access token - %s", err)
 			}
 
 			var tokenResponse deviceTokenResponse
 			jsonDecoder := json.NewDecoder(response.Body)
 			if err := jsonDecoder.Decode(&tokenResponse); err != nil {
-				return fmt.Errorf("Cannot decode token response - %s", err)
+				return "", fmt.Errorf("Cannot decode token response - %s", err)
 			}
 
 			switch tokenResponse.ErrorString {
 			case "authorization_pending":
 				// No op - we're waiting on the user to open the link and login
 			case "expired_token":
-				return fmt.Errorf("The login process was not completed in time - please login again")
+				return "", fmt.Errorf("The login process was not completed in time - please login again")
 			case "access_denied":
-				return fmt.Errorf("Could not login - access was denied")
+				return "", fmt.Errorf("Could not login - access was denied")
+			case "invalid_grant":
+				return "", fmt.Errorf("Could not login - expired credentials. Please use the login command to refresh your credentials")
 			case "":
 				// No Errors:
 				ctxt.AccessToken = tokenResponse.AccessToken
@@ -122,8 +125,7 @@ func refreshAccessToken() error {
 		} // Access token has not expired, let's just use it
 	}
 
-	return nil
-
+	return ctxt.AccessToken, nil
 }
 
 func getLoginInformation(client *http.Client, ctxt *Context) (authInfo *QRAuthInfo, err error) {
@@ -298,7 +300,7 @@ func loginQR(_ *cobra.Command, args []string) {
 	// offline_access is required for the refresh tokens to be sent through
 	authInfo.scopes = "openid profile email offline_access"
 	authInfo.grantType = "urn:ietf:params:oauth:grant-type:device_code"
-	authInfo.audience = "https://ivap.au.auth0.com/api/v2/"
+	authInfo.audience = "https://api.ivcap.net/"
 
 	// First request a device code for this command line tool
 	deviceCode, err := requestDeviceCode(httpClient, authInfo)

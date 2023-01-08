@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt/v4"
 	log "go.uber.org/zap"
 )
 
@@ -19,14 +18,6 @@ type ConnectionCtxt struct {
 	URL         string
 	AccessToken string
 	TimeoutSec  int
-}
-
-func CreateJwtToken(userID *string, signingSecret *string) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"userId": *userID,
-		"iat":    time.Now().Unix(),
-	})
-	return token.SignedString([]byte(*signingSecret))
 }
 
 func RestAdapter(connCtxt ConnectionCtxt) Adapter {

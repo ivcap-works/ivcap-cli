@@ -157,6 +157,7 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 
 	url := os.Getenv(ENV_PREFIX + "_URL")
 	accessToken := os.Getenv(ENV_PREFIX + "_ACCESSTOKEN")
+	var err error
 
 	if url == "" || accessToken == "" {
 		// check config file
@@ -168,13 +169,22 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 			url = ctxt.URL
 		}
 		if accessToken == "" {
-			accessToken = ctxt.AccessToken
+			// If the user hasn't provided an access token as an environmental variable
+			// we'll assume the user has logged in previously. We call refreshAccessToken
+			// here, so that we'll check the current access token, and if it has expired,
+			// we'll use the refresh token to get ourselves a new one. If the refresh
+			// token has expired, we'll prompt the user to login again.
+			accessToken, err = refreshAccessToken()
+			if err != nil {
+				cobra.CheckErr(fmt.Sprintf("Error refreshing access token. Error: %s", err.Error()))
+			}
+
 		}
 	}
 
 	if !requiresAuth {
 		accessToken = ""
-	} else {
+	} else if accessToken == "" {
 		logger.Warn("Adapter requires Auth but no Access Token Provided")
 	}
 	logger.Debug("Adapter config", log.String("url", url), log.String("accessToken", accessToken))
