@@ -62,17 +62,10 @@ type Context struct {
 	AccountNickName string `yaml:"account-nickname"`
 	Email           string `yaml:"email"`
 
-	// Login Service Information
-	ClientID string `yaml:"clientID"`
-
 	// Cached Credentials
 	AccessToken       string    `yaml:"access-token"`
 	AccessTokenExpiry time.Time `yaml:"access-token-expiry"`
 	RefreshToken      string    `yaml:"refresh-token"`
-
-	// Deprecated
-	LoginName string `yaml:"login-name"`
-	Jwt       string `yaml:"jwt"`
 }
 
 type AppError struct {
