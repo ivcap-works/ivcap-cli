@@ -26,7 +26,7 @@ const MAX_NAME_COL_LEN = 30
 
 // Names for config dir and file - stored in the os.UserConfigDir() directory
 const CONFIG_FILE_DIR = "ivcap-cli"
-const CONFIG_FILE_NAME = ".ivcap-cli"
+const CONFIG_FILE_NAME = "config.yaml"
 
 // flags
 var (
