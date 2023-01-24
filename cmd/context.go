@@ -13,10 +13,11 @@ var ctxtName string
 var ctxtUrl string
 var ctxtApiVersion int
 
-var printAccessToken bool
-var printAccountID bool
-var printProviderID bool
-var printURL bool
+var (
+	accountID  string
+	providerID string
+	hostName   string
+)
 
 // configCmd represents the config command
 var configCmd = &cobra.Command{
@@ -49,6 +50,10 @@ var setContextCmd = &cobra.Command{
 			ApiVersion: ctxtApiVersion,
 			Name:       ctxtName,
 			URL:        ctxtUrl,
+			AccountID:  accountID,
+			ProviderID: providerID,
+			LoginName:  loginName,
+			Host:       hostName,
 		}
 		SetContext(ctxt, false)
 		fmt.Printf("Context '%s' created.\n", ctxtName)
@@ -106,22 +111,45 @@ var useContextCmd = &cobra.Command{
 }
 
 var getContextCmd = &cobra.Command{
-	Use:     "get",
+	Use:     "get [all|name|account-id|provider-id|url|access-token]",
 	Short:   "Display the current context",
 	Aliases: []string{"current", "show"},
-	Run: func(_ *cobra.Command, _ []string) {
+	Run: func(_ *cobra.Command, args []string) {
+		param := "name"
+		if len(args) == 1 {
+			param = args[0]
+		}
 		context := GetActiveContext()
-		if printAccessToken {
-			fmt.Println(context.AccessToken)
-			fmt.Println(context.AccessTokenExpiry)
-		} else if printAccountID {
-			fmt.Println(context.AccountID)
-		} else if printProviderID {
-			fmt.Println(context.ProviderID)
-		} else if printURL {
-			fmt.Println(context.URL)
-		} else {
+		if param == "name" {
 			fmt.Println(context.Name)
+		} else if param == "access-token" {
+			t := table.NewWriter()
+			t.SetOutputMirror(os.Stdout)
+			t.AppendRow(table.Row{"Access Token", context.AccessToken})
+			t.AppendRow(table.Row{"Token Expiry", context.AccessTokenExpiry})
+			t.Render()
+		} else if param == "account-id" {
+			fmt.Println(context.AccountID)
+		} else if param == "provider-id" {
+			fmt.Println(context.ProviderID)
+		} else if param == "url" {
+			fmt.Println(context.URL)
+		} else if param == "all" {
+			t := table.NewWriter()
+			t.SetOutputMirror(os.Stdout)
+			t.AppendRow(table.Row{"Name", context.Name})
+			t.AppendRow(table.Row{"URL", context.URL})
+			t.AppendRow(table.Row{"Login Name", context.LoginName})
+			t.AppendRow(table.Row{"Account ID", context.AccountID})
+			if context.ProviderID != "" {
+				t.AppendRow(table.Row{"Provider ID", context.ProviderID})
+			}
+			if context.Host != "" {
+				t.AppendRow(table.Row{"Host", context.Host})
+			}
+			t.Render()
+		} else {
+			cobra.CheckErr(fmt.Sprintf("unknown context parameter '%s'", param))
 		}
 	},
 }
@@ -132,14 +160,14 @@ func init() {
 	configCmd.AddCommand(listContextCmd)
 
 	configCmd.AddCommand(setContextCmd)
-	setContextCmd.Flags().StringVar(&ctxtUrl, "url", "", "url to the IVCAP deployment (e.g. https://api.green-cirrus.com)")
+	setContextCmd.Flags().StringVar(&ctxtUrl, "url", "", "The url to the IVCAP deployment (e.g. https://api.green-cirrus.com)")
+	setContextCmd.Flags().StringVar(&loginName, "login-name", "", "Name for authentication. May not be required depending on Auth mechanism")
+	setContextCmd.Flags().StringVar(&accountID, "account-id", "", "The account ID to use. Will most likely be set on login")
+	setContextCmd.Flags().StringVar(&providerID, "provider-id", "", "The account ID to use. Will most likely be set on login")
+	setContextCmd.Flags().StringVar(&hostName, "host-name", "", "optional host name if accessing API through SSH tunnel")
 	setContextCmd.Flags().IntVar(&ctxtApiVersion, "version", 1, "define API version")
 
 	configCmd.AddCommand(useContextCmd)
 
 	configCmd.AddCommand(getContextCmd)
-	getContextCmd.Flags().BoolVar(&printAccessToken, "access-token", false, "Print the currently active Access token and its expiry")
-	getContextCmd.Flags().BoolVar(&printAccountID, "account-id", false, "Print the currently active account ID")
-	getContextCmd.Flags().BoolVar(&printProviderID, "provider-id", false, "Print the currently active provider ID")
-	getContextCmd.Flags().BoolVar(&printURL, "url", false, "Print the URL of the currently active deployment")
 }

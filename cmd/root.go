@@ -26,12 +26,11 @@ const MAX_NAME_COL_LEN = 30
 
 // Names for config dir and file - stored in the os.UserConfigDir() directory
 const CONFIG_FILE_DIR = "ivcap-cli"
-const CONFIG_FILE_NAME = ".ivcap-cli"
+const CONFIG_FILE_NAME = "config.yaml"
 
 // flags
 var (
 	contextName string
-	accountID   string
 	timeout     int
 	debug       bool
 
@@ -56,6 +55,7 @@ type Context struct {
 	URL        string `yaml:"url"`
 	AccountID  string `yaml:"account-id"`
 	ProviderID string `yaml:"provider-id"`
+	Host       string `yaml:"host"` // set Host header if necessary
 
 	// User Information
 	AccountName     string `yaml:"account-name"`
@@ -98,7 +98,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&contextName, "context", "", "Context (deployment) to use")
-	rootCmd.PersistentFlags().StringVar(&accountID, "account-id", "", "Account ID to use with requests. Most likely defined in context")
+	// rootCmd.PersistentFlags().StringVar(&accountID, "account-id", "", "Account ID to use with requests. Most likely defined in context")
 	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 10, "Max. number of seconds to wait for completion")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logging level to DEBUG")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Set format for displaying output [json, yaml]")
@@ -147,32 +147,26 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 	if contextName == "" {
 		contextName = os.Getenv(ENV_PREFIX + "_CONTEXT")
 	}
-
-	url := os.Getenv(ENV_PREFIX + "_URL")
 	accessToken := os.Getenv(ENV_PREFIX + "_ACCESSTOKEN")
 	var err error
 
-	if url == "" || accessToken == "" {
-		// check config file
-		ctxt := GetActiveContext()
-		if ctxt == nil {
-			cobra.CheckErr("cannot find a respective context")
-		}
-		if url == "" {
-			url = ctxt.URL
-		}
-		if accessToken == "" {
-			// If the user hasn't provided an access token as an environmental variable
-			// we'll assume the user has logged in previously. We call refreshAccessToken
-			// here, so that we'll check the current access token, and if it has expired,
-			// we'll use the refresh token to get ourselves a new one. If the refresh
-			// token has expired, we'll prompt the user to login again.
-			accessToken, err = refreshAccessToken()
-			if err != nil {
-				cobra.CheckErr(fmt.Sprintf("Error refreshing access token. Error: %s", err.Error()))
-			}
+	// check config file
+	ctxt := GetActiveContext()
+	if ctxt == nil {
+		cobra.CheckErr("cannot find a respective context")
+	}
 
+	if accessToken == "" {
+		// If the user hasn't provided an access token as an environmental variable
+		// we'll assume the user has logged in previously. We call refreshAccessToken
+		// here, so that we'll check the current access token, and if it has expired,
+		// we'll use the refresh token to get ourselves a new one. If the refresh
+		// token has expired, we'll prompt the user to login again.
+		accessToken, err = refreshAccessToken()
+		if err != nil {
+			cobra.CheckErr(fmt.Sprintf("Error refreshing access token. Error: %s", err.Error()))
 		}
+
 	}
 
 	if !requiresAuth {
@@ -180,11 +174,14 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 	} else if accessToken == "" {
 		logger.Warn("Adapter requires Auth but no Access Token Provided")
 	}
-	logger.Debug("Adapter config", log.String("url", url), log.String("accessToken", accessToken))
-	if url == "" {
-		cobra.CheckErr("required context 'url' not set")
+	url := ctxt.URL
+	var headers *map[string]string
+	if ctxt.Host != "" {
+		headers = &(map[string]string{"Host": ctxt.Host})
 	}
-	adp, err := NewAdapter(url, accessToken, timeoutSec)
+	logger.Debug("Adapter config", log.String("url", url))
+
+	adp, err := NewAdapter(url, accessToken, timeoutSec, headers)
 	if adp == nil || err != nil {
 		cobra.CheckErr(fmt.Sprintf("cannot create adapter for '%s' - %s", url, err))
 	}
@@ -209,7 +206,7 @@ func GetActiveContext() (ctxt *Context) {
 			}
 		}
 	}
-	if ctxt.ProviderID == "" {
+	if ctxt.ProviderID == "" && ctxt.AccountID != "" {
 		// Use same ID for provider ID as account ID
 		parts := strings.Split(ctxt.AccountID, ":")
 		ctxt.ProviderID = fmt.Sprintf("%s:provider:%s", parts[0], parts[2])
@@ -270,7 +267,7 @@ func WriteConfigFile(config *Config) {
 
 	configFile := GetConfigFilePath()
 
-	if err = ioutil.WriteFile(configFile, b, fs.FileMode(0644)); err != nil {
+	if err = ioutil.WriteFile(configFile, b, fs.FileMode(0600)); err != nil {
 		cobra.CheckErr(fmt.Sprintf("cannot write to config file %s - %v", configFile, err))
 	}
 }
@@ -284,7 +281,7 @@ func GetConfigDir(createIfNoExist bool) (configDir string) {
 	configDir = userConfigDir + string(os.PathSeparator) + CONFIG_FILE_DIR
 	// Create it if it doesn't exist
 	if createIfNoExist {
-		err = os.MkdirAll(configDir, 0644)
+		err = os.MkdirAll(configDir, 0755)
 		if err != nil && !os.IsExist(err) {
 			cobra.CheckErr(fmt.Sprintf("Could not create configuration directory %s - %v", configDir, err))
 			return
@@ -299,9 +296,14 @@ func GetConfigFilePath() (configFile string) {
 	return
 }
 
-func NewAdapter(url string, accessToken string, timeoutSec int) (*adpt.Adapter, error) {
+func NewAdapter(
+	url string,
+	accessToken string,
+	timeoutSec int,
+	headers *map[string]string,
+) (*adpt.Adapter, error) {
 	adapter := adpt.RestAdapter(adpt.ConnectionCtxt{
-		URL: url, AccessToken: accessToken, TimeoutSec: timeoutSec,
+		URL: url, AccessToken: accessToken, TimeoutSec: timeoutSec, Headers: headers,
 	})
 	return &adapter, nil
 }

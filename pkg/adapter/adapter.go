@@ -18,6 +18,7 @@ type ConnectionCtxt struct {
 	URL         string
 	AccessToken string
 	TimeoutSec  int
+	Headers     *map[string]string // default headers
 }
 
 func RestAdapter(connCtxt ConnectionCtxt) Adapter {
@@ -160,6 +161,11 @@ func Connect(
 	if connCtxt.AccessToken != "" {
 		req.Header.Set("Authorization", "Bearer "+connCtxt.AccessToken)
 	}
+	if connCtxt.Headers != nil {
+		for key, val := range *connCtxt.Headers {
+			req.Header.Set(key, val)
+		}
+	}
 	if headers != nil {
 		for key, val := range *headers {
 			if key != "Content-Type" {
@@ -169,7 +175,10 @@ func Connect(
 			}
 		}
 	}
-
+	host := req.Header.Get("Host")
+	if host != "" {
+		req.Host = host
+	}
 	client := &http.Client{Timeout: time.Second * time.Duration(connCtxt.TimeoutSec)}
 	logger.Debug("calling api", log.Reflect("headers", req.Header))
 	resp, err := client.Do(req)
