@@ -241,13 +241,18 @@ func ReadConfigFile(createIfNoConfig bool) (config *Config, configFile string) {
 	var data []byte
 	data, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		if _, ok := err.(*os.PathError); createIfNoConfig && ok {
-			config = &Config{
-				Version: "v1",
+		if _, ok := err.(*os.PathError); ok {
+			if createIfNoConfig {
+				config = &Config{
+					Version: "v1",
+				}
+				return
+			} else {
+				cobra.CheckErr("Config file does not exist. Please create the config file with the context command.")
 			}
-			return
+		} else {
+			cobra.CheckErr(fmt.Sprintf("Cannot read config file %s - %v", configFile, err))
 		}
-		cobra.CheckErr(fmt.Sprintf("problems while reading config file %s - %v", configFile, err))
 	}
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
