@@ -83,5 +83,4 @@ func loginF(_ *cobra.Command, args []string) {
 
 func init() {
 	rootCmd.AddCommand(loginCmd)
-	//loginCmd.Flags().StringVarP(&loginName, "name", "n", "", "Account name [IVCAP_NAME]")
 }
