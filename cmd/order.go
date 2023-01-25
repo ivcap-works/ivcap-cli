@@ -1,7 +1,8 @@
 package cmd
 
 import (
-	api "cayp/api_gateway/gen/http/order/client"
+	api "github.com/reinventingscience/ivcap-core-api/http/order"
+
 	"context"
 	"fmt"
 	"os"

@@ -2,10 +2,11 @@ package cmd
 
 import (
 	"bufio"
-	api "cayp/api_gateway/gen/http/artifact/client"
 	"context"
 	"fmt"
 	"io"
+
+	api "github.com/reinventingscience/ivcap-core-api/http/artifact"
 
 	"bytes"
 	"encoding/json"

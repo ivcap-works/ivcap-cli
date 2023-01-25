@@ -1,10 +1,10 @@
 package client
 
 import (
-	api "cayp/api_gateway/gen/http/artifact/client"
 	"context"
 	"encoding/base64"
 	"fmt"
+	api "github.com/reinventingscience/ivcap-core-api/http/artifact"
 	"io"
 	"io/ioutil"
 	"net/url"

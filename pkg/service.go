@@ -9,11 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	api "cayp/api_gateway/gen/http/service/client"
+	api "github.com/reinventingscience/ivcap-core-api/http/service"
 
 	"github.com/reinventingscience/ivcap-client/pkg/adapter"
 
-	// "github.com/google/uuid"
 	log "go.uber.org/zap"
 )
 

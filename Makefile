@@ -9,7 +9,7 @@ VERSION := $(GIT_TAG:v%=%)|${GIT_COMMIT}|${BUILD_DATE}
 endif
 
 build:
-	go mod tidy
+	env GOPRIVATE="github.com/reinventingscience/ivcap-core-api" go mod tidy
 	go build -ldflags "-X main.version=${GIT_TAG} -X main.commit=${GIT_COMMIT} -X main.date=${BUILD_DATE}" -o ivcap
 
 install: build

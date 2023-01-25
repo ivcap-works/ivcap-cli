@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"cayp/api_gateway/gen/http/order/client"
+	api "github.com/reinventingscience/ivcap-core-api/http/order"
 
 	"github.com/reinventingscience/ivcap-client/pkg/adapter"
 
