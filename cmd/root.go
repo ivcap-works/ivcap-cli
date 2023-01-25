@@ -26,7 +26,7 @@ const MAX_NAME_COL_LEN = 30
 
 // Names for config dir and file - stored in the os.UserConfigDir() directory
 const CONFIG_FILE_DIR = "ivcap-cli"
-const CONFIG_FILE_NAME = ".ivcap-cli"
+const CONFIG_FILE_NAME = "config.yaml"
 
 // flags
 var (
@@ -242,10 +242,10 @@ func WriteConfigFile(config *Config) {
 		cobra.CheckErr(fmt.Sprintf("cannot marshall content of config file - %v", err))
 		return
 	}
-	
+
 	configFile := GetConfigFilePath()
 
-	if err = ioutil.WriteFile(configFile, b, fs.FileMode(0644)); err != nil {
+	if err = ioutil.WriteFile(configFile, b, fs.FileMode(0600)); err != nil {
 		cobra.CheckErr(fmt.Sprintf("cannot write to config file %s - %v", configFile, err))
 	}
 }
@@ -259,7 +259,7 @@ func GetConfigDir(createIfNoExist bool) (configDir string) {
 	configDir = userConfigDir + string(os.PathSeparator) + CONFIG_FILE_DIR
 	// Create it if it doesn't exist
 	if createIfNoExist {
-		err = os.MkdirAll(configDir, 0644)
+		err = os.MkdirAll(configDir, 0755)
 		if err != nil && !os.IsExist(err) {
 			cobra.CheckErr(fmt.Sprintf("Could not create configuration directory %s - %v", configDir, err))
 			return
