@@ -22,5 +22,6 @@ test:
 release:
   # git tag -a v0.4.0 -m "..."
 	# export GITHUB_TOKEN=$(cat .github-release-token)
+	# or eval $(cat .github-release-token)
 	# brew install goreleaser
 	goreleaser release --rm-dist
