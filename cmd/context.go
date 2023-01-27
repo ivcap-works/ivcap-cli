@@ -124,7 +124,7 @@ var getContextCmd = &cobra.Command{
 			fmt.Println(context.Name)
 		} else if param == "jwt" {
 			fmt.Println(context.Jwt)
-		} else if param == "account-d" {
+		} else if param == "account-id" {
 			fmt.Println(context.AccountID)
 		} else if param == "provider-id" {
 			fmt.Println(context.ProviderID)
