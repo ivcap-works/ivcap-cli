@@ -75,6 +75,7 @@ func loginF(_ *cobra.Command, args []string) {
 		}
 		ctxt.Jwt = token
 		ctxt.AccountID = jwt.AccountID
+		ctxt.ProviderID = jwt.ProviderID
 		ctxt.LoginName = loginName
 		SetContext(ctxt, true)
 		fmt.Println("Login succeeded")
