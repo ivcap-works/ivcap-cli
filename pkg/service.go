@@ -9,11 +9,10 @@ import (
 	"strconv"
 	"strings"
 
-	api "cayp/api_gateway/gen/http/service/client"
+	api "github.com/reinventingscience/ivcap-core-api/http/service"
 
 	"github.com/reinventingscience/ivcap-client/pkg/adapter"
 
-	// "github.com/google/uuid"
 	log "go.uber.org/zap"
 )
 
@@ -63,27 +62,12 @@ func ListServicesRaw(ctxt context.Context, cmd *ListServiceRequest, adpt *adapte
 	return (*adpt).Get(ctxt, path, logger)
 }
 
-// func (t *QueryTerm) asUrlQuery() string {
-// 	if t.urlQ != "" {
-// 		return t.urlQ
-// 	}
-// 	v := fmt.Sprint(t.Value)
-// 	v = strings.ReplaceAll(v, ":", "%3A") // ':' is the separation character, so it needs to be escaped
-// 	op := t.Op
-// 	if op == "=" {
-// 		op = ""
-// 	}
-// 	q := fmt.Sprintf("%s:%s%s", t.Path, op, v)
-// 	return url.QueryEscape(q)
-// }
-
 /**** CREATE ****/
 
-// type CreateServiceRequest struct {
-// 	Id   string `json:"id"`
-// 	Name string `json:"name"`
-// }
-
+//	type CreateServiceRequest struct {
+//		Id   string `json:"id"`
+//		Name string `json:"name"`
+//	}
 func CreateServiceRaw(ctxt context.Context, cmd *api.CreateRequestBody, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	body, err := json.MarshalIndent(*cmd, "", "  ")
 	if err != nil {
@@ -140,35 +124,6 @@ func ReadServiceRaw(ctxt context.Context, cmd *ReadServiceRequest, adpt *adapter
 	path := servicePath(&cmd.Id, adpt)
 	return (*adpt).Get(ctxt, path, logger)
 }
-
-/**** UPDATE ****/
-
-// type UpdateRequest = CreateRequest
-
-// func UpdateRaw(ctxt context.Context, cmd *UpdateRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-// 	r := *cmd
-
-// 	path := recordPath(&r.Id, adpt)
-// 	if r.Name == "" {
-// 		// get current 'name' first as it is required
-// 		pld, err := (*adpt).Get(ctxt, path, logger)
-// 		if err != nil {
-// 			return nil, err
-// 		}
-// 		obj, err := pld.AsObject()
-// 		if err != nil {
-// 			logger.Error("no record body found", log.Error(err))
-// 			return nil, err
-// 		}
-// 		r.Name = obj["name"].(string)
-// 	}
-// 	body, err := json.MarshalIndent(r, "", "  ")
-// 	if err != nil {
-// 		logger.Error("error marshalling body.", log.Error(err))
-// 		return nil, err
-// 	}
-// 	return (*adpt).Put(ctxt, path, bytes.NewReader(body), logger)
-// }
 
 /**** UTILS ****/
 

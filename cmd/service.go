@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	api "cayp/api_gateway/gen/http/service/client"
 	"context"
 	"fmt"
+	api "github.com/reinventingscience/ivcap-core-api/http/service"
 	"os"
 	"strings"
 

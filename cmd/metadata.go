@@ -9,8 +9,6 @@ import (
 	sdk "github.com/reinventingscience/ivcap-client/pkg"
 	a "github.com/reinventingscience/ivcap-client/pkg/adapter"
 
-	// "github.com/jedib0t/go-pretty/v6/table"
-	// "github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 	log "go.uber.org/zap"
 )
