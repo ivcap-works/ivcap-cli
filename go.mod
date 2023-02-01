@@ -7,7 +7,7 @@ require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/jedib0t/go-pretty/v6 v6.3.1
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
-	github.com/reinventingscience/ivcap-core-api.git v0.9.1
+	github.com/reinventingscience/ivcap-core-api v0.9.1
 	github.com/schollz/progressbar/v3 v3.9.0
 	github.com/spf13/cobra v1.6.1
 	go.uber.org/zap v1.24.0
