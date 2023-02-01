@@ -16,6 +16,10 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Granting private modules access
+      run: |
+          git config --global url."ssh://git@github.com/".insteadOf "https://github.com/"     
+          
     - name: Set up Go
       uses: actions/setup-go@v3
       with:
