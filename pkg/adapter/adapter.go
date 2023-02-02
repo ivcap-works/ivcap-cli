@@ -198,7 +198,7 @@ func Connect(
 	defer resp.Body.Close()
 
 	if respHandler != nil {
-		err := respHandler(resp)
+		err := respHandler(resp, path, logger)
 		return nil, err
 	}
 	respBody, err := ioutil.ReadAll(resp.Body)
@@ -213,25 +213,27 @@ func Connect(
 		if len(respBody) > 0 {
 			logger = logger.With(log.ByteString("body", respBody))
 		}
-		switch resp.StatusCode {
-		case http.StatusNotFound:
-			return nil, &ResourceNotFoundError{AdapterError{path}}
-		case http.StatusUnauthorized:
-			return nil, &UnauthorizedError{AdapterError{path}}
-		default:
-			logger.Warn("HTTP response", log.Int("statusCode", resp.StatusCode))
-			msg := string(respBody)
-			if msg == "" {
-				msg = resp.Status
-			}
-			return nil, &ApiError{
-				AdapterError: AdapterError{path},
-				StatusCode:   resp.StatusCode,
-				Message:      msg,
-			}
-		}
-
-		//ResourceNotFoundError
+		return nil, ProcessErrorResponse(resp, path, string(respBody), logger)
 	}
 	return ToPayload(respBody, resp, logger)
+}
+
+func ProcessErrorResponse(resp *http.Response, path string, respBody string, logger *log.Logger) (err error) {
+	switch resp.StatusCode {
+	case http.StatusNotFound:
+		return &ResourceNotFoundError{AdapterError{path}}
+	case http.StatusUnauthorized:
+		return &UnauthorizedError{AdapterError{path}}
+	default:
+		logger.Warn("HTTP response", log.Int("statusCode", resp.StatusCode))
+		msg := string(respBody)
+		if msg == "" {
+			msg = resp.Status
+		}
+		return &ApiError{
+			AdapterError: AdapterError{path},
+			StatusCode:   resp.StatusCode,
+			Message:      msg,
+		}
+	}
 }

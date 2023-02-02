@@ -9,7 +9,7 @@ import (
 	log "go.uber.org/zap"
 )
 
-type ResponseHandler func(response *http.Response) (err error)
+type ResponseHandler func(response *http.Response, path string, logger *log.Logger) (err error)
 
 type Adapter interface {
 	Head(ctxt context.Context, path string, headers *map[string]string, logger *log.Logger) (Payload, error)

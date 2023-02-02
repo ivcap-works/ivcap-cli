@@ -333,7 +333,11 @@ func downloadArtifact(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	downloadHandler := func(resp *http.Response) (err error) {
+	downloadHandler := func(resp *http.Response, path string, logger *log.Logger) (err error) {
+		if resp.StatusCode >= 300 {
+			return a.ProcessErrorResponse(resp, path, "", logger)
+		}
+
 		var outFile *os.File
 		if outputFile == "-" {
 			outFile = os.Stdout
