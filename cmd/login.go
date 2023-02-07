@@ -12,7 +12,9 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/skip2/go-qrcode"
 	"github.com/spf13/cobra"
+	log "go.uber.org/zap"
 	"golang.org/x/oauth2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 var loginCmd = &cobra.Command{
@@ -21,12 +23,37 @@ var loginCmd = &cobra.Command{
 	Run:   login,
 }
 
+type CaddyFaultResponse struct {
+	Name      string
+	Id        string
+	Message   string
+	Temporary bool
+	Timeout   bool
+	Fault     bool
+}
+
 type AuthInfo struct {
-	LoginURL  string `json:"login-url"`
-	TokenURL  string `json:"token-url"`
-	CodeURL   string `json:"code-url"`
-	JwksURL   string `json:"jwks-url"`
-	ClientID  string `json:"client-id"`
+	Version           string                  `yaml:"version"`
+	DefaultProviderId string                  `yaml:"default-provider-id"`
+	AuthProviders     map[string]AuthProvider `yaml:"providers"`
+}
+
+func (authInfo AuthInfo) GetDefaultProvider() (authProvider *AuthProvider, err error) {
+	defaultProvider, hasDefaultProvider := authInfo.AuthProviders[authInfo.DefaultProviderId]
+	if hasDefaultProvider {
+		return &defaultProvider, nil
+	} else {
+		return nil, fmt.Errorf("Default Provider Id does not exist")
+	}
+}
+
+type AuthProvider struct {
+	ID        string `yaml:"id"`
+	LoginURL  string `yaml:"login-url"`
+	TokenURL  string `yaml:"token-url"`
+	CodeURL   string `yaml:"code-url"`
+	JwksURL   string `yaml:"jwks-url"`
+	ClientID  string `yaml:"client-id"`
 	audience  string
 	scopes    string
 	grantType string
@@ -71,7 +98,7 @@ func refreshAccessToken() (accessToken string, err error) {
 			return "", fmt.Errorf("Could not login - invalid credentials. Please use the login command to refresh your credentials")
 		}
 
-		authInfo, err := getLoginInformation(http.DefaultClient, ctxt)
+		authProvider, err := getLoginInformation(http.DefaultClient, ctxt)
 
 		if err != nil {
 			cobra.CheckErr(fmt.Sprintf("Could not connect to %s - %s", ctxt.URL, err))
@@ -79,13 +106,13 @@ func refreshAccessToken() (accessToken string, err error) {
 		}
 
 		// Access token has expired, we have to refresh it
-		authInfo.grantType = "refresh_token"
+		authProvider.grantType = "refresh_token"
 
-		if (authInfo.TokenURL != "") && (authInfo.ClientID != "") {
+		if (authProvider.TokenURL != "") && (authProvider.ClientID != "") {
 
-			response, err := http.PostForm(authInfo.TokenURL,
-				url.Values{"grant_type": {authInfo.grantType},
-					"client_id":     {authInfo.ClientID},
+			response, err := http.PostForm(authProvider.TokenURL,
+				url.Values{"grant_type": {authProvider.grantType},
+					"client_id":     {authProvider.ClientID},
 					"refresh_token": {ctxt.RefreshToken}})
 
 			if err != nil {
@@ -115,7 +142,7 @@ func refreshAccessToken() (accessToken string, err error) {
 				ctxt.AccessTokenExpiry = time.Now().Add(time.Second * time.Duration(tokenResponse.ExpiresIn-10))
 
 				// We also get an updated ID token, let's make sure we have the latest info
-				ParseIDToken(&tokenResponse, ctxt, authInfo.JwksURL)
+				ParseIDToken(&tokenResponse, ctxt, authProvider.JwksURL)
 
 				fmt.Println(fmt.Sprintf("Successfully acquired new access token. Expiry: %s", ctxt.AccessTokenExpiry))
 
@@ -128,30 +155,78 @@ func refreshAccessToken() (accessToken string, err error) {
 	return ctxt.AccessToken, nil
 }
 
-func getLoginInformation(client *http.Client, ctxt *Context) (authInfo *AuthInfo, err error) {
+func getLoginInformation(client *http.Client, ctxt *Context) (authProvider *AuthProvider, err error) {
 	if ctxt == nil {
 		return nil, fmt.Errorf("Invalid config set. Please set a valid config with the config command.")
 	}
 
-	response, err := http.Get(ctxt.URL + "/logininfo")
+	print(fmt.Sprintf("Sending Request to %s\n", ctxt.URL))
+
+	response, err := http.Get(ctxt.URL + "/1/authinfo.yaml")
 
 	if err != nil {
 		return nil, fmt.Errorf("Cannot request login info - %s", err)
 	}
 
-	jsonDecoder := json.NewDecoder(response.Body)
-	if err := jsonDecoder.Decode(&authInfo); err != nil {
-		return nil, err
+	responseMap := make(map[string]interface{})
+	yamlDecoder := yaml.NewDecoder(response.Body)
+	yamlDecoder.KnownFields(true) // Make sure if we get a dodgy response to error out
+	if err := yamlDecoder.Decode(&responseMap); err != nil {
+		return nil, fmt.Errorf("unknown response from Login Service")
 	}
 
-	return authInfo, nil
+	// Check if caddy has returned a fault
+	if responseMap["fault"] == true {
+		faultResponse, _ := yaml.Marshal(responseMap)
+		logger.Warn("Login Service Fault:\n", log.String("login service response:", string(faultResponse)))
+		return nil, fmt.Errorf("login service has returned a fault")
+	}
+
+	// Check the version number
+	versionNum, hasVersionValue := responseMap["version"]
+	if !hasVersionValue {
+		response, _ := yaml.Marshal(responseMap)
+		logger.Warn("Login Service provided No Version Info:\n", log.String("login service response:", string(response)))
+		panic(1)
+		return nil, fmt.Errorf("login service returned an invalid response")
+	} else if versionNum == 1 {
+		print("Correct Version\n")
+		// Marshal the auth struct into a byte array so we unmarshal it into
+		// the correct struct
+		yamlAuth, err := yaml.Marshal(responseMap["auth"])
+		if err != nil {
+			return nil, fmt.Errorf("could not process login service response")
+		}
+		var authInfo AuthInfo
+		err = yaml.Unmarshal(yamlAuth, &authInfo)
+		if err != nil {
+			return nil, fmt.Errorf("could not process login service response (auth providers)")
+		}
+
+		if len(authInfo.AuthProviders) != 0 {
+			// Return the provider specified by the default provider id
+			defaultProvider, err := authInfo.GetDefaultProvider()
+			if err != nil {
+				return nil, fmt.Errorf("Login Service returned invalid data (No Default Provider)")
+			} else {
+				return defaultProvider, nil
+			}
+		} else {
+			return nil, fmt.Errorf("Login Service returned invalid data (No Providers)")
+		}
+	} else {
+		// Unknown version
+		response, _ := yaml.Marshal(responseMap)
+		logger.Warn("Login Service No Version:\n", log.String("login service response:", string(response)))
+		return nil, fmt.Errorf("client out of date: Please update this application")
+	}
 }
 
-func requestDeviceCode(client *http.Client, authInfo *AuthInfo) (*DeviceCode, error) {
-	response, err := http.PostForm(authInfo.CodeURL,
-		url.Values{"client_id": {authInfo.ClientID},
-			"scope":    {authInfo.scopes},
-			"audience": {authInfo.audience}})
+func requestDeviceCode(client *http.Client, authProvider *AuthProvider) (*DeviceCode, error) {
+	response, err := http.PostForm(authProvider.CodeURL,
+		url.Values{"client_id": {authProvider.ClientID},
+			"scope":    {authProvider.scopes},
+			"audience": {authProvider.audience}})
 
 	if err != nil {
 		cobra.CheckErr(fmt.Sprintf("Cannot request authentication device code - %s", err))
@@ -172,15 +247,15 @@ func requestDeviceCode(client *http.Client, authInfo *AuthInfo) (*DeviceCode, er
 	return &deviceCode, nil
 }
 
-func waitForTokens(client *http.Client, authInfo *AuthInfo, deviceCode *DeviceCode) (*deviceTokenResponse, error) {
+func waitForTokens(client *http.Client, authProvider *AuthProvider, deviceCode *DeviceCode) (*deviceTokenResponse, error) {
 	// We keep requesting until we're told not to by the server (too much time elapsed
 	// for the user to login
 	startTime := time.Now()
 	lastElapsedTime := int64(0)
 	for {
-		response, err := http.PostForm(authInfo.TokenURL,
-			url.Values{"grant_type": {authInfo.grantType},
-				"client_id":   {authInfo.ClientID},
+		response, err := http.PostForm(authProvider.TokenURL,
+			url.Values{"grant_type": {authProvider.grantType},
+				"client_id":   {authProvider.ClientID},
 				"device_code": {deviceCode.DeviceCode}})
 
 		if err != nil {
@@ -291,7 +366,7 @@ func login(_ *cobra.Command, args []string) {
 		cobra.CheckErr("Invalid config set. Please set a valid config with the config command.")
 		return
 	}
-	authInfo, err := getLoginInformation(httpClient, ctxt)
+	authProvider, err := getLoginInformation(httpClient, ctxt)
 
 	if err != nil {
 		cobra.CheckErr(fmt.Sprintf("Could not connect to %s to login - %s", ctxt.URL, err))
@@ -299,12 +374,12 @@ func login(_ *cobra.Command, args []string) {
 	}
 
 	// offline_access is required for the refresh tokens to be sent through
-	authInfo.scopes = "openid profile email offline_access"
-	authInfo.grantType = "urn:ietf:params:oauth:grant-type:device_code"
-	authInfo.audience = "https://api.ivcap.net/"
+	authProvider.scopes = "openid profile email offline_access"
+	authProvider.grantType = "urn:ietf:params:oauth:grant-type:device_code"
+	authProvider.audience = "https://api.ivcap.net/"
 
 	// First request a device code for this command line tool
-	deviceCode, err := requestDeviceCode(httpClient, authInfo)
+	deviceCode, err := requestDeviceCode(httpClient, authProvider)
 
 	if err != nil {
 		cobra.CheckErr(fmt.Sprintf("Cannot request authentication device code - %s", err))
@@ -323,14 +398,14 @@ func login(_ *cobra.Command, args []string) {
 	fmt.Println("or scan the QR Code to be taken to the login page")
 	fmt.Println("Waiting for authorisation...")
 
-	tokenResponse, err := waitForTokens(httpClient, authInfo, deviceCode)
+	tokenResponse, err := waitForTokens(httpClient, authProvider, deviceCode)
 	if err != nil {
 		cobra.CheckErr(fmt.Sprintf("Cannot request authorisation tokens - %s", err))
 		return
 	}
 
 	fmt.Println(fmt.Sprintf("Command Line Tool Authorised."))
-	err = ParseIDToken(tokenResponse, ctxt, authInfo.JwksURL)
+	err = ParseIDToken(tokenResponse, ctxt, authProvider.JwksURL)
 	if err != nil {
 		cobra.CheckErr(fmt.Sprintf("Cannot parse identity information - %s", err))
 		return
