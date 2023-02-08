@@ -25,3 +25,7 @@ release:
 	# or eval $(cat .github-release-token)
 	# brew install goreleaser
 	goreleaser release --rm-dist
+
+addlicense:
+	# go install github.com/google/addlicense@v1.0.0
+	addlicense -c 'Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230' -l apache ./**/*.go
