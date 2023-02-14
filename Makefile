@@ -4,12 +4,12 @@ ifeq ($(OS),Windows_NT)
 	space := $(subst ,, )
 	BUILD_DATE := $(subst $(space),,$(strip $(shell date /T))-$(shell time /T))
 	GIT_TAG := $(shell git describe --abbrev=0 --tags 2> nul)
-	ENV_CMD := set GOPRIVATE="github.com/reinventingscience/ivcap-core-api" &&
+	GOPRIVATE_OS_ENV_CMD := set GOPRIVATE="github.com/reinventingscience/ivcap-core-api" &&
 	EXTENSION := .exe
 else
 	BUILD_DATE := $(shell date "+%Y-%m-%dT%H:%M")
 	GIT_TAG := $(shell git describe --abbrev=0 --tags 2>/dev/null || true)
-	ENV_CMD := export GOPRIVATE="github.com/reinventingscience/ivcap-core-api" &&
+	GOPRIVATE_OS_ENV_CMD := export GOPRIVATE="github.com/reinventingscience/ivcap-core-api" &&
 endif
 
 ifeq ($(GIT_TAG),)
@@ -20,7 +20,7 @@ endif
 
 build:
 	@echo "Building IVCAP-CLI..."
-	${ENV_CMD} go mod tidy
+	${GOPRIVATE_ENV_CMD} go mod tidy
 	go build -ldflags "-X main.version=${GIT_TAG} -X main.commit=${GIT_COMMIT} -X main.date=${BUILD_DATE}" -o ivcap${EXTENSION}
 
 install: build
