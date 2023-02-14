@@ -1,3 +1,17 @@
+// Copyright 2023 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//      http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 // Program to create, update & delete aspect schemas in cayp
 // Adapted from https://github.com/maxott/cayp-cli/blob/main/pkg/adapter/adapter.go
 package adapter
@@ -189,7 +203,7 @@ func Connect(
 	defer resp.Body.Close()
 
 	if respHandler != nil {
-		err := respHandler(resp)
+		err := respHandler(resp, path, logger)
 		return nil, err
 	}
 	respBody, err := ioutil.ReadAll(resp.Body)
@@ -204,25 +218,27 @@ func Connect(
 		if len(respBody) > 0 {
 			logger = logger.With(log.ByteString("body", respBody))
 		}
-		switch resp.StatusCode {
-		case http.StatusNotFound:
-			return nil, &ResourceNotFoundError{AdapterError{path}}
-		case http.StatusUnauthorized:
-			return nil, &UnauthorizedError{AdapterError{path}}
-		default:
-			logger.Warn("HTTP response", log.Int("statusCode", resp.StatusCode))
-			msg := string(respBody)
-			if msg == "" {
-				msg = resp.Status
-			}
-			return nil, &ApiError{
-				AdapterError: AdapterError{path},
-				StatusCode:   resp.StatusCode,
-				Message:      msg,
-			}
-		}
-
-		//ResourceNotFoundError
+		return nil, ProcessErrorResponse(resp, path, string(respBody), logger)
 	}
 	return ToPayload(respBody, resp, logger)
+}
+
+func ProcessErrorResponse(resp *http.Response, path string, respBody string, logger *log.Logger) (err error) {
+	switch resp.StatusCode {
+	case http.StatusNotFound:
+		return &ResourceNotFoundError{AdapterError{path}}
+	case http.StatusUnauthorized:
+		return &UnauthorizedError{AdapterError{path}}
+	default:
+		logger.Warn("HTTP response", log.Int("statusCode", resp.StatusCode))
+		msg := string(respBody)
+		if msg == "" {
+			msg = resp.Status
+		}
+		return &ApiError{
+			AdapterError: AdapterError{path},
+			StatusCode:   resp.StatusCode,
+			Message:      msg,
+		}
+	}
 }

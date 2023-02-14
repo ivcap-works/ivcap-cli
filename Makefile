@@ -9,7 +9,7 @@ VERSION := $(GIT_TAG:v%=%)|${GIT_COMMIT}|${BUILD_DATE}
 endif
 
 build:
-	go mod tidy
+	env GOPRIVATE="github.com/reinventingscience/ivcap-core-api" go mod tidy
 	go build -ldflags "-X main.version=${GIT_TAG} -X main.commit=${GIT_COMMIT} -X main.date=${BUILD_DATE}" -o ivcap
 
 install: build
@@ -22,5 +22,10 @@ test:
 release:
   # git tag -a v0.4.0 -m "..."
 	# export GITHUB_TOKEN=$(cat .github-release-token)
+	# or eval $(cat .github-release-token)
 	# brew install goreleaser
 	goreleaser release --rm-dist
+
+addlicense:
+	# go install github.com/google/addlicense@v1.0.0
+	addlicense -c 'Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230' -l apache ./**/*.go
