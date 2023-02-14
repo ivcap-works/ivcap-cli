@@ -204,7 +204,6 @@ func getLoginInformation(client *http.Client, ctxt *Context) (authProvider *Auth
 		panic(1)
 		return nil, fmt.Errorf("login service returned an invalid response")
 	} else if versionNum == 1 {
-		print("Correct Version\n")
 		// Marshal the auth struct into a byte array so we unmarshal it into
 		// the correct struct
 		yamlAuth, err := yaml.Marshal(responseMap["auth"])
