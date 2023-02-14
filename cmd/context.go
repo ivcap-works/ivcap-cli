@@ -66,7 +66,6 @@ var setContextCmd = &cobra.Command{
 			URL:        ctxtUrl,
 			AccountID:  accountID,
 			ProviderID: providerID,
-			LoginName:  loginName,
 			Host:       hostName,
 		}
 		SetContext(ctxt, false)
@@ -125,7 +124,7 @@ var useContextCmd = &cobra.Command{
 }
 
 var getContextCmd = &cobra.Command{
-	Use:     "get [all|name|account-id|provider-id|url|jwt]",
+	Use:     "get [all|name|account-id|provider-id|url|access-token]",
 	Short:   "Display the current context",
 	Aliases: []string{"current", "show"},
 	Run: func(_ *cobra.Command, args []string) {
@@ -136,8 +135,12 @@ var getContextCmd = &cobra.Command{
 		context := GetActiveContext()
 		if param == "name" {
 			fmt.Println(context.Name)
-		} else if param == "jwt" {
-			fmt.Println(context.Jwt)
+		} else if param == "access-token" {
+			t := table.NewWriter()
+			t.SetOutputMirror(os.Stdout)
+			t.AppendRow(table.Row{"Access Token", context.AccessToken})
+			t.AppendRow(table.Row{"Token Expiry", context.AccessTokenExpiry})
+			t.Render()
 		} else if param == "account-id" {
 			fmt.Println(context.AccountID)
 		} else if param == "provider-id" {
@@ -149,7 +152,6 @@ var getContextCmd = &cobra.Command{
 			t.SetOutputMirror(os.Stdout)
 			t.AppendRow(table.Row{"Name", context.Name})
 			t.AppendRow(table.Row{"URL", context.URL})
-			t.AppendRow(table.Row{"Login Name", context.LoginName})
 			t.AppendRow(table.Row{"Account ID", context.AccountID})
 			if context.ProviderID != "" {
 				t.AppendRow(table.Row{"Provider ID", context.ProviderID})
@@ -171,7 +173,6 @@ func init() {
 
 	configCmd.AddCommand(setContextCmd)
 	setContextCmd.Flags().StringVar(&ctxtUrl, "url", "", "The url to the IVCAP deployment (e.g. https://api.green-cirrus.com)")
-	setContextCmd.Flags().StringVar(&loginName, "login-name", "", "Name for authentication. May not be required depending on Auth mechanism")
 	setContextCmd.Flags().StringVar(&accountID, "account-id", "", "The account ID to use. Will most likely be set on login")
 	setContextCmd.Flags().StringVar(&providerID, "provider-id", "", "The account ID to use. Will most likely be set on login")
 	setContextCmd.Flags().StringVar(&hostName, "host-name", "", "optional host name if accessing API through SSH tunnel")

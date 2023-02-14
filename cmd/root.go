@@ -67,11 +67,19 @@ type Context struct {
 	ApiVersion int    `yaml:"api-version"`
 	Name       string `yaml:"name"`
 	URL        string `yaml:"url"`
-	LoginName  string `yaml:"login-name"`
 	AccountID  string `yaml:"account-id"`
 	ProviderID string `yaml:"provider-id"`
-	Jwt        string `yaml:"jwt"`
 	Host       string `yaml:"host"` // set Host header if necessary
+
+	// User Information
+	AccountName     string `yaml:"account-name"`
+	AccountNickName string `yaml:"account-nickname"`
+	Email           string `yaml:"email"`
+
+	// Cached Credentials
+	AccessToken       string    `yaml:"access-token"`
+	AccessTokenExpiry time.Time `yaml:"access-token-expiry"`
+	RefreshToken      string    `yaml:"refresh-token"`
 }
 
 type AppError struct {
@@ -126,6 +134,7 @@ func initConfig() {
 	if err != nil {
 		panic(err)
 	}
+
 	SetLogger(logger)
 }
 
@@ -152,19 +161,32 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 	if contextName == "" {
 		contextName = os.Getenv(ENV_PREFIX + "_CONTEXT")
 	}
-	jwt := os.Getenv(ENV_PREFIX + "_JWT")
+	accessToken := os.Getenv(ENV_PREFIX + "_ACCESSTOKEN")
+	var err error
 
 	// check config file
 	ctxt := GetActiveContext()
 	if ctxt == nil {
 		cobra.CheckErr("cannot find a respective context")
 	}
-	if jwt == "" {
-		jwt = ctxt.Jwt
+
+	if accessToken == "" {
+		// If the user hasn't provided an access token as an environmental variable
+		// we'll assume the user has logged in previously. We call refreshAccessToken
+		// here, so that we'll check the current access token, and if it has expired,
+		// we'll use the refresh token to get ourselves a new one. If the refresh
+		// token has expired, we'll prompt the user to login again.
+		accessToken, err = refreshAccessToken()
+		if err != nil {
+			cobra.CheckErr(fmt.Sprintf("Error refreshing access token. Error: %s", err.Error()))
+		}
+
 	}
 
 	if !requiresAuth {
-		jwt = ""
+		accessToken = ""
+	} else if accessToken == "" {
+		logger.Warn("Adapter requires Auth but no Access Token Provided")
 	}
 	url := ctxt.URL
 	var headers *map[string]string
@@ -173,7 +195,7 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 	}
 	logger.Debug("Adapter config", log.String("url", url))
 
-	adp, err := NewAdapter(url, jwt, timeoutSec, headers)
+	adp, err := NewAdapter(url, accessToken, timeoutSec, headers)
 	if adp == nil || err != nil {
 		cobra.CheckErr(fmt.Sprintf("cannot create adapter for '%s' - %s", url, err))
 	}
@@ -233,13 +255,18 @@ func ReadConfigFile(createIfNoConfig bool) (config *Config, configFile string) {
 	var data []byte
 	data, err := ioutil.ReadFile(configFile)
 	if err != nil {
-		if _, ok := err.(*os.PathError); createIfNoConfig && ok {
-			config = &Config{
-				Version: "v1",
+		if _, ok := err.(*os.PathError); ok {
+			if createIfNoConfig {
+				config = &Config{
+					Version: "v1",
+				}
+				return
+			} else {
+				cobra.CheckErr("Config file does not exist. Please create the config file with the context command.")
 			}
-			return
+		} else {
+			cobra.CheckErr(fmt.Sprintf("Cannot read config file %s - %v", configFile, err))
 		}
-		cobra.CheckErr(fmt.Sprintf("problems while reading config file %s - %v", configFile, err))
 	}
 	var cfg Config
 	if err := yaml.Unmarshal(data, &cfg); err != nil {
@@ -290,12 +317,12 @@ func GetConfigFilePath() (configFile string) {
 
 func NewAdapter(
 	url string,
-	jwtToken string,
+	accessToken string,
 	timeoutSec int,
 	headers *map[string]string,
 ) (*adpt.Adapter, error) {
 	adapter := adpt.RestAdapter(adpt.ConnectionCtxt{
-		URL: url, JwtToken: jwtToken, TimeoutSec: timeoutSec, Headers: headers,
+		URL: url, AccessToken: accessToken, TimeoutSec: timeoutSec, Headers: headers,
 	})
 	return &adapter, nil
 }
