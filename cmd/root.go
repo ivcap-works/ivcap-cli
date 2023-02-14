@@ -53,6 +53,7 @@ var (
 	offset       int
 	limit        int
 	outputFormat string
+	silent       bool
 )
 
 var logger *log.Logger
@@ -116,6 +117,7 @@ func init() {
 	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 10, "Max. number of seconds to wait for completion")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logging level to DEBUG")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Set format for displaying output [json, yaml]")
+	rootCmd.PersistentFlags().BoolVar(&silent, "silent", false, "Do not show any progress information")
 }
 
 // initConfig reads in config file and ENV variables if set.
