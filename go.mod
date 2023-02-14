@@ -1,6 +1,6 @@
 module github.com/reinventingscience/ivcap-client
 
-go 1.18
+go 1.19
 
 require (
 	cayp/api_gateway v0.0.0
@@ -15,6 +15,7 @@ require (
 	go.uber.org/zap v1.23.0
 	golang.org/x/oauth2 v0.1.0
 	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
