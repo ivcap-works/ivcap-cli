@@ -107,6 +107,16 @@ func (a *restAdapter) Post(ctxt context.Context, path string, body io.Reader, le
 	return Connect(ctxt, "POST", path, body, length, headers, &a.ctxt, nil, logger)
 }
 
+func (a *restAdapter) PostForm(ctxt context.Context, path string, data url.Values, headers *map[string]string, logger *log.Logger) (Payload, error) {
+	ed := data.Encode()
+	body := strings.NewReader(ed)
+	if headers == nil {
+		headers = &map[string]string{}
+	}
+	(*headers)["Content-Type"] = "application/x-www-form-urlencoded"
+	return Connect(ctxt, "POST", path, body, int64(len(ed)), headers, &a.ctxt, nil, logger)
+}
+
 func (a *restAdapter) Put(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error) {
 	return Connect(ctxt, "PUT", path, body, length, headers, &a.ctxt, nil, logger)
 }
