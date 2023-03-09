@@ -22,6 +22,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	neturl "net/url"
 	"strings"
 	"time"
 
@@ -72,10 +74,16 @@ func (e *UnauthorizedError) Error() string { return "Unauthorized access" }
 type ApiError struct {
 	AdapterError
 	StatusCode int
-	Message    string
+	Pyld       Payload
 }
 
-func (e *ApiError) Error() string { return e.Message }
+func (e *ApiError) Error() string {
+	if e.Pyld != nil {
+		return string(e.Pyld.AsBytes())
+	} else {
+		return http.StatusText(e.StatusCode)
+	}
+}
 
 type ClientError struct {
 	AdapterError
@@ -158,11 +166,20 @@ func Connect(
 	logger *log.Logger,
 ) (Payload, error) {
 	logger = logger.With(log.String("method", method), log.String("path", path))
-	if connCtxt.URL == "" {
-		//logger.Error("Missing 'host'")
-		return nil, &MissingUrlError{AdapterError{path}}
+	var url string
+	if strings.HasPrefix(path, "http") {
+		// could be absolute url
+		if _, e := neturl.ParseRequestURI(path); e == nil {
+			url = path
+		}
 	}
-	url := connCtxt.URL + path
+	if url == "" {
+		if connCtxt.URL == "" {
+			//logger.Error("Missing 'host'")
+			return nil, &MissingUrlError{AdapterError{path}}
+		}
+		url = connCtxt.URL + path
+	}
 	logger = logger.With(log.String("url", url))
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
@@ -228,12 +245,12 @@ func Connect(
 		if len(respBody) > 0 {
 			logger = logger.With(log.ByteString("body", respBody))
 		}
-		return nil, ProcessErrorResponse(resp, path, string(respBody), logger)
+		return nil, ProcessErrorResponse(resp, path, ToPayload(respBody, resp, logger), logger)
 	}
-	return ToPayload(respBody, resp, logger)
+	return ToPayload(respBody, resp, logger), nil
 }
 
-func ProcessErrorResponse(resp *http.Response, path string, respBody string, logger *log.Logger) (err error) {
+func ProcessErrorResponse(resp *http.Response, path string, pyld Payload, logger *log.Logger) (err error) {
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		return &ResourceNotFoundError{AdapterError{path}}
@@ -241,14 +258,10 @@ func ProcessErrorResponse(resp *http.Response, path string, respBody string, log
 		return &UnauthorizedError{AdapterError{path}}
 	default:
 		logger.Warn("HTTP response", log.Int("statusCode", resp.StatusCode))
-		msg := string(respBody)
-		if msg == "" {
-			msg = resp.Status
-		}
 		return &ApiError{
 			AdapterError: AdapterError{path},
 			StatusCode:   resp.StatusCode,
-			Message:      msg,
+			Pyld:         pyld,
 		}
 	}
 }

@@ -360,7 +360,7 @@ func downloadArtifact(cmd *cobra.Command, args []string) error {
 
 	downloadHandler := func(resp *http.Response, path string, logger *log.Logger) (err error) {
 		if resp.StatusCode >= 300 {
-			return a.ProcessErrorResponse(resp, path, "", logger)
+			return a.ProcessErrorResponse(resp, path, nil, logger)
 		}
 
 		var outFile *os.File
