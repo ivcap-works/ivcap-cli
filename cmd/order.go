@@ -32,6 +32,7 @@ import (
 
 var (
 	name               string
+	accountID          string
 	skipParameterCheck bool
 
 	orderCmd = &cobra.Command{
@@ -143,10 +144,13 @@ An example:
 				params[i] = &api.ParameterT{Name: &name, Value: &value}
 			}
 
+			if accountID == "" {
+				accountID = GetActiveContext().AccountID
+			}
 			req := &api.CreateRequestBody{
 				ServiceID:  serviceId,
 				Parameters: params,
-				AccountID:  GetAccountID(),
+				AccountID:  accountID, // do we really need to account ID.
 			}
 			if name != "" {
 				req.Name = &name
@@ -184,6 +188,7 @@ func init() {
 	orderCmd.AddCommand(createOrderCmd)
 	createOrderCmd.Flags().StringVarP(&name, "name", "n", "", "Optional name/title attached to order")
 	createOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
+	createOrderCmd.Flags().StringVar(&accountID, "account-id", "", "override the account ID to use for the order")
 	createOrderCmd.Flags().BoolVar(&skipParameterCheck, "skip-parameter-check", false, "fskip checking order paramters first ONLY USE FOR TESTING")
 }
 
