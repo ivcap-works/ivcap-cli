@@ -81,7 +81,7 @@ func (e *ApiError) Error() string {
 	if e.Payload != nil && !e.Payload.IsEmpty() {
 		return string(e.Payload.AsBytes())
 	} else {
-		return http.StatusText(e.StatusCode)
+		return fmt.Sprintf("%d: %s", e.StatusCode, http.StatusText(e.StatusCode))
 	}
 }
 

@@ -144,7 +144,7 @@ func getAccessToken() (accessToken string) {
 			// We also get an updated ID token, let's make sure we have the latest info
 			ParseIDToken(&tokenResponse, ctxt, authProvider.JwksURL)
 			SetContext(ctxt, true)
-			fmt.Printf("Successfully acquired new access token. Expiry: %s", ctxt.AccessTokenExpiry.Format(time.RFC822))
+			logger.Info("Successfully acquired new access token.", log.String("expires", ctxt.AccessTokenExpiry.Format(time.RFC822)))
 		} // Access token has not expired, let's just use it
 	}
 
