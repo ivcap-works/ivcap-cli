@@ -202,29 +202,46 @@ func getLoginInformation(ctxt *Context) (authProvider *AuthProvider) {
 	adpt := CreateAdapter(false)
 	pyld, err := (*adpt).Get(NewTimeoutContext(), "/1/authinfo.yaml", logger)
 	if err != nil {
+		cobra.CheckErr(fmt.Sprintf("oauth: Cannot retrieve authentication info from server - %s", err))
 		return
 	}
 	var ai AuthInfo
 	if err = yaml.Unmarshal(pyld.AsBytes(), &ai); err != nil {
+		cobra.CheckErr(fmt.Sprintf("oauth: Cannot parse authentication info from server. - %s", err))
 		return
 	}
 	if ai.Version != 1 {
 		cobra.CheckErr("oauth: Client out of date: Please update this application")
+		return
 	}
 	providers := ai.ProviderList.AuthProviders
 	defProvider := ai.ProviderList.DefaultProviderId
 	if provider, ok := providers[defProvider]; ok {
-		return &provider
+		return verifyProviderInfo(&provider)
 	}
 	if defProvider != "" {
-		cobra.CheckErr(fmt.Sprintf("oauth: Undeclared Authentication Provider '%s' returned", defProvider))
+		cobra.CheckErr(fmt.Sprintf("oauth: Undeclared authentication provider '%s' returned", defProvider))
+		return
 	}
 	// If no default provider is given, just pick the first one
 	for _, p := range providers {
-		return &p
+		return verifyProviderInfo(&p)
 	}
-	cobra.CheckErr("oauth: Cannot extract a suitable Authentication Provider")
+	cobra.CheckErr("oauth: Cannot extract a suitable authentication provider")
 	return // never get here
+}
+
+func verifyProviderInfo(p *AuthProvider) *AuthProvider {
+	f := func(name string, urls string) {
+		if _, e := url.ParseRequestURI(urls); e == nil {
+			cobra.CheckErr(fmt.Sprintf("oauth: Authentication provider's %s '%s' is not a valid URL - %s", name, urls, e))
+		}
+	}
+	f("LoginURL", p.LoginURL)
+	f("TokenURL", p.TokenURL)
+	f("CodeURL", p.CodeURL)
+	f("JwksURL", p.JwksURL)
+	return p
 }
 
 func requestDeviceCode(authProvider *AuthProvider) (code *DeviceCode) {
