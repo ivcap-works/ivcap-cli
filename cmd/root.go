@@ -103,6 +103,7 @@ API exposed by a specific IVCAP deployment.`,
 
 func Execute(version string) {
 	rootCmd.Version = version
+	rootCmd.SilenceUsage = true
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
@@ -158,7 +159,7 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 			// here, so that we'll check the current access token, and if it has expired,
 			// we'll use the refresh token to get ourselves a new one. If the refresh
 			// token has expired, we'll prompt the user to login again.
-			accessToken = getFreshAccessToken()
+			accessToken = getAccessToken()
 		}
 
 		if accessToken == "" {

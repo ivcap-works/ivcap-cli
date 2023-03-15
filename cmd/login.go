@@ -112,7 +112,7 @@ type deviceTokenResponse struct {
 
 // If we already have a refresh token, we don't need to go through the whole device code
 // interaction. We can simply use the refresh token to request another access token.
-func getFreshAccessToken() (accessToken string) {
+func getAccessToken() (accessToken string) {
 	ctxt := GetActiveContext()
 	accessTokenExpiry := ctxt.AccessTokenExpiry
 	if time.Now().After(accessTokenExpiry) {
