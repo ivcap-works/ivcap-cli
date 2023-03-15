@@ -137,10 +137,6 @@ func (a *restAdapter) Delete(ctxt context.Context, path string, logger *log.Logg
 	return Connect(ctxt, "DELETE", path, nil, -1, nil, &a.ctxt, nil, logger)
 }
 
-func (a *restAdapter) ClearAuthorization() {
-	a.ctxt.AccessToken = ""
-}
-
 func (a *restAdapter) SetUrl(url string) {
 	a.ctxt.URL = url
 }

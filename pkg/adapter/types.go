@@ -35,7 +35,6 @@ type Adapter interface {
 	Put(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error)
 	Patch(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error)
 	Delete(ctxt context.Context, path string, logger *log.Logger) (Payload, error)
-	ClearAuthorization() // no longer add authorization info to calls
 	SetUrl(url string)
 	GetPath(url string) (path string, err error)
 }
