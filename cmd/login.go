@@ -372,10 +372,7 @@ func login(_ *cobra.Command, args []string) {
 	ctxt.RefreshToken = tokenResponse.RefreshToken
 	SetContext(ctxt, true)
 
-	fmt.Printf("Success: You are authorised until %s.\n", ctxt.AccessTokenExpiry.Format(time.RFC822))
-}
-
-func logout(_ *cobra.Command, args []string) {
+	fmt.Printf("Success: You are authorised.\n")
 }
 
 func init() {

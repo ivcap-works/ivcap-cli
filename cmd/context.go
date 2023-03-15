@@ -150,7 +150,7 @@ var getContextCmd = &cobra.Command{
 			}
 			isAuth := "no"
 			if IsAuthorised() {
-				isAuth = fmt.Sprintf("yes, until %s", context.AccessTokenExpiry.Format(time.RFC822))
+				isAuth = fmt.Sprintf("yes, refreshed after %s", context.AccessTokenExpiry.Format(time.RFC822))
 			}
 			t.AppendRow(table.Row{"Authorised", isAuth})
 			if context.Host != "" {
