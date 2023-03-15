@@ -78,8 +78,8 @@ type ApiError struct {
 }
 
 func (e *ApiError) Error() string {
-	if e.Pyld != nil {
-		return string(e.Pyld.AsBytes())
+	if e.Payload != nil && !e.Payload.IsEmpty() {
+		return string(e.Payload.AsBytes())
 	} else {
 		return http.StatusText(e.StatusCode)
 	}

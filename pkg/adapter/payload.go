@@ -185,6 +185,10 @@ func (p *payload) AsBytes() []byte {
 	return p.body
 }
 
+func (p *payload) IsEmpty() bool {
+	return p.body == nil || len(p.body) == 0
+}
+
 func (p *payload) Header(key string) string {
 	if p.headers != nil {
 		return p.headers.Get(key)

@@ -45,6 +45,7 @@ type Payload interface {
 	AsObject() (map[string]interface{}, error)
 	AsArray() ([]interface{}, error)
 	AsBytes() []byte
+	IsEmpty() bool
 	Header(key string) string
 	StatusCode() int
 }
