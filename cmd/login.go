@@ -171,7 +171,7 @@ func getTokenResponse(authProvider *AuthProvider, params url.Values, ctxt *Conte
 	if err != nil {
 		if apiErr, ok := err.(*adpt.ApiError); ok && allowStatusForbidden {
 			if apiErr.StatusCode == http.StatusForbidden {
-				pyld = apiErr.Pyld
+				pyld = apiErr.Payload
 			} else {
 				cobra.CheckErr(fmt.Sprintf("Cannot obtain OAuth Token - %s", err))
 			}

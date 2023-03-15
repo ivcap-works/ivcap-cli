@@ -74,7 +74,7 @@ func (e *UnauthorizedError) Error() string { return "Unauthorized access" }
 type ApiError struct {
 	AdapterError
 	StatusCode int
-	Pyld       Payload
+	Payload    Payload
 }
 
 func (e *ApiError) Error() string {
@@ -257,7 +257,7 @@ func ProcessErrorResponse(resp *http.Response, path string, pyld Payload, logger
 		return &ApiError{
 			AdapterError: AdapterError{path},
 			StatusCode:   resp.StatusCode,
-			Pyld:         pyld,
+			Payload:      pyld,
 		}
 	}
 }
