@@ -136,7 +136,9 @@ func getAccessToken() (accessToken string) {
 			}
 
 			ctxt.AccessToken = tokenResponse.AccessToken
-			ctxt.RefreshToken = tokenResponse.RefreshToken
+			if tokenResponse.RefreshToken != "" {
+				ctxt.RefreshToken = tokenResponse.RefreshToken
+			}
 			// Add a 10 second buffer to expiry to account for differences in clock time between client
 			// server and message transport time (oauth2 library does the same thing)
 			ctxt.AccessTokenExpiry = time.Now().Add(time.Second * time.Duration(tokenResponse.ExpiresIn-10))
