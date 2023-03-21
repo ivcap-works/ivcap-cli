@@ -148,6 +148,16 @@ func CreateAdapter(requiresAuth bool) (adapter *adpt.Adapter) {
 	return CreateAdapterWithTimeout(requiresAuth, timeout)
 }
 
+// Returns an HTTP adapter which will wait a max. of `timeoutSec` sec for a reply.
+// It also pre-configures the adapter in the following way:
+//
+//   - If `requiresAuth` is set, each outgoing request includes an `Authorization` header
+//     with a 'Bearer' token provided either via the `--access-token` flag,
+//     the IVCAP_ACCESS_TOKEN environment, or the AccessToken from the ActiveContext.
+//   - If the `path` parameter for any of the adapter calls is NOT a fully fledged URL,
+//     the URL defined in ActiveContext is automatically prefixed.
+//   - If the ActiveContext defines a `Host` parameter, it is also added as a
+//     `Host` HTTP header.
 func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.Adapter) {
 	ctxt := GetActiveContext() // will always return with a context
 

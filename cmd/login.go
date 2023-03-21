@@ -111,8 +111,10 @@ type deviceTokenResponse struct {
 	ErrorString string `json:"error,omitempty"`
 }
 
-// If we already have a refresh token, we don't need to go through the whole device code
-// interaction. We can simply use the refresh token to request another access token.
+// First check environment variables and command line flags for provided
+// tokens and immedaitely return them if available. Then check the 'ActiveContext'
+// for a token and if `refreshIfExpired` is set, ckeck if token is expired and
+// if it is, request a new one from the identitiy provider.
 func getAccessToken(refreshIfExpired bool) (accessToken string) {
 	if accessTokenF != "" {
 		accessTokenProvided = true
@@ -248,7 +250,7 @@ func getLoginInformation(ctxt *Context) (authProvider *AuthProvider) {
 
 func verifyProviderInfo(p *AuthProvider) *AuthProvider {
 	f := func(name string, urls string) {
-		if _, e := url.ParseRequestURI(urls); e == nil {
+		if _, e := url.ParseRequestURI(urls); e != nil {
 			cobra.CheckErr(fmt.Sprintf("oauth: Authentication provider's %s '%s' is not a valid URL - %s", name, urls, e))
 		}
 	}
