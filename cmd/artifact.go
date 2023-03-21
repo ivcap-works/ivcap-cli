@@ -152,7 +152,7 @@ var (
 				Collection: artifactCollection,
 			}
 			ctxt := context.Background()
-			resp, err := sdk.CreateArtifact(ctxt, req, contentType, nil, adapter, logger)
+			resp, err := sdk.CreateArtifact(ctxt, req, contentType, size, nil, adapter, logger)
 			if err != nil {
 				cobra.CompErrorln(fmt.Sprintf("while creating record for '%s'- %v", inputFile, err))
 				return
