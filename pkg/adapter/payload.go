@@ -35,7 +35,7 @@ type payload struct {
 	statusCode  int
 }
 
-func ToPayload(body []byte, resp *http.Response, logger *log.Logger) (Payload, error) {
+func ToPayload(body []byte, resp *http.Response, logger *log.Logger) Payload {
 	contentType := resp.Header.Get("Content-Type")
 	logger.Debug("Received", log.String("content-type", contentType))
 	return &payload{
@@ -43,7 +43,7 @@ func ToPayload(body []byte, resp *http.Response, logger *log.Logger) (Payload, e
 		contentType: contentType,
 		headers:     &resp.Header,
 		statusCode:  resp.StatusCode,
-	}, nil
+	}
 }
 
 func LoadPayloadFromStdin(isYAML bool) (Payload, error) {
@@ -183,6 +183,10 @@ func (p *payload) AsArray() ([]interface{}, error) {
 
 func (p *payload) AsBytes() []byte {
 	return p.body
+}
+
+func (p *payload) IsEmpty() bool {
+	return p.body == nil || len(p.body) == 0
 }
 
 func (p *payload) Header(key string) string {

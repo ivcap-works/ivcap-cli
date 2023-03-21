@@ -22,6 +22,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
+	neturl "net/url"
 	"strings"
 	"time"
 
@@ -72,10 +74,16 @@ func (e *UnauthorizedError) Error() string { return "Unauthorized access" }
 type ApiError struct {
 	AdapterError
 	StatusCode int
-	Message    string
+	Payload    Payload
 }
 
-func (e *ApiError) Error() string { return e.Message }
+func (e *ApiError) Error() string {
+	if e.Payload != nil && !e.Payload.IsEmpty() {
+		return string(e.Payload.AsBytes())
+	} else {
+		return fmt.Sprintf("%d: %s", e.StatusCode, http.StatusText(e.StatusCode))
+	}
+}
 
 type ClientError struct {
 	AdapterError
@@ -107,6 +115,16 @@ func (a *restAdapter) Post(ctxt context.Context, path string, body io.Reader, le
 	return Connect(ctxt, "POST", path, body, length, headers, &a.ctxt, nil, logger)
 }
 
+func (a *restAdapter) PostForm(ctxt context.Context, path string, data url.Values, headers *map[string]string, logger *log.Logger) (Payload, error) {
+	ed := data.Encode()
+	body := strings.NewReader(ed)
+	if headers == nil {
+		headers = &map[string]string{}
+	}
+	(*headers)["Content-Type"] = "application/x-www-form-urlencoded"
+	return Connect(ctxt, "POST", path, body, int64(len(ed)), headers, &a.ctxt, nil, logger)
+}
+
 func (a *restAdapter) Put(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error) {
 	return Connect(ctxt, "PUT", path, body, length, headers, &a.ctxt, nil, logger)
 }
@@ -117,10 +135,6 @@ func (a *restAdapter) Patch(ctxt context.Context, path string, body io.Reader, l
 
 func (a *restAdapter) Delete(ctxt context.Context, path string, logger *log.Logger) (Payload, error) {
 	return Connect(ctxt, "DELETE", path, nil, -1, nil, &a.ctxt, nil, logger)
-}
-
-func (a *restAdapter) ClearAuthorization() {
-	a.ctxt.AccessToken = ""
 }
 
 func (a *restAdapter) SetUrl(url string) {
@@ -148,11 +162,20 @@ func Connect(
 	logger *log.Logger,
 ) (Payload, error) {
 	logger = logger.With(log.String("method", method), log.String("path", path))
-	if connCtxt.URL == "" {
-		//logger.Error("Missing 'host'")
-		return nil, &MissingUrlError{AdapterError{path}}
+	var url string
+	if strings.HasPrefix(path, "http") {
+		// could be absolute url
+		if _, e := neturl.ParseRequestURI(path); e == nil {
+			url = path
+		}
 	}
-	url := connCtxt.URL + path
+	if url == "" {
+		if connCtxt.URL == "" {
+			//logger.Error("Missing 'host'")
+			return nil, &MissingUrlError{AdapterError{path}}
+		}
+		url = connCtxt.URL + path
+	}
 	logger = logger.With(log.String("url", url))
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
@@ -218,12 +241,12 @@ func Connect(
 		if len(respBody) > 0 {
 			logger = logger.With(log.ByteString("body", respBody))
 		}
-		return nil, ProcessErrorResponse(resp, path, string(respBody), logger)
+		return nil, ProcessErrorResponse(resp, path, ToPayload(respBody, resp, logger), logger)
 	}
-	return ToPayload(respBody, resp, logger)
+	return ToPayload(respBody, resp, logger), nil
 }
 
-func ProcessErrorResponse(resp *http.Response, path string, respBody string, logger *log.Logger) (err error) {
+func ProcessErrorResponse(resp *http.Response, path string, pyld Payload, logger *log.Logger) (err error) {
 	switch resp.StatusCode {
 	case http.StatusNotFound:
 		return &ResourceNotFoundError{AdapterError{path}}
@@ -231,14 +254,10 @@ func ProcessErrorResponse(resp *http.Response, path string, respBody string, log
 		return &UnauthorizedError{AdapterError{path}}
 	default:
 		logger.Warn("HTTP response", log.Int("statusCode", resp.StatusCode))
-		msg := string(respBody)
-		if msg == "" {
-			msg = resp.Status
-		}
 		return &ApiError{
 			AdapterError: AdapterError{path},
 			StatusCode:   resp.StatusCode,
-			Message:      msg,
+			Payload:      pyld,
 		}
 	}
 }

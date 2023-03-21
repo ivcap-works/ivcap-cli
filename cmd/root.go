@@ -15,6 +15,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"io/fs"
 	"io/ioutil"
@@ -34,6 +35,7 @@ import (
 )
 
 const ENV_PREFIX = "IVCAP"
+const URN_PREFIX = "ivcap"
 
 // Max characters to limit name to
 const MAX_NAME_COL_LEN = 30
@@ -42,17 +44,23 @@ const MAX_NAME_COL_LEN = 30
 const CONFIG_FILE_DIR = "ivcap-cli"
 const CONFIG_FILE_NAME = "config.yaml"
 
+var ACCESS_TOKEN_ENV = ENV_PREFIX + "_ACCESS_TOKEN"
+
 // flags
 var (
-	contextName string
-	timeout     int
-	debug       bool
+	contextName         string
+	accessToken         string
+	accessTokenF        string
+	accessTokenProvided bool
+	timeout             int
+	debug               bool
 
 	// common, but not global flags
 	recordID     string
 	offset       int
 	limit        int
 	outputFormat string
+	silent       bool
 )
 
 var logger *log.Logger
@@ -93,15 +101,11 @@ var rootCmd = &cobra.Command{
 	Short: "A command line tool to interact with a IVCAP deployment",
 	Long: `A command line tool to to more conveniently interact with the
 API exposed by a specific IVCAP deployment.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) {
-	// 	fmt.Printf("AUTHOR: %s - %s\n", author, viper.GetString("author"))
-	// },
 }
 
 func Execute(version string) {
 	rootCmd.Version = version
+	rootCmd.SilenceUsage = true
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
@@ -112,10 +116,12 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&contextName, "context", "", "Context (deployment) to use")
-	// rootCmd.PersistentFlags().StringVar(&accountID, "account-id", "", "Account ID to use with requests. Most likely defined in context")
+	rootCmd.PersistentFlags().StringVar(&accessTokenF, "access-token", "",
+		fmt.Sprintf("Access token to use for authentication with API server [%s]", ACCESS_TOKEN_ENV))
 	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 10, "Max. number of seconds to wait for completion")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logging level to DEBUG")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Set format for displaying output [json, yaml]")
+	rootCmd.PersistentFlags().BoolVar(&silent, "silent", false, "Do not show any progress information")
 }
 
 // initConfig reads in config file and ENV variables if set.
@@ -138,56 +144,33 @@ func initConfig() {
 	SetLogger(logger)
 }
 
-func GetAccountID() string {
-	if accountID == "" {
-		accountID = os.Getenv(ENV_PREFIX + "_ACCOUNT_ID")
-		if accountID == "" {
-			if ctxt := GetActiveContext(); ctxt != nil {
-				accountID = ctxt.AccountID
-			}
-		}
-	}
-	if accountID == "" {
-		cobra.CheckErr("account ID is not set. Use the --account-id flag or environment IVCAP_ACCOUNT_ID")
-	}
-	return accountID
-}
-
 func CreateAdapter(requiresAuth bool) (adapter *adpt.Adapter) {
 	return CreateAdapterWithTimeout(requiresAuth, timeout)
 }
 
+// Returns an HTTP adapter which will wait a max. of `timeoutSec` sec for a reply.
+// It also pre-configures the adapter in the following way:
+//
+//   - If `requiresAuth` is set, each outgoing request includes an `Authorization` header
+//     with a 'Bearer' token provided either via the `--access-token` flag,
+//     the IVCAP_ACCESS_TOKEN environment, or the AccessToken from the ActiveContext.
+//   - If the `path` parameter for any of the adapter calls is NOT a fully fledged URL,
+//     the URL defined in ActiveContext is automatically prefixed.
+//   - If the ActiveContext defines a `Host` parameter, it is also added as a
+//     `Host` HTTP header.
 func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.Adapter) {
-	if contextName == "" {
-		contextName = os.Getenv(ENV_PREFIX + "_CONTEXT")
-	}
-	accessToken := os.Getenv(ENV_PREFIX + "_ACCESSTOKEN")
-	var err error
+	ctxt := GetActiveContext() // will always return with a context
 
-	// check config file
-	ctxt := GetActiveContext()
-	if ctxt == nil {
-		cobra.CheckErr("cannot find a respective context")
-	}
-
-	if accessToken == "" {
-		// If the user hasn't provided an access token as an environmental variable
-		// we'll assume the user has logged in previously. We call refreshAccessToken
-		// here, so that we'll check the current access token, and if it has expired,
-		// we'll use the refresh token to get ourselves a new one. If the refresh
-		// token has expired, we'll prompt the user to login again.
-		accessToken, err = refreshAccessToken()
-		if err != nil {
-			cobra.CheckErr(fmt.Sprintf("Error refreshing access token. Error: %s", err.Error()))
+	if requiresAuth {
+		if accessToken == "" {
+			accessToken = getAccessToken(true)
 		}
-
+		if accessToken == "" {
+			cobra.CheckErr(
+				fmt.Sprintf("Adapter requires auth token. Set with '--access-token' or env '%s'", ACCESS_TOKEN_ENV))
+		}
 	}
 
-	if !requiresAuth {
-		accessToken = ""
-	} else if accessToken == "" {
-		logger.Warn("Adapter requires Auth but no Access Token Provided")
-	}
 	url := ctxt.URL
 	var headers *map[string]string
 	if ctxt.Host != "" {
@@ -203,29 +186,33 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 }
 
 func GetActiveContext() (ctxt *Context) {
-	config, configFile := ReadConfigFile(false)
-	if config != nil {
-		if contextName == "" {
-			contextName = config.ActiveContext
-		}
-		if contextName != "" {
-			for _, d := range config.Contexts {
-				if d.Name == contextName {
-					ctxt = &d
-					break
-				}
-			}
-			if ctxt == nil {
-				cobra.CheckErr(fmt.Sprintf("unknown context '%s' in config '%s'", contextName, configFile))
-			}
+	return GetContext(contextName, true) // choose active context
+}
+
+func GetContext(name string, defaultToActiveContext bool) (ctxt *Context) {
+
+	config, configFile := ReadConfigFile(true)
+	// config should never be nil
+	if name == "" && defaultToActiveContext {
+		name = config.ActiveContext
+	}
+	if name == "" {
+		// no context or active context is found
+		cobra.CheckErr("Cannot find suitable context. Use '--context' or set default via 'context' command")
+		return
+	}
+
+	for _, d := range config.Contexts {
+		if d.Name == name {
+			ctxt = &d
+			return
 		}
 	}
-	if ctxt.ProviderID == "" && ctxt.AccountID != "" {
-		// Use same ID for provider ID as account ID
-		parts := strings.Split(ctxt.AccountID, ":")
-		ctxt.ProviderID = fmt.Sprintf("%s:provider:%s", parts[0], parts[2])
+
+	if ctxt == nil {
+		cobra.CheckErr(fmt.Sprintf("unknown context '%s' in config '%s'", name, configFile))
 	}
-	return ctxt
+	return
 }
 
 func SetContext(ctxt *Context, failIfNotExist bool) {
@@ -325,6 +312,12 @@ func NewAdapter(
 		URL: url, AccessToken: accessToken, TimeoutSec: timeoutSec, Headers: headers,
 	})
 	return &adapter, nil
+}
+
+func NewTimeoutContext() (ctxt context.Context) {
+	to := time.Now().Add(time.Duration(timeout) * time.Second)
+	ctxt, _ = context.WithDeadline(context.Background(), to)
+	return
 }
 
 func Logger() *log.Logger {

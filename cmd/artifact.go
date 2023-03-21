@@ -312,19 +312,30 @@ func upload(
 	offset int64,
 	adapter *a.Adapter,
 ) (err error) {
-	if err = sdk.UploadArtifact(ctxt, reader, size, offset, chunkSize, path, adapter, logger); err != nil {
+	if err = sdk.UploadArtifact(ctxt, reader, size, offset, chunkSize, path, adapter, silent, logger); err != nil {
 		cobra.CompErrorln(fmt.Sprintf("while uploading data file '%s' - %v", inputFile, err))
 		return
 	}
-	fmt.Printf("Completed uploading '%s'\n", artifactID)
-
+	if !silent {
+		fmt.Printf("Completed uploading '%s'\n", artifactID)
+	}
 	readReq := &sdk.ReadArtifactRequest{Id: artifactID}
-	var readResp *api.ReadResponseBody
-	if readResp, err = sdk.ReadArtifact(ctxt, readReq, adapter, logger); err == nil {
-		printArtifact(readResp, false)
-	} else {
-		cobra.CompErrorln(fmt.Sprintf("while getting a status update on '%s' - %v", artifactID, err))
-		return
+
+	switch outputFormat {
+	case "json", "yaml":
+		if res, err := sdk.ReadArtifactRaw(ctxt, readReq, adapter, logger); err == nil {
+			a.ReplyPrinter(res, outputFormat == "yaml")
+		} else {
+			return err
+		}
+	default:
+		var readResp *api.ReadResponseBody
+		if readResp, err = sdk.ReadArtifact(ctxt, readReq, adapter, logger); err == nil {
+			printArtifact(readResp, false)
+		} else {
+			cobra.CompErrorln(fmt.Sprintf("while getting a status update on '%s' - %v", artifactID, err))
+			return
+		}
 	}
 	return
 }
@@ -349,7 +360,7 @@ func downloadArtifact(cmd *cobra.Command, args []string) error {
 
 	downloadHandler := func(resp *http.Response, path string, logger *log.Logger) (err error) {
 		if resp.StatusCode >= 300 {
-			return a.ProcessErrorResponse(resp, path, "", logger)
+			return a.ProcessErrorResponse(resp, path, nil, logger)
 		}
 
 		var outFile *os.File
@@ -361,7 +372,12 @@ func downloadArtifact(cmd *cobra.Command, args []string) error {
 				return
 			}
 		}
-		reader := sdk.AddProgressBar("... downloading file", resp.ContentLength, resp.Body)
+		var reader io.Reader
+		if silent {
+			reader = resp.Body
+		} else {
+			reader = sdk.AddProgressBar("... downloading file", resp.ContentLength, resp.Body)
+		}
 		_, err = io.Copy(outFile, reader)
 		return
 	}

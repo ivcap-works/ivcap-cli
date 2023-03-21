@@ -15,15 +15,17 @@
 package client
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
-	api "github.com/reinventingscience/ivcap-core-api/http/artifact"
 	"io"
 	"io/ioutil"
 	"net/url"
 	"strconv"
 	"strings"
+
+	api "github.com/reinventingscience/ivcap-core-api/http/artifact"
 
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
@@ -103,6 +105,7 @@ func UploadArtifact(
 	chunkSize int64,
 	path string,
 	adpt *adapter.Adapter,
+	silent bool,
 	logger *log.Logger,
 ) (err error) {
 	if offset > 0 {
@@ -114,12 +117,19 @@ func UploadArtifact(
 		}
 	}
 
+	if size < 0 {
+		// unknown size, just uploading whatever is in the reader
+		return uploadUnknownSize(ctxt, reader, offset, chunkSize, path, adpt, logger)
+	}
+
 	remaining := size - offset
 	fragSize := chunkSize
 	if fragSize < 0 {
 		fragSize = remaining // no chunking
 	}
-	reader = AddProgressBar("... uploading file", remaining, reader)
+	if !silent {
+		reader = AddProgressBar("... uploading file", remaining, reader)
+	}
 	// var pyld adapter.Payload
 	for remaining > 0 {
 		psize := remaining
@@ -136,13 +146,67 @@ func UploadArtifact(
 		// var pyld adapter.Payload
 		_, err = (*adpt).Patch(context.Background(), path, r, psize, &h, logger)
 		if err != nil {
-			fmt.Printf("\n") // To move past progress bar
+			if !silent {
+				fmt.Printf("\n") // To move past progress bar
+			}
 			return
 		}
 		remaining -= psize - r.N
 	}
-	fmt.Printf("\n") // To move past progress bar
+	if !silent {
+		fmt.Printf("\n") // To move past progress bar
+	}
 	return
+}
+
+func uploadUnknownSize(
+	ctxt context.Context,
+	reader io.Reader,
+	offset int64,
+	chunkSize int64,
+	path string,
+	adpt *adapter.Adapter,
+	logger *log.Logger,
+) (err error) {
+	off := offset
+	p := make([]byte, chunkSize)
+	for {
+		h := map[string]string{
+			"Content-Type":  "application/offset+octet-stream",
+			"Upload-Offset": fmt.Sprintf("%d", off),
+			"Tus-Resumable": "1.0.0",
+		}
+
+		var n int
+		if n, err = reader.Read(p); err != nil || n == 0 {
+			if err != nil && err != io.EOF {
+				return
+			}
+			// need to inform about size
+			h["Upload-Length"] = fmt.Sprintf("%d", off)
+			_, err = (*adpt).Patch(context.Background(), path, nil, 0, &h, logger)
+			return
+		}
+		r := bytes.NewReader(p[:n])
+		h["Upload-Defer-Length"] = "1"
+		var pyld adapter.Payload
+		pyld, err = (*adpt).Patch(context.Background(), path, r, int64(n), &h, logger)
+		if err != nil {
+			return
+		}
+		if noffh := pyld.Header("Upload-Offset"); noffh == "" {
+			return fmt.Errorf("missing 'Upload-Offset' header")
+		} else {
+			if noff, err := strconv.ParseInt(noffh, 10, 64); err != nil {
+				return err
+			} else {
+				if (off + int64(n)) != noff {
+					return fmt.Errorf("unexpected 'Upload-Offset', expected %d but got %d", off+int64(n), noff)
+				}
+				off = noff
+			}
+		}
+	}
 }
 
 func AddProgressBar(description string, size int64, reader io.Reader) io.Reader {
@@ -178,13 +242,13 @@ func CreateArtifactRaw(
 	path := artifactPath(nil, adpt)
 	headers := make(map[string]string)
 	contentLength := cmd.Size
-	if reader == nil {
-		headers["X-Content-Type"] = contentType
+	if reader != nil {
 		headers["Upload-Length"] = fmt.Sprintf("%d", cmd.Size)
 		headers["Tus-Resumable"] = "1.0.0"
-		contentLength = 0
-	} else {
 		headers["Content-Type"] = contentType
+	} else {
+		headers["X-Content-Type"] = contentType
+		contentLength = 0
 	}
 	if cmd.Name != "" {
 		headers["X-Name"] = BaseEncode(cmd.Name)

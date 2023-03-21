@@ -18,19 +18,16 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 )
 
-var ctxtName string
-var ctxtUrl string
-var ctxtApiVersion int
-
 var (
-	accountID  string
-	providerID string
-	hostName   string
+	ctxtName       string
+	ctxtApiVersion int
+	hostName       string
 )
 
 // configCmd represents the config command
@@ -40,21 +37,14 @@ var configCmd = &cobra.Command{
 	Aliases: []string{"c"},
 }
 
-var setContextCmd = &cobra.Command{
-	Use:   "create ctxtName --url https://ivcap.net",
+var createContextCmd = &cobra.Command{
+	Use:   "create ctxtName https://ivcap.net",
 	Short: "Create a new context",
+	Args:  cobra.ExactArgs(2),
 	//Aliases: []string{"create"},
 	Run: func(_ *cobra.Command, args []string) {
-		if ctxtName == "" {
-			if len(args) > 0 {
-				ctxtName = args[0]
-			} else {
-				cobra.CheckErr("Missing 'name' argument or '--name' flag")
-			}
-		}
-		if ctxtUrl == "" {
-			cobra.CheckErr("Missing '--url' flag")
-		}
+		ctxtName = args[0]
+		ctxtUrl := args[1]
 		url, err := url.ParseRequestURI(ctxtUrl)
 		if err != nil || url.Host == "" {
 			cobra.CheckErr(fmt.Sprintf("url '%s' is not a valid URL", ctxtUrl))
@@ -64,8 +54,6 @@ var setContextCmd = &cobra.Command{
 			ApiVersion: ctxtApiVersion,
 			Name:       ctxtName,
 			URL:        ctxtUrl,
-			AccountID:  accountID,
-			ProviderID: providerID,
 			Host:       hostName,
 		}
 		SetContext(ctxt, false)
@@ -78,7 +66,7 @@ var listContextCmd = &cobra.Command{
 	Short: "List all context",
 	//Aliases: []string{"get-context", "list"},
 	Run: func(_ *cobra.Command, _ []string) {
-		config, _ := ReadConfigFile(false)
+		config, _ := ReadConfigFile(true)
 		if config != nil {
 			t := table.NewWriter()
 			t.SetOutputMirror(os.Stdout)
@@ -128,7 +116,7 @@ var getContextCmd = &cobra.Command{
 	Short:   "Display the current context",
 	Aliases: []string{"current", "show"},
 	Run: func(_ *cobra.Command, args []string) {
-		param := "name"
+		param := "all"
 		if len(args) == 1 {
 			param = args[0]
 		}
@@ -136,11 +124,15 @@ var getContextCmd = &cobra.Command{
 		if param == "name" {
 			fmt.Println(context.Name)
 		} else if param == "access-token" {
-			t := table.NewWriter()
-			t.SetOutputMirror(os.Stdout)
-			t.AppendRow(table.Row{"Access Token", context.AccessToken})
-			t.AppendRow(table.Row{"Token Expiry", context.AccessTokenExpiry})
-			t.Render()
+			if IsAuthorised() {
+				fmt.Println(getAccessToken(true))
+			} else {
+				at := "NOT AUTHORISED\n"
+				if silent {
+					at = ""
+				}
+				fmt.Print(at)
+			}
 		} else if param == "account-id" {
 			fmt.Println(context.AccountID)
 		} else if param == "provider-id" {
@@ -156,9 +148,19 @@ var getContextCmd = &cobra.Command{
 			if context.ProviderID != "" {
 				t.AppendRow(table.Row{"Provider ID", context.ProviderID})
 			}
+			isAuth := "no"
+			if IsAuthorised() {
+				if accessTokenProvided {
+					isAuth = fmt.Sprintf("unknown, token provided via '--access-token' flag or environment variable '%s'", ACCESS_TOKEN_ENV)
+				} else {
+					isAuth = fmt.Sprintf("yes, refreshing after %s", context.AccessTokenExpiry.Format(time.RFC822))
+				}
+			}
+			t.AppendRow(table.Row{"Authorised", isAuth})
 			if context.Host != "" {
 				t.AppendRow(table.Row{"Host", context.Host})
 			}
+
 			t.Render()
 		} else {
 			cobra.CheckErr(fmt.Sprintf("unknown context parameter '%s'", param))
@@ -171,12 +173,12 @@ func init() {
 
 	configCmd.AddCommand(listContextCmd)
 
-	configCmd.AddCommand(setContextCmd)
-	setContextCmd.Flags().StringVar(&ctxtUrl, "url", "", "The url to the IVCAP deployment (e.g. https://api.green-cirrus.com)")
-	setContextCmd.Flags().StringVar(&accountID, "account-id", "", "The account ID to use. Will most likely be set on login")
-	setContextCmd.Flags().StringVar(&providerID, "provider-id", "", "The account ID to use. Will most likely be set on login")
-	setContextCmd.Flags().StringVar(&hostName, "host-name", "", "optional host name if accessing API through SSH tunnel")
-	setContextCmd.Flags().IntVar(&ctxtApiVersion, "version", 1, "define API version")
+	configCmd.AddCommand(createContextCmd)
+	// We don't really use them right, so better not confuse anyone
+	// createContextCmd.Flags().StringVar(&accountID, "account-id", "", "The account ID to use. Will most likely be set on login")
+	// createContextCmd.Flags().StringVar(&providerID, "provider-id", "", "The account ID to use. Will most likely be set on login")
+	createContextCmd.Flags().StringVar(&hostName, "host-name", "", "optional host name if accessing API through SSH tunnel")
+	createContextCmd.Flags().IntVar(&ctxtApiVersion, "version", 1, "define API version")
 
 	configCmd.AddCommand(useContextCmd)
 
