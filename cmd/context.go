@@ -116,7 +116,7 @@ var getContextCmd = &cobra.Command{
 	Short:   "Display the current context",
 	Aliases: []string{"current", "show"},
 	Run: func(_ *cobra.Command, args []string) {
-		param := "name"
+		param := "all"
 		if len(args) == 1 {
 			param = args[0]
 		}
@@ -125,7 +125,7 @@ var getContextCmd = &cobra.Command{
 			fmt.Println(context.Name)
 		} else if param == "access-token" {
 			if IsAuthorised() {
-				fmt.Println(context.AccessToken)
+				fmt.Println(getAccessToken(true))
 			} else {
 				at := "NOT AUTHORISED\n"
 				if silent {
@@ -150,7 +150,11 @@ var getContextCmd = &cobra.Command{
 			}
 			isAuth := "no"
 			if IsAuthorised() {
-				isAuth = fmt.Sprintf("yes, refreshed after %s", context.AccessTokenExpiry.Format(time.RFC822))
+				if accessTokenProvided {
+					isAuth = fmt.Sprintf("unknown, token provided via '--access-token' flag or environment variable '%s'", ACCESS_TOKEN_ENV)
+				} else {
+					isAuth = fmt.Sprintf("yes, refreshing after %s", context.AccessTokenExpiry.Format(time.RFC822))
+				}
 			}
 			t.AppendRow(table.Row{"Authorised", isAuth})
 			if context.Host != "" {

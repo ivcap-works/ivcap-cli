@@ -48,10 +48,12 @@ var ACCESS_TOKEN_ENV = ENV_PREFIX + "_ACCESS_TOKEN"
 
 // flags
 var (
-	contextName string
-	accessToken string
-	timeout     int
-	debug       bool
+	contextName         string
+	accessToken         string
+	accessTokenF        string
+	accessTokenProvided bool
+	timeout             int
+	debug               bool
 
 	// common, but not global flags
 	recordID     string
@@ -114,7 +116,7 @@ func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&contextName, "context", "", "Context (deployment) to use")
-	rootCmd.PersistentFlags().StringVar(&accessToken, "access-token", "",
+	rootCmd.PersistentFlags().StringVar(&accessTokenF, "access-token", "",
 		fmt.Sprintf("Access token to use for authentication with API server [%s]", ACCESS_TOKEN_ENV))
 	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 10, "Max. number of seconds to wait for completion")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logging level to DEBUG")
@@ -151,17 +153,8 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 
 	if requiresAuth {
 		if accessToken == "" {
-			accessToken = os.Getenv(ACCESS_TOKEN_ENV)
+			accessToken = getAccessToken(true)
 		}
-		if accessToken == "" {
-			// If the user hasn't provided an access token as an environmental variable
-			// we'll assume the user has logged in previously. We call refreshAccessToken
-			// here, so that we'll check the current access token, and if it has expired,
-			// we'll use the refresh token to get ourselves a new one. If the refresh
-			// token has expired, we'll prompt the user to login again.
-			accessToken = getAccessToken()
-		}
-
 		if accessToken == "" {
 			cobra.CheckErr(
 				fmt.Sprintf("Adapter requires auth token. Set with '--access-token' or env '%s'", ACCESS_TOKEN_ENV))

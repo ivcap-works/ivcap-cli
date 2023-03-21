@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"time"
 
 	"github.com/MicahParks/keyfunc"
@@ -112,10 +113,27 @@ type deviceTokenResponse struct {
 
 // If we already have a refresh token, we don't need to go through the whole device code
 // interaction. We can simply use the refresh token to request another access token.
-func getAccessToken() (accessToken string) {
+func getAccessToken(refreshIfExpired bool) (accessToken string) {
+	if accessTokenF != "" {
+		accessTokenProvided = true
+		return accessTokenF
+	}
+	if accessToken = os.Getenv(ACCESS_TOKEN_ENV); accessToken != "" {
+		accessTokenProvided = true
+		return
+	}
+
+	// If the user hasn't provided an access token as an environmental variable
+	// we'll assume the user has logged in previously. We call refreshAccessToken
+	// here, so that we'll check the current access token, and if it has expired,
+	// we'll use the refresh token to get ourselves a new one. If the refresh
+	// token has expired, we'll prompt the user to login again.
 	ctxt := GetActiveContext()
 	accessTokenExpiry := ctxt.AccessTokenExpiry
 	if time.Now().After(accessTokenExpiry) {
+		if !refreshIfExpired {
+			return ""
+		}
 		if ctxt.RefreshToken == "" {
 			// We don't have a refresh token for this context, so we fail early
 			cobra.CheckErr("Could not login - invalid credentials. Please use the login command to refresh your credentials")
@@ -154,12 +172,7 @@ func getAccessToken() (accessToken string) {
 }
 
 func IsAuthorised() bool {
-	ctxt := GetActiveContext()
-	if ctxt.AccessToken == "" {
-		return false
-	}
-	accessTokenExpiry := ctxt.AccessTokenExpiry
-	return !time.Now().After(accessTokenExpiry)
+	return getAccessToken(false) != ""
 }
 
 func getTokenResponse(authProvider *AuthProvider, params url.Values, ctxt *Context, allowStatusForbidden bool) (tokenResponse deviceTokenResponse) {
