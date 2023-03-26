@@ -152,19 +152,25 @@ var (
 				Collection: artifactCollection,
 			}
 			ctxt := context.Background()
-			resp, err := sdk.CreateArtifact(ctxt, req, contentType, nil, adapter, logger)
+			resp, err := sdk.CreateArtifact(ctxt, req, contentType, size, nil, adapter, logger)
 			if err != nil {
 				cobra.CompErrorln(fmt.Sprintf("while creating record for '%s'- %v", inputFile, err))
 				return
 			}
 			artifactID := *resp.ID
-			fmt.Printf("Created artifact '%s'\n", artifactID)
+			if !silent {
+				fmt.Printf("Created artifact '%s'\n", artifactID)
+			}
 			path, err := (*adapter).GetPath(*resp.Data.Self)
 			if err != nil {
 				cobra.CompErrorln(fmt.Sprintf("while parsing API reply - %v", err))
 				return
 			}
 			upload(ctxt, reader, artifactID, path, size, 0, adapter)
+			if silent {
+				fmt.Printf("%s\n", artifactID)
+			}
+
 		},
 	}
 
@@ -211,11 +217,13 @@ var (
 
 			if size > 0 && offset >= size {
 				// already done
-				fmt.Printf("Artifact '%s' already fully uploaded\n", artifactID)
+				cobra.CompErrorln(fmt.Sprintf("Artifact '%s' already fully uploaded\n", artifactID))
 				return
 			}
 
-			upload(ctxt, reader, artifactID, path, size, offset, adapter)
+			if err = upload(ctxt, reader, artifactID, path, size, offset, adapter); err != nil {
+				cobra.CompErrorln(fmt.Sprintf("while uploading artifact '%s' - %v", artifactID, err))
+			}
 		},
 	}
 
@@ -316,9 +324,10 @@ func upload(
 		cobra.CompErrorln(fmt.Sprintf("while uploading data file '%s' - %v", inputFile, err))
 		return
 	}
-	if !silent {
-		fmt.Printf("Completed uploading '%s'\n", artifactID)
+	if silent {
+		return
 	}
+	fmt.Printf("Completed uploading '%s'\n", artifactID)
 	readReq := &sdk.ReadArtifactRequest{Id: artifactID}
 
 	switch outputFormat {
@@ -403,7 +412,7 @@ func init() {
 	readArtifactCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
 	artifactCmd.AddCommand(downloadArtifactCmd)
-	downloadArtifactCmd.Flags().StringVarP(&outputFile, "output", "o", "", "File to write content to [stdout]")
+	downloadArtifactCmd.Flags().StringVarP(&outputFile, "file", "f", "", "File to write content to [stdout]")
 
 	artifactCmd.AddCommand(createArtifactCmd)
 	createArtifactCmd.Flags().StringVarP(&artifactName, "name", "n", "", "Human friendly name")
@@ -423,7 +432,7 @@ func init() {
 	artifactCmd.AddCommand(removeArtifactFromCollectionCmd)
 
 	artifactCmd.AddCommand(addArtifactMetadataCmd)
-	addArtifactMetadataCmd.Flags().StringVarP(&metaFile, "file", "f", "", "Path to file containing metdata")
+	addArtifactMetadataCmd.Flags().StringVarP(&metaFile, "file", "f", "", "Path to file containing metadata")
 	artifactCmd.AddCommand(removeArtifactMetadataCmd)
 }
 

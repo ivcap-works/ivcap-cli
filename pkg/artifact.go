@@ -82,11 +82,12 @@ func CreateArtifact(
 	ctxt context.Context,
 	cmd *CreateArtifactRequest,
 	contentType string,
+	size int64,
 	reader io.Reader,
 	adpt *adapter.Adapter,
 	logger *log.Logger,
 ) (*api.UploadResponseBody, error) {
-	if res, err := CreateArtifactRaw(ctxt, cmd, contentType, reader, adpt, logger); err == nil {
+	if res, err := CreateArtifactRaw(ctxt, cmd, contentType, size, reader, adpt, logger); err == nil {
 		var artifact api.UploadResponseBody
 		if err := res.AsType(&artifact); err != nil {
 			return nil, err
@@ -235,6 +236,7 @@ func CreateArtifactRaw(
 	ctxt context.Context,
 	cmd *CreateArtifactRequest,
 	contentType string,
+	size int64,
 	reader io.Reader,
 	adpt *adapter.Adapter,
 	logger *log.Logger,
@@ -245,9 +247,13 @@ func CreateArtifactRaw(
 	if reader != nil {
 		headers["Upload-Length"] = fmt.Sprintf("%d", cmd.Size)
 		headers["Tus-Resumable"] = "1.0.0"
+		if size > 0 {
+			headers["Upload-Length"] = fmt.Sprintf("%d", size)
+		}
 		headers["Content-Type"] = contentType
 	} else {
 		headers["X-Content-Type"] = contentType
+		headers["X-Content-Length"] = fmt.Sprintf("%d", size)
 		contentLength = 0
 	}
 	if cmd.Name != "" {
