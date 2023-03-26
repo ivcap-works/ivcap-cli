@@ -217,11 +217,13 @@ var (
 
 			if size > 0 && offset >= size {
 				// already done
-				fmt.Printf("Artifact '%s' already fully uploaded\n", artifactID)
+				cobra.CompErrorln(fmt.Sprintf("Artifact '%s' already fully uploaded\n", artifactID))
 				return
 			}
 
-			upload(ctxt, reader, artifactID, path, size, offset, adapter)
+			if err = upload(ctxt, reader, artifactID, path, size, offset, adapter); err != nil {
+				cobra.CompErrorln(fmt.Sprintf("while uploading artifact '%s' - %v", artifactID, err))
+			}
 		},
 	}
 
