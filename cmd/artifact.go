@@ -158,13 +158,19 @@ var (
 				return
 			}
 			artifactID := *resp.ID
-			fmt.Printf("Created artifact '%s'\n", artifactID)
+			if !silent {
+				fmt.Printf("Created artifact '%s'\n", artifactID)
+			}
 			path, err := (*adapter).GetPath(*resp.Data.Self)
 			if err != nil {
 				cobra.CompErrorln(fmt.Sprintf("while parsing API reply - %v", err))
 				return
 			}
 			upload(ctxt, reader, artifactID, path, size, 0, adapter)
+			if silent {
+				fmt.Printf("%s\n", artifactID)
+			}
+
 		},
 	}
 
@@ -316,9 +322,10 @@ func upload(
 		cobra.CompErrorln(fmt.Sprintf("while uploading data file '%s' - %v", inputFile, err))
 		return
 	}
-	if !silent {
-		fmt.Printf("Completed uploading '%s'\n", artifactID)
+	if silent {
+		return
 	}
+	fmt.Printf("Completed uploading '%s'\n", artifactID)
 	readReq := &sdk.ReadArtifactRequest{Id: artifactID}
 
 	switch outputFormat {

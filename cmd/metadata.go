@@ -66,7 +66,15 @@ var (
 			logger.Debug("add meta", log.String("entity", entity), log.String("schema", schema), log.Reflect("pyld", meta))
 			ctxt := context.Background()
 			if res, err := sdk.AddMetadata(ctxt, entity, schema, pyld.AsBytes(), CreateAdapter(true), logger); err == nil {
-				a.ReplyPrinter(res, outputFormat == "yaml")
+				if silent {
+					if m, err := res.AsObject(); err == nil {
+						fmt.Printf("%s\n", m["record-id"])
+					} else {
+						cobra.CheckErr(fmt.Sprintf("Parsing reply: %s", res.AsBytes()))
+					}
+				} else {
+					a.ReplyPrinter(res, outputFormat == "yaml")
+				}
 			} else {
 				return err
 			}
