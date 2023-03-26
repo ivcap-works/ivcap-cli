@@ -403,7 +403,7 @@ func init() {
 	readArtifactCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
 	artifactCmd.AddCommand(downloadArtifactCmd)
-	downloadArtifactCmd.Flags().StringVarP(&outputFile, "output", "o", "", "File to write content to [stdout]")
+	downloadArtifactCmd.Flags().StringVarP(&outputFile, "file", "f", "", "File to write content to [stdout]")
 
 	artifactCmd.AddCommand(createArtifactCmd)
 	createArtifactCmd.Flags().StringVarP(&artifactName, "name", "n", "", "Human friendly name")
@@ -423,7 +423,7 @@ func init() {
 	artifactCmd.AddCommand(removeArtifactFromCollectionCmd)
 
 	artifactCmd.AddCommand(addArtifactMetadataCmd)
-	addArtifactMetadataCmd.Flags().StringVarP(&metaFile, "file", "f", "", "Path to file containing metdata")
+	addArtifactMetadataCmd.Flags().StringVarP(&metaFile, "file", "f", "", "Path to file containing metadata")
 	artifactCmd.AddCommand(removeArtifactMetadataCmd)
 }
 
