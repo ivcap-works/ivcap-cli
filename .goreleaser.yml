@@ -1,4 +1,3 @@
-# This is an example .goreleaser.yml file with some sane defaults.
 # Make sure to check the documentation at http://goreleaser.com
 before:
   hooks:
@@ -22,6 +21,16 @@ builds:
 #       {{- if eq .Arch "amd64" }}x86_64
 #       {{- else if eq .Arch "386" }}i386
 #       {{- else }}{{ .Arch }}{{ end }}
+brews:
+  - name: ivcap
+    homepage: "https://github.com/reinventingscience/ivcap-cli"
+    tap:
+      owner: reinventingscience
+      name: homebrew-resci
+    commit_author:
+      name: maxott
+      email: max.ott@data61.csiro.au
+
 checksum:
   name_template: "checksums.txt"
 snapshot:
