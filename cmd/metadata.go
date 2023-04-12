@@ -20,21 +20,44 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	sdk "github.com/reinventingscience/ivcap-client/pkg"
 	a "github.com/reinventingscience/ivcap-client/pkg/adapter"
+	api "github.com/reinventingscience/ivcap-core-api/http/metadata"
 
 	"github.com/spf13/cobra"
 	log "go.uber.org/zap"
 )
 
-var schemaName string
-var time_at string
+func init() {
+	rootCmd.AddCommand(metaCmd)
+
+	metaCmd.AddCommand(metaAddCmd)
+	metaAddCmd.Flags().StringVarP(&schemaURN, "schema", "s", "", "URN/UUID of schema")
+	metaAddCmd.Flags().StringVarP(&metaFile, "file", "f", "", "Path to file containing metdata")
+	metaAddCmd.Flags().StringVarP(&inputFormat, "format", "", "json", "Format of service description file [json, yaml]")
+
+	metaCmd.AddCommand(metaGetCmd)
+
+	metaCmd.AddCommand(metaQueryCmd)
+	metaQueryCmd.Flags().StringVarP(&schemaPrefix, "schema", "s", "", "URN/UUID prefix of schema")
+	metaQueryCmd.Flags().StringVarP(&entityURN, "entity", "e", "", "URN/UUID of entity")
+	metaQueryCmd.Flags().StringVarP(&atTime, "time-at", "t", "", "Timestamp for which to request information [now]")
+
+	metaCmd.AddCommand(metaRevokeCmd)
+}
+
+var schemaURN string
+var schemaPrefix string
+var entityURN string
+var atTime string
 
 var (
 	metaCmd = &cobra.Command{
 		Use:     "metadata",
 		Aliases: []string{"m", "meta"},
-		Short:   "Add/get/revoke metadata",
+		Short:   "Add/get/revoke/query metadata",
 	}
 
 	metaAddCmd = &cobra.Command{
@@ -55,7 +78,7 @@ var (
 				cobra.CheckErr(fmt.Sprintf("Cannot parse meta file '%s' - %s", metaFile, err))
 			}
 			var schema string
-			schema = schemaName
+			schema = schemaURN
 			if schema == "" {
 				if s, ok := meta["$schema"]; ok {
 					schema = fmt.Sprintf("%s", s)
@@ -83,28 +106,20 @@ var (
 	}
 
 	metaGetCmd = &cobra.Command{
-		Use:     "get [flags] entity [-s schemaName1,schemaName2]",
-		Short:   "Get the metadata attached to an entity, optionally restricted to a list of schemas",
-		Aliases: []string{"a", "+"},
+		Use:     "get recordID",
+		Short:   "Get the metadata record",
+		Aliases: []string{"g"},
 		Long:    `.....`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			entity := args[0]
-			var ts *time.Time
-			if time_at != "" {
-				t, err := dateparse.ParseLocal(time_at)
-				if err != nil {
-					cobra.CheckErr(fmt.Sprintf("Can't parse '%s' into a date - %s", time_at, err))
-				}
-				ts = &t
-			}
+			recordID := args[0]
 			ctxt := context.Background()
-			if res, err := sdk.GetMetadata(ctxt, entity, schemaName, ts, CreateAdapter(true), logger); err == nil {
+			if res, err := sdk.GetMetadata(ctxt, GetHistory(recordID), CreateAdapter(true), logger); err == nil {
 				a.ReplyPrinter(res, outputFormat == "yaml")
+				return nil
 			} else {
 				return err
 			}
-			return nil
 		},
 	}
 
@@ -121,19 +136,77 @@ var (
 			return
 		},
 	}
+
+	metaQueryCmd = &cobra.Command{
+		Use:     "query [-e entity] [-s schemaPrefix] [-t time-at]",
+		Short:   "Query the metadata store for any combination of entity, schema and time.",
+		Aliases: []string{"q", "search", "s", "list", "l"},
+		Long:    `.....`,
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			if entityURN == "" && schemaPrefix == "" {
+				cobra.CheckErr("Need at least one of '--schema' or '--entity'")
+			}
+			if entityURN != "" {
+				entityURN = GetHistory(entityURN)
+			}
+			var ts *time.Time
+			if atTime != "" {
+				t, err := dateparse.ParseLocal(atTime)
+				if err != nil {
+					cobra.CheckErr(fmt.Sprintf("Can't parse '%s' into a date - %s", atTime, err))
+				}
+				ts = &t
+			}
+			ctxt := context.Background()
+			if list, res, err := sdk.ListMetadata(ctxt, entityURN, schemaPrefix, ts, CreateAdapter(true), logger); err == nil {
+				switch outputFormat {
+				case "json":
+					a.ReplyPrinter(res, false)
+				case "yaml":
+					a.ReplyPrinter(res, true)
+				default:
+					printMetadataTable(list, false)
+				}
+				return nil
+			} else {
+				return err
+			}
+		},
+	}
 )
 
-func init() {
-	rootCmd.AddCommand(metaCmd)
+func printMetadataTable(list *api.ListResponseBody, wide bool) {
+	tw2 := table.NewWriter()
+	tw2.AppendHeader(table.Row{"ID", "Entity", "Schema"})
+	tw2.SetStyle(table.StyleLight)
+	rows := make([]table.Row, len(list.Records))
+	for i, p := range list.Records {
+		rows[i] = table.Row{MakeHistory(p.RecordID), safeString(p.Entity), safeString(p.Schema)}
+	}
+	tw2.AppendRows(rows)
 
-	metaCmd.AddCommand(metaAddCmd)
-	metaAddCmd.Flags().StringVarP(&schemaName, "schema", "s", "", "URN/UUID of schema")
-	metaAddCmd.Flags().StringVarP(&metaFile, "file", "f", "", "Path to file containing metdata")
-	metaAddCmd.Flags().StringVarP(&inputFormat, "format", "", "json", "Format of service description file [json, yaml]")
+	tw := table.NewWriter()
+	tw.SetStyle(table.StyleLight)
+	tw.Style().Options.SeparateColumns = false
+	tw.Style().Options.SeparateRows = false
+	tw.Style().Options.DrawBorder = false
+	tw.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, Align: text.AlignRight},
+		// {Number: 2, WidthMax: 80},
+	})
 
-	metaCmd.AddCommand(metaGetCmd)
-	metaGetCmd.Flags().StringVarP(&schemaName, "schema", "s", "", "URN/UUID of schema")
-	metaGetCmd.Flags().StringVarP(&time_at, "time-at", "t", "", "Timestamp for which to request information [now]")
+	p := []table.Row{}
+	if list.EntityID != nil {
+		p = append(p, table.Row{"Entity", *list.EntityID})
+	}
+	if list.Schema != nil {
+		p = append(p, table.Row{"Schema", *list.Schema})
+	}
+	if list.AtTime != nil {
+		p = append(p, table.Row{"At Time", safeDate(list.AtTime, false)})
+	}
+	p = append(p, table.Row{"Records", tw2.Render()})
 
-	metaCmd.AddCommand(metaRevokeCmd)
+	tw.AppendRows(p)
+	fmt.Printf("\n%s\n\n", tw.Render())
 }

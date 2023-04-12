@@ -23,6 +23,8 @@ import (
 	"fmt"
 	"net/url"
 
+	api "github.com/reinventingscience/ivcap-core-api/http/metadata"
+
 	"github.com/reinventingscience/ivcap-client/pkg/adapter"
 	log "go.uber.org/zap"
 )
@@ -33,20 +35,9 @@ func AddMetadata(ctxt context.Context, entity string, schema string, meta []byte
 	return (*adpt).Put(ctxt, path, bytes.NewReader(meta), int64(len(meta)), nil, logger)
 }
 
-func GetMetadata(ctxt context.Context, entity string, schemas string, timestamp *time.Time, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	id := url.PathEscape(entity)
+func GetMetadata(ctxt context.Context, recordID string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	id := url.PathEscape(recordID)
 	path := metadataPath(&id, adpt)
-	q := make([]string, 0)
-	if schemas != "" {
-		q = append(q, fmt.Sprintf("$schema_filter=%s", url.QueryEscape(schemas)))
-	}
-	if timestamp != nil {
-		ts := timestamp.Format(time.RFC3339)
-		q = append(q, fmt.Sprintf("$at-time=%s", url.QueryEscape(ts)))
-	}
-	if len(q) > 0 {
-		path = fmt.Sprintf("%s?%s", path, strings.Join(q, "&"))
-	}
 	return (*adpt).Get(ctxt, path, logger)
 }
 
@@ -56,10 +47,44 @@ func RevokeMetadata(ctxt context.Context, recordID string, adpt *adapter.Adapter
 	return (*adpt).Delete(ctxt, path, logger)
 }
 
+func ListMetadata(ctxt context.Context,
+	entity string,
+	schemaPrefix string,
+	timestamp *time.Time,
+	adpt *adapter.Adapter,
+	logger *log.Logger,
+) (*api.ListResponseBody, adapter.Payload, error) {
+	path := metadataPath(nil, adpt)
+	q := make([]string, 0)
+	if entity != "" {
+		q = append(q, fmt.Sprintf("entity-id=%s", url.QueryEscape(entity)))
+	}
+	if schemaPrefix != "" {
+		q = append(q, fmt.Sprintf("schema=%s", url.QueryEscape(schemaPrefix)))
+	}
+	if timestamp != nil {
+		ts := timestamp.Format(time.RFC3339)
+		q = append(q, fmt.Sprintf("at-time=%s", url.QueryEscape(ts)))
+	}
+	if len(q) > 0 {
+		path = fmt.Sprintf("%s?%s", path, strings.Join(q, "&"))
+	}
+	if pyld, err := (*adpt).Get(ctxt, path, logger); err == nil {
+		var list api.ListResponseBody
+		if err := pyld.AsType(&list); err == nil {
+			return &list, pyld, nil
+		} else {
+			return nil, nil, err
+		}
+	} else {
+		return nil, nil, err
+	}
+}
+
 /**** UTILS ****/
 
 func metadataPath(id *string, adpt *adapter.Adapter) string {
-	path := "/1/meta"
+	path := "/1/metadata"
 	if id != nil {
 		path = path + "/" + *id
 	}

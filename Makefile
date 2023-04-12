@@ -25,7 +25,9 @@ build:
 
 install: build
 	cp ivcap $(shell go env GOBIN)
-#	go install -ldflags "-X main.Version=${VERSION}" -o ivcap
+	if [[ -d $(shell brew --prefix)/share/zsh/site-functions ]]; then \
+		$(shell go env GOBIN)/ivcap completion zsh > $(shell brew --prefix)/share/zsh/site-functions/_ivcap;\
+  fi
 
 test:
 	go test -v ./...

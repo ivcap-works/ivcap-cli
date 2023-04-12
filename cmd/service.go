@@ -17,9 +17,10 @@ package cmd
 import (
 	"context"
 	"fmt"
-	api "github.com/reinventingscience/ivcap-core-api/http/service"
 	"os"
 	"strings"
+
+	api "github.com/reinventingscience/ivcap-core-api/http/service"
 
 	sdk "github.com/reinventingscience/ivcap-client/pkg"
 	a "github.com/reinventingscience/ivcap-client/pkg/adapter"
@@ -28,6 +29,27 @@ import (
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 )
+
+func init() {
+	rootCmd.AddCommand(serviceCmd)
+
+	serviceCmd.AddCommand(listServiceCmd)
+	listServiceCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
+	listServiceCmd.Flags().IntVar(&limit, "limit", -1, "max number of records to be returned")
+	listServiceCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
+
+	serviceCmd.AddCommand(readServiceCmd)
+	readServiceCmd.Flags().StringVarP(&recordID, "service-id", "i", "", "ID of service to retrieve")
+
+	serviceCmd.AddCommand(createServiceCmd)
+	createServiceCmd.Flags().StringVarP(&serviceFile, "file", "f", "", "Path to service description file")
+	createServiceCmd.Flags().StringVar(&inputFormat, "format", "", "Format of service description file [json, yaml]")
+
+	serviceCmd.AddCommand(updateServiceCmd)
+	updateServiceCmd.Flags().BoolVarP(&createAnyway, "create", "", false, "Create service record if it doesn't exist")
+	updateServiceCmd.Flags().StringVarP(&serviceFile, "file", "f", "", "Path to service description file")
+	updateServiceCmd.Flags().StringVar(&inputFormat, "format", "", "Format of service description file [json, yaml]")
+}
 
 var createAnyway bool
 var inputFormat string
@@ -77,7 +99,7 @@ var (
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := args[0]
-			req := &sdk.ReadServiceRequest{Id: recordID}
+			req := &sdk.ReadServiceRequest{Id: GetHistory(recordID)}
 
 			switch outputFormat {
 			case "json", "yaml":
@@ -133,7 +155,7 @@ through 'stdin' use '-' as the file name and also include the --format flag `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
-			serviceID := args[0]
+			serviceID := GetHistory(args[0])
 			// serviceFile := args[1]
 
 			isYaml := inputFormat == "yaml" || strings.HasSuffix(serviceFile, ".yaml") || strings.HasSuffix(serviceFile, ".yml")
@@ -161,34 +183,13 @@ through 'stdin' use '-' as the file name and also include the --format flag `,
 	}
 )
 
-func init() {
-	rootCmd.AddCommand(serviceCmd)
-
-	serviceCmd.AddCommand(listServiceCmd)
-	listServiceCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
-	listServiceCmd.Flags().IntVar(&limit, "limit", -1, "max number of records to be returned")
-	listServiceCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
-
-	serviceCmd.AddCommand(readServiceCmd)
-	readServiceCmd.Flags().StringVarP(&recordID, "service-id", "i", "", "ID of service to retrieve")
-
-	serviceCmd.AddCommand(createServiceCmd)
-	createServiceCmd.Flags().StringVarP(&serviceFile, "file", "f", "", "Path to service description file")
-	createServiceCmd.Flags().StringVar(&inputFormat, "format", "", "Format of service description file [json, yaml]")
-
-	serviceCmd.AddCommand(updateServiceCmd)
-	updateServiceCmd.Flags().BoolVarP(&createAnyway, "create", "", false, "Create service record if it doesn't exist")
-	updateServiceCmd.Flags().StringVarP(&serviceFile, "file", "f", "", "Path to service description file")
-	updateServiceCmd.Flags().StringVar(&inputFormat, "format", "", "Format of service description file [json, yaml]")
-}
-
 func printServiceTable(list *api.ListResponseBody, wide bool) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"ID", "Name", "Provider"})
 	rows := make([]table.Row, len(list.Services))
 	for i, o := range list.Services {
-		rows[i] = table.Row{*o.ID, safeTruncString(o.Name), safeString(o.Provider.ID)}
+		rows[i] = table.Row{MakeHistory(o.ID), safeTruncString(o.Name), safeString(o.Provider.ID)}
 	}
 	t.AppendRows(rows)
 	t.Render()
@@ -215,7 +216,8 @@ func printService(service *api.ReadResponseBody, wide bool) {
 	tw2.AppendHeader(table.Row{"Name", "Description", "Type", "Default"})
 	rows := make([]table.Row, len(service.Parameters))
 	for i, p := range service.Parameters {
-		rows[i] = table.Row{safeString(p.Name), safeString(p.Description), safeString(p.Type), safeString(p.Default)}
+		ptype := getPType(p)
+		rows[i] = table.Row{safeString(p.Name), safeString(p.Description), ptype, safeString(p.Default)}
 	}
 	tw2.AppendRows(rows)
 
@@ -238,4 +240,33 @@ func printService(service *api.ReadResponseBody, wide bool) {
 		{"Parameters", tw2.Render()},
 	})
 	fmt.Printf("\n%s\n\n", tw.Render())
+}
+
+func getPType(p *api.ParameterDefTResponseBody) string {
+	if p == nil {
+		return "???"
+	}
+	if p.Options == nil {
+		// normal type
+		return *p.Type
+	}
+	oa := make([]string, len(p.Options))
+	for i, el := range p.Options {
+		oa[i] = *el.Value
+	}
+	return fmt.Sprintf("[%s]", strings.Join(oa, ","))
+}
+
+func GetServiceNameForId(serviceID *string) string {
+	if serviceID == nil {
+		return "???"
+	}
+	req := &sdk.ReadServiceRequest{
+		Id: *serviceID,
+	}
+	if resp, err := sdk.ReadService(context.Background(), req, CreateAdapter(true), logger); err == nil {
+		return *resp.Name
+	} else {
+		return *serviceID
+	}
 }

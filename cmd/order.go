@@ -15,12 +15,13 @@
 package cmd
 
 import (
-	api "github.com/reinventingscience/ivcap-core-api/http/order"
-
 	"context"
 	"fmt"
 	"os"
 	"strings"
+
+	meta "github.com/reinventingscience/ivcap-core-api/http/metadata"
+	api "github.com/reinventingscience/ivcap-core-api/http/order"
 
 	sdk "github.com/reinventingscience/ivcap-client/pkg"
 	a "github.com/reinventingscience/ivcap-client/pkg/adapter"
@@ -29,6 +30,27 @@ import (
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 )
+
+func init() {
+	rootCmd.AddCommand(orderCmd)
+
+	// LIST
+	orderCmd.AddCommand(listOrderCmd)
+	listOrderCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
+	listOrderCmd.Flags().IntVar(&limit, "limit", -1, "max number of records to be returned")
+	listOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
+
+	// READ
+	orderCmd.AddCommand(readOrderCmd)
+	readOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
+
+	// CREATE
+	orderCmd.AddCommand(createOrderCmd)
+	createOrderCmd.Flags().StringVarP(&name, "name", "n", "", "Optional name/title attached to order")
+	createOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
+	createOrderCmd.Flags().StringVar(&accountID, "account-id", "", "override the account ID to use for the order")
+	createOrderCmd.Flags().BoolVar(&skipParameterCheck, "skip-parameter-check", false, "fskip checking order paramters first ONLY USE FOR TESTING")
+}
 
 var (
 	name               string
@@ -78,19 +100,24 @@ var (
 		Short:   "Fetch details about a single order",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			recordID := args[0]
-			req := &sdk.ReadOrderRequest{recordID}
+			recordID := GetHistory(args[0])
+			req := &sdk.ReadOrderRequest{Id: recordID}
+			adapter := CreateAdapter(true)
 
 			switch outputFormat {
 			case "json", "yaml":
-				if res, err := sdk.ReadOrderRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
+				if res, err := sdk.ReadOrderRaw(context.Background(), req, adapter, logger); err == nil {
 					a.ReplyPrinter(res, outputFormat == "yaml")
 				} else {
 					return err
 				}
 			default:
-				if order, err := sdk.ReadOrder(context.Background(), req, CreateAdapter(true), logger); err == nil {
-					printOrder(order, false)
+				if order, err := sdk.ReadOrder(context.Background(), req, adapter, logger); err == nil {
+					if meta, _, err := sdk.ListMetadata(context.Background(), recordID, "", nil, adapter, logger); err == nil {
+						printOrder(order, meta, false)
+					} else {
+						return err
+					}
 				} else {
 					return err
 				}
@@ -174,38 +201,29 @@ An example:
 	}
 )
 
-func init() {
-	rootCmd.AddCommand(orderCmd)
-
-	orderCmd.AddCommand(listOrderCmd)
-	listOrderCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
-	listOrderCmd.Flags().IntVar(&limit, "limit", -1, "max number of records to be returned")
-	listOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
-
-	orderCmd.AddCommand(readOrderCmd)
-	readOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
-
-	orderCmd.AddCommand(createOrderCmd)
-	createOrderCmd.Flags().StringVarP(&name, "name", "n", "", "Optional name/title attached to order")
-	createOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
-	createOrderCmd.Flags().StringVar(&accountID, "account-id", "", "override the account ID to use for the order")
-	createOrderCmd.Flags().BoolVar(&skipParameterCheck, "skip-parameter-check", false, "fskip checking order paramters first ONLY USE FOR TESTING")
-}
-
 func printOrdersTable(list *api.ListResponseBody, wide bool) {
+	srv2name := make(map[string]string)
 	rows := make([]table.Row, len(list.Orders))
 	for i, o := range list.Orders {
-		rows[i] = table.Row{*o.ID, safeString(o.Name), safeString(o.Status), safeDate(o.OrderedAt), safeString(o.ServiceID)}
+		var serviceName string
+		if o.ServiceID != nil {
+			var ok bool
+			if serviceName, ok = srv2name[*o.ServiceID]; !ok {
+				serviceName = GetServiceNameForId(o.ServiceID)
+				srv2name[*o.ServiceID] = serviceName
+			}
+		}
+		rows[i] = table.Row{MakeHistory(o.ID), safeString(o.Name), safeString(o.Status),
+			safeDate(o.OrderedAt, true), serviceName}
 	}
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"ID", "Name", "Status", "Order At", "Service ID"})
 	t.AppendRows(rows)
 	t.Render()
-
 }
 
-func printOrder(order *api.ReadResponseBody, wide bool) {
+func printOrder(order *api.ReadResponseBody, meta *meta.ListResponseBody, wide bool) {
 	tw2 := table.NewWriter()
 	tw2.SetStyle(table.StyleLight)
 	tw2.SetColumnConfigs([]table.ColumnConfig{{Number: 1, Align: text.AlignRight}})
@@ -214,7 +232,7 @@ func printOrder(order *api.ReadResponseBody, wide bool) {
 	tw2.Style().Options.DrawBorder = true
 	rows := make([]table.Row, len(order.Parameters))
 	for i, p := range order.Parameters {
-		rows[i] = table.Row{safeString(p.Name) + " =", safeString(p.Value)}
+		rows[i] = table.Row{safeString(p.Name) + " =", MakeMaybeHistory(p.Value)}
 	}
 	tw2.AppendRows(rows)
 
@@ -222,7 +240,7 @@ func printOrder(order *api.ReadResponseBody, wide bool) {
 	tw3.SetStyle(table.StyleLight)
 	rows2 := make([]table.Row, len(order.Products))
 	for i, p := range order.Products {
-		rows2[i] = table.Row{safeString(p.ID), safeString(p.Name), safeString(p.MimeType)}
+		rows2[i] = table.Row{MakeHistory(p.ID), safeString(p.Name), safeString(p.MimeType)}
 	}
 	tw3.AppendRows(rows2)
 
@@ -236,15 +254,26 @@ func printOrder(order *api.ReadResponseBody, wide bool) {
 		// {Number: 2, WidthMax: 80},
 	})
 
+	tw4 := table.NewWriter()
+	tw4.SetStyle(table.StyleLight)
+	if meta != nil {
+		rows2 := make([]table.Row, len(meta.Records))
+		for i, p := range meta.Records {
+			rows2[i] = table.Row{MakeHistory(p.RecordID), safeString(p.Schema)}
+		}
+		tw4.AppendRows(rows2)
+	}
+
 	tw.AppendRows([]table.Row{
 		{"ID", *order.ID},
 		{"Name", safeString(order.Name)},
 		{"Status", safeString(order.Status)},
-		{"Ordered at", safeDate(order.OrderedAt)},
-		{"Service ID", safeString(order.Service.ID)},
+		{"Ordered", safeDate(order.OrderedAt, false)},
+		{"Service", fmt.Sprintf("%s (%s)", GetServiceNameForId(order.Service.ID), MakeHistory(order.Service.ID))},
 		{"Account ID", safeString(order.Account.ID)},
 		{"Parameters", tw2.Render()},
 		{"Products", tw3.Render()},
+		{"Metadata", tw4.Render()},
 	})
 	fmt.Printf("\n%s\n\n", tw.Render())
 }
