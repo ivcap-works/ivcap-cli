@@ -24,10 +24,33 @@ import (
 	"github.com/spf13/cobra"
 )
 
+func init() {
+	rootCmd.AddCommand(configCmd)
+
+	// LIST
+	configCmd.AddCommand(listContextCmd)
+
+	// CREATE
+	configCmd.AddCommand(createContextCmd)
+	// We don't really use them right, so better not confuse anyone
+	// createContextCmd.Flags().StringVar(&accountID, "account-id", "", "The account ID to use. Will most likely be set on login")
+	// createContextCmd.Flags().StringVar(&providerID, "provider-id", "", "The account ID to use. Will most likely be set on login")
+	createContextCmd.Flags().StringVar(&hostName, "host-name", "", "optional host name if accessing API through SSH tunnel")
+	createContextCmd.Flags().IntVar(&ctxtApiVersion, "version", 1, "define API version")
+
+	// SET/USE
+	configCmd.AddCommand(useContextCmd)
+
+	// READ/GET
+	configCmd.AddCommand(getContextCmd)
+	getContextCmd.Flags().BoolVar(&refreshToken, "refresh-token", false, "if set, refresh access token if expired")
+}
+
 var (
 	ctxtName       string
 	ctxtApiVersion int
 	hostName       string
+	refreshToken   bool
 )
 
 // configCmd represents the config command
@@ -124,7 +147,7 @@ var getContextCmd = &cobra.Command{
 		if param == "name" {
 			fmt.Println(context.Name)
 		} else if param == "access-token" {
-			if IsAuthorised() {
+			if IsAuthorised() || refreshToken {
 				fmt.Println(getAccessToken(true))
 			} else {
 				at := "NOT AUTHORISED\n"
@@ -166,21 +189,4 @@ var getContextCmd = &cobra.Command{
 			cobra.CheckErr(fmt.Sprintf("unknown context parameter '%s'", param))
 		}
 	},
-}
-
-func init() {
-	rootCmd.AddCommand(configCmd)
-
-	configCmd.AddCommand(listContextCmd)
-
-	configCmd.AddCommand(createContextCmd)
-	// We don't really use them right, so better not confuse anyone
-	// createContextCmd.Flags().StringVar(&accountID, "account-id", "", "The account ID to use. Will most likely be set on login")
-	// createContextCmd.Flags().StringVar(&providerID, "provider-id", "", "The account ID to use. Will most likely be set on login")
-	createContextCmd.Flags().StringVar(&hostName, "host-name", "", "optional host name if accessing API through SSH tunnel")
-	createContextCmd.Flags().IntVar(&ctxtApiVersion, "version", 1, "define API version")
-
-	configCmd.AddCommand(useContextCmd)
-
-	configCmd.AddCommand(getContextCmd)
 }

@@ -24,6 +24,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
@@ -43,6 +44,7 @@ const MAX_NAME_COL_LEN = 30
 // Names for config dir and file - stored in the os.UserConfigDir() directory
 const CONFIG_FILE_DIR = "ivcap-cli"
 const CONFIG_FILE_NAME = "config.yaml"
+const HISTORY_FILE_NAME = "history.yaml"
 
 var ACCESS_TOKEN_ENV = ENV_PREFIX + "_ACCESS_TOKEN"
 
@@ -106,8 +108,10 @@ API exposed by a specific IVCAP deployment.`,
 func Execute(version string) {
 	rootCmd.Version = version
 	rootCmd.SilenceUsage = true
-	err := rootCmd.Execute()
-	if err != nil {
+	if err := rootCmd.Execute(); err != nil {
+		os.Exit(1)
+	}
+	if err := saveHistory(); err != nil {
 		os.Exit(1)
 	}
 }
@@ -296,11 +300,114 @@ func GetConfigDir(createIfNoExist bool) (configDir string) {
 	return
 }
 
-func GetConfigFilePath() (configFile string) {
-	configDir := GetConfigDir(true) // Create the configuration directory if it doesn't exist
-	configFile = configDir + string(os.PathSeparator) + CONFIG_FILE_NAME
+func GetConfigFilePath() (path string) {
+	path = makeConfigFilePath(CONFIG_FILE_NAME)
 	return
 }
+
+func makeConfigFilePath(fileName string) (path string) {
+	configDir := GetConfigDir(true) // Create the configuration directory if it doesn't exist
+	path = configDir + string(os.PathSeparator) + fileName
+	return
+}
+
+//****** HISTORY ****
+
+var history map[string]string
+
+func MakeHistory(urn *string) string {
+	if urn == nil {
+		return "???"
+	}
+	if history == nil {
+		history = make(map[string]string)
+	}
+	token := fmt.Sprintf("@%d", len(history)+1)
+	history[token] = *urn
+	return token
+}
+
+// Check if argument is an IVCAP urn and if it
+// is, turn it into a history.
+func MakeMaybeHistory(sp *string) string {
+	if sp == nil {
+		return "???"
+	}
+	// HACK: Should go away in future IVCAP Core version
+	if strings.HasPrefix(*sp, "http://artifact.local/") {
+		u := *sp
+		u = u[len("http://artifact.local/"):]
+		sp = &u
+	}
+	// We assume, all IVCAP urns follow the pattern 'urn:ivcap:_service_:...
+	if !strings.HasPrefix(*sp, "urn:ivcap:") {
+		// no it's not
+		return *sp
+	}
+
+	if history == nil {
+		history = make(map[string]string)
+	}
+	token := fmt.Sprintf("@%d", len(history)+1)
+	history[token] = *sp
+	return fmt.Sprintf("%s (%s)", token, *sp)
+}
+
+func GetHistory(token string) (value string) {
+	if !strings.HasPrefix(token, "@") {
+		return token
+	}
+	var vp *string
+	path := getHistoryFilePath()
+	var data []byte
+	data, err := ioutil.ReadFile(path)
+	var hm map[string]string
+	if err == nil {
+		if err := yaml.Unmarshal(data, &hm); err != nil {
+			cobra.CheckErr(fmt.Sprintf("problems parsing history file %s - %v", path, err))
+			return
+		}
+		if val, ok := hm[token]; ok {
+			vp = &val
+		}
+	} else {
+		// fail "normally" if file doesn't exist
+		if _, ok := err.(*os.PathError); !ok {
+			cobra.CheckErr("Error reading history file. Use full names instead.")
+			return
+		}
+	}
+	if vp == nil {
+		cobra.CheckErr(fmt.Sprintf("Unknown history '%s'.", token))
+		return
+	}
+	return *vp
+}
+
+func saveHistory() (err error) {
+	if history == nil {
+		return
+	}
+
+	b, err := yaml.Marshal(history)
+	if err != nil {
+		cobra.CheckErr(fmt.Sprintf("cannot marshall history - %v", err))
+		return
+	}
+
+	path := makeConfigFilePath(HISTORY_FILE_NAME)
+
+	if err = ioutil.WriteFile(path, b, fs.FileMode(0600)); err != nil {
+		cobra.CheckErr(fmt.Sprintf("cannot write history to file %s - %v", path, err))
+	}
+	return
+}
+
+func getHistoryFilePath() (path string) {
+	return makeConfigFilePath(HISTORY_FILE_NAME)
+}
+
+//****** ADAPTER ****
 
 func NewAdapter(
 	url string,
@@ -336,14 +443,19 @@ func safeString(s *string) string {
 	}
 }
 
-func safeDate(s *string) string {
+func safeDate(s *string, humanizeOnly bool) string {
 	if s != nil {
 		t, err := time.Parse(time.RFC3339, *s)
 		if err != nil {
 			// fmt.Println("Error while parsing date :", err)
 			return *s
 		}
-		return t.Local().Format(time.RFC822)
+		h := humanize.Time(t)
+		if humanizeOnly {
+			return h
+		} else {
+			return fmt.Sprintf("%s (%s)", h, t.Local().Format(time.RFC822))
+		}
 	} else {
 		return "???"
 	}
@@ -367,6 +479,17 @@ func safeNumber(n *int64) string {
 			return "unknown"
 		}
 		return strconv.Itoa(int(*n))
+	} else {
+		return "???"
+	}
+}
+
+func safeBytes(n *int64) string {
+	if n != nil {
+		if *n <= 0 {
+			return "unknown"
+		}
+		return humanize.Bytes(uint64(*n))
 	} else {
 		return "???"
 	}

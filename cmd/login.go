@@ -32,6 +32,11 @@ import (
 	yaml "gopkg.in/yaml.v3"
 )
 
+func init() {
+	rootCmd.AddCommand(loginCmd)
+	rootCmd.AddCommand(logoutCmd)
+}
+
 var loginCmd = &cobra.Command{
 	Use:   "login",
 	Short: "Authenticate with a specific deployment/context",
@@ -407,9 +412,4 @@ func login(_ *cobra.Command, args []string) {
 	SetContext(ctxt, true)
 
 	fmt.Printf("Success: You are authorised.\n")
-}
-
-func init() {
-	rootCmd.AddCommand(loginCmd)
-	rootCmd.AddCommand(logoutCmd)
 }
