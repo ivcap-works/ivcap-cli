@@ -55,8 +55,7 @@ Use "ivcap [command] --help" for more information about a command.
 With the following command we are creating a context named `cip-2` for the IVCAP deployment at `https://api2.green-cirrus.com`
 
 ```
-
-% ivcap context create cip-2 <https://api2.green-cirrus.com>
+% ivcap context create cip-2 https://api2.green-cirrus.com
 Context 'cip-2' created.
 ```
 
