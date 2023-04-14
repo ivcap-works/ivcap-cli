@@ -12,12 +12,6 @@ else
 	GOPRIVATE_OS_ENV_CMD := export GOPRIVATE="github.com/reinventingscience/ivcap-core-api" &&
 endif
 
-ifeq ($(GIT_TAG),)
-	VERSION := "${GIT_COMMIT}${BUILD_DATE}"
-else
-	VERSION := "$(GIT_TAG)|${GIT_COMMIT}|${BUILD_DATE}"
-endif
-
 MOVIE_SIZE=1280x720 # 640x360
 MOVIE_NAME=ivcap-cli.mp4
 
@@ -41,7 +35,7 @@ release: addlicense
 	# export GITHUB_TOKEN=$(cat .github-release-token)
 	# or eval $(cat .github-release-token)
 	# brew install goreleaser
-	goreleaser release --rm-dist
+	goreleaser release --clean
 
 addlicense:
 	# go install github.com/google/addlicense@v1.0.0

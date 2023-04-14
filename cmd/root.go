@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/fs"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -38,6 +39,8 @@ import (
 const ENV_PREFIX = "IVCAP"
 const URN_PREFIX = "ivcap"
 
+const RELEASE_CHECK_URL = "https://github.com/reinventingscience/ivcap-cli/releases/latest"
+
 // Max characters to limit name to
 const MAX_NAME_COL_LEN = 30
 
@@ -45,6 +48,8 @@ const MAX_NAME_COL_LEN = 30
 const CONFIG_FILE_DIR = "ivcap-cli"
 const CONFIG_FILE_NAME = "config.yaml"
 const HISTORY_FILE_NAME = "history.yaml"
+const VERSION_CHECK_FILE_NAME = "vcheck.txt"
+const CHECK_VERSION_INTERVAL = time.Duration(24 * time.Hour)
 
 var ACCESS_TOKEN_ENV = ENV_PREFIX + "_ACCESS_TOKEN"
 
@@ -146,6 +151,8 @@ func initConfig() {
 	}
 
 	SetLogger(logger)
+	// before proceeding, let's check for updates
+	checkForUpdates(rootCmd.Version)
 }
 
 func CreateAdapter(requiresAuth bool) (adapter *adpt.Adapter) {
@@ -503,4 +510,50 @@ func payloadFromFile(fileName string, inputFormat string) (pyld adpt.Payload, er
 		pyld, err = adpt.LoadPayloadFromStdin(isYaml)
 	}
 	return
+}
+
+//***** CHECK FOR NEWER VERSIONS
+
+func checkForUpdates(currentVersion string) {
+	path := makeConfigFilePath(VERSION_CHECK_FILE_NAME)
+	if data, err := ioutil.ReadFile(path); err == nil {
+		if lastCheck, err := time.Parse(time.RFC3339, string(data)); err == nil {
+			d := time.Since(lastCheck)
+			// fmt.Printf(".... since: %d < %d - %s\n", d, CHECK_VERSION_INTERVAL, path)
+			if d < CHECK_VERSION_INTERVAL {
+				// too soon
+				return
+			}
+		} else {
+			logger.Debug("cannot parse data in version check file", log.Error(err))
+		}
+	}
+
+	// check latest versionpath string
+	client := &http.Client{
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
+	}
+	if resp, err := client.Head(RELEASE_CHECK_URL); err != nil {
+		logger.Debug("checkForUpdates: while checking github", log.Error(err))
+	} else {
+		if loc, err := resp.Location(); err != nil {
+			logger.Debug("checkForUpdates: while getting location", log.Error(err))
+		} else {
+			p := strings.Split(loc.Path, "/")
+			latest := strings.TrimPrefix(p[len(p)-1], "v")
+			current := strings.TrimPrefix(strings.Split(currentVersion, "|")[0], "v")
+			if current != latest {
+				fmt.Printf("\n>>>   A newer version 'v%s' is available. Please consider upgrading from 'v%s'", latest, current)
+				fmt.Printf("\n>>>     It is available at %s", RELEASE_CHECK_URL)
+				fmt.Printf("\n>>>     Or via 'brew upgrade ivcap'\n\n")
+			}
+		}
+	}
+
+	ts := time.Now().Format(time.RFC3339)
+	if err := ioutil.WriteFile(path, []byte(ts), fs.FileMode(0600)); err != nil {
+		logger.Debug("cannot write version check timestamp", log.Error(err))
+	}
 }

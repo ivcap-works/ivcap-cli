@@ -29,10 +29,20 @@ import (
 	log "go.uber.org/zap"
 )
 
-func AddMetadata(ctxt context.Context, entity string, schema string, meta []byte, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	id := fmt.Sprintf("%s/%s", url.PathEscape(entity), url.PathEscape(schema))
-	path := metadataPath(&id, adpt)
-	return (*adpt).Put(ctxt, path, bytes.NewReader(meta), int64(len(meta)), nil, logger)
+func AddUpdateMetadata(ctxt context.Context, isAdd bool, entity string, schema string, meta []byte, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	q := []string{}
+	if entity != "" {
+		q = append(q, fmt.Sprintf("entity-id=%s", url.QueryEscape(entity)))
+	}
+	if schema != "" {
+		q = append(q, fmt.Sprintf("schema=%s", url.QueryEscape(schema)))
+	}
+	path := fmt.Sprintf("%s?%s", metadataPath(nil, adpt), strings.Join(q, "&"))
+	if isAdd {
+		return (*adpt).Post(ctxt, path, bytes.NewReader(meta), int64(len(meta)), nil, logger)
+	} else {
+		return (*adpt).Put(ctxt, path, bytes.NewReader(meta), int64(len(meta)), nil, logger)
+	}
 }
 
 func GetMetadata(ctxt context.Context, recordID string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
