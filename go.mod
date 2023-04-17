@@ -1,4 +1,4 @@
-module github.com/reinventingscience/ivcap-client
+module github.com/reinventingscience/ivcap-cli
 
 go 1.19
 
