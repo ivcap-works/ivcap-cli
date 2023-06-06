@@ -64,8 +64,9 @@ var (
 	}
 
 	listOrderCmd = &cobra.Command{
-		Use:   "list",
-		Short: "List existing orders",
+		Use:     "list",
+		Aliases: []string{"l"},
+		Short:   "List existing orders",
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			req := &sdk.ListOrderRequest{Offset: 0, Limit: 50}
@@ -96,7 +97,7 @@ var (
 
 	readOrderCmd = &cobra.Command{
 		Use:     "get [flags] order-id",
-		Aliases: []string{"read"},
+		Aliases: []string{"read", "r", "g"},
 		Short:   "Fetch details about a single order",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -127,8 +128,9 @@ var (
 	}
 
 	createOrderCmd = &cobra.Command{
-		Use:   "create [flags] service-id [... paramName=value]",
-		Short: "Create a new order",
+		Use:     "create [flags] service-id [... paramName=value]",
+		Aliases: []string{"c"},
+		Short:   "Create a new order",
 		Long: `Create a new order for a service identified by it's id and add any 
 potential paramters using the format 'paramName=value'. Please not that there
 cannot be any spaces between the parameter name, the '=' and the value. If the value
@@ -136,13 +138,13 @@ contains spaces, put it into quotes which will not be removed by your shell.
 
 An example:
 
-  ivcap order create --name "test order" cayp:service:d939b74d-0070-59a4-a832-36c5c07e657d msg="Hello World"
+  ivcap order create --name "test order" ivcap:service:d939b74d-0070-59a4-a832-36c5c07e657d msg="Hello World"
 	
 `,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
-			serviceId := args[0]
+			serviceId := GetHistory(args[0])
 
 			var paramSet = map[string]bool{}
 			if !skipParameterCheck {

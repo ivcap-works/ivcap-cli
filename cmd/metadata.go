@@ -94,9 +94,9 @@ var (
 		Long:    `.....`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			recordID := args[0]
+			recordID := GetHistory(args[0])
 			ctxt := context.Background()
-			if res, err := sdk.GetMetadata(ctxt, GetHistory(recordID), CreateAdapter(true), logger); err == nil {
+			if res, err := sdk.GetMetadata(ctxt, recordID, CreateAdapter(true), logger); err == nil {
 				a.ReplyPrinter(res, outputFormat == "yaml")
 				return nil
 			} else {
@@ -112,7 +112,7 @@ var (
 		Long:    `.....`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			recordID := args[0]
+			recordID := GetHistory(args[0])
 			ctxt := context.Background()
 			_, err = sdk.RevokeMetadata(ctxt, recordID, CreateAdapter(true), logger)
 			return
