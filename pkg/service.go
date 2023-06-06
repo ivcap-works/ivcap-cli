@@ -25,7 +25,7 @@ import (
 
 	api "github.com/reinventingscience/ivcap-core-api/http/service"
 
-	"github.com/reinventingscience/ivcap-client/pkg/adapter"
+	"github.com/reinventingscience/ivcap-cli/pkg/adapter"
 
 	log "go.uber.org/zap"
 )
