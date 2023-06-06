@@ -74,7 +74,7 @@ var (
 			if limit > 0 {
 				req.Limit = limit
 			}
-			if res, err := sdk.ListServicesRaw(context.Background(), req, CreateAdapter(false), logger); err == nil {
+			if res, err := sdk.ListServicesRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
 				switch outputFormat {
 				case "json":
 					a.ReplyPrinter(res, false)
@@ -98,7 +98,7 @@ var (
 		Short:   "Fetch details about a single service",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			recordID := args[0]
+			recordID := GetHistory(args[0])
 			req := &sdk.ReadServiceRequest{Id: GetHistory(recordID)}
 
 			switch outputFormat {
