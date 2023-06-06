@@ -30,7 +30,7 @@ import (
 	"github.com/k0kubun/go-ansi"
 	"github.com/schollz/progressbar/v3"
 
-	"github.com/reinventingscience/ivcap-client/pkg/adapter"
+	"github.com/reinventingscience/ivcap-cli/pkg/adapter"
 
 	log "go.uber.org/zap"
 )

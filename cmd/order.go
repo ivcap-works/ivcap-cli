@@ -23,8 +23,8 @@ import (
 	meta "github.com/reinventingscience/ivcap-core-api/http/metadata"
 	api "github.com/reinventingscience/ivcap-core-api/http/order"
 
-	sdk "github.com/reinventingscience/ivcap-client/pkg"
-	a "github.com/reinventingscience/ivcap-client/pkg/adapter"
+	sdk "github.com/reinventingscience/ivcap-cli/pkg"
+	a "github.com/reinventingscience/ivcap-cli/pkg/adapter"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
