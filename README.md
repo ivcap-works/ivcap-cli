@@ -6,12 +6,12 @@ __IVCAP__ has an extensive REST API which is usually called directly from applic
 
 ## Install
 
-There are [ready to use binaries](https://github.com/reinventingscience/ivcap-cli/releases/latest) for some architectures available at the repo's [release](https://github.com/reinventingscience/ivcap-cli/releases) tab.
+There are [ready to use binaries](https://github.com/ivcap-works/ivcap-cli/releases/latest) for some architectures available at the repo's [release](https://github.com/ivcap-works/ivcap-cli/releases) tab.
 
 If you use [homebrew](https://brew.sh/), you can install it by:
 
 ```
-brew tap reinventingscience/resci
+brew tap brew tap ivcap-works/ivcap
 brew install ivcap
 ```
 
