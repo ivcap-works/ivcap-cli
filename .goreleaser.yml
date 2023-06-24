@@ -23,13 +23,22 @@ builds:
 #       {{- else }}{{ .Arch }}{{ end }}
 brews:
   - name: ivcap
-    homepage: "https://github.com/reinventingscience/ivcap-cli"
+    homepage: "https://github.com/ivcap-works/ivcap-cli"
     tap:
-      owner: reinventingscience
-      name: homebrew-resci
+      owner: ivcap-works
+      name: homebrew-ivcap
     commit_author:
       name: maxott
       email: max.ott@data61.csiro.au
+
+# - name: ivcap
+#   homepage: "https://github.com/reinventingscience/ivcap-cli"
+#   tap:
+#     owner: reinventingscience
+#     name: homebrew-resci
+#   commit_author:
+#     name: maxott
+#     email: max.ott@data61.csiro.au
 
 checksum:
   name_template: "checksums.txt"
