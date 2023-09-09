@@ -179,7 +179,7 @@ An example:
 			req := &api.CreateRequestBody{
 				ServiceID:  serviceId,
 				Parameters: params,
-				AccountID:  accountID, // do we really need to account ID.
+				AccountID:  &accountID, // do we really need to account ID.
 			}
 			if name != "" {
 				req.Name = &name

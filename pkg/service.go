@@ -82,7 +82,7 @@ func ListServicesRaw(ctxt context.Context, cmd *ListServiceRequest, adpt *adapte
 //		Id   string `json:"id"`
 //		Name string `json:"name"`
 //	}
-func CreateServiceRaw(ctxt context.Context, cmd *api.CreateRequestBody, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+func CreateServiceRaw(ctxt context.Context, cmd *api.CreateServiceRequestBody, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	body, err := json.MarshalIndent(*cmd, "", "  ")
 	if err != nil {
 		logger.Error("error marshalling body.", log.Error(err))

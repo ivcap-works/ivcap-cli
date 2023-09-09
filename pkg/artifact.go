@@ -333,14 +333,14 @@ func AddArtifactMeta(
 	ctxt context.Context,
 	artifactID string,
 	schemaName string,
-	schema io.Reader,
+	meta io.Reader,
 	size int64,
 	adpt *adapter.Adapter,
 	logger *log.Logger,
 ) (adapter.Payload, error) {
 	path := artifactPath(&artifactID, adpt)
 	path = fmt.Sprintf("%s/.metadata/%s", path, url.PathEscape(schemaName))
-	return (*adpt).Put(ctxt, path, schema, size, nil, logger)
+	return (*adpt).Put(ctxt, path, meta, size, nil, logger)
 }
 
 /**** UTILS ****/

@@ -2,7 +2,7 @@ module github.com/reinventingscience/ivcap-cli
 
 go 1.19
 
-//replace github.com/reinventingscience/ivcap-core-api v0.20.0 => ../ivcap-core/api_gateway/api
+replace github.com/reinventingscience/ivcap-core-api v0.27.0 => ../ivcap-core/api_gateway/api
 
 require (
 	github.com/MicahParks/keyfunc v1.5.3
@@ -11,7 +11,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/jedib0t/go-pretty/v6 v6.3.1
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
-	github.com/reinventingscience/ivcap-core-api v0.20.0
+	github.com/reinventingscience/ivcap-core-api v0.27.0
 	github.com/schollz/progressbar/v3 v3.9.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.6.1

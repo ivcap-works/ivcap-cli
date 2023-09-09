@@ -39,7 +39,7 @@ import (
 const ENV_PREFIX = "IVCAP"
 const URN_PREFIX = "ivcap"
 
-const RELEASE_CHECK_URL = "https://github.com/reinventingscience/ivcap-cli/releases/latest"
+const RELEASE_CHECK_URL = "https://github.com/ivcap-works/ivcap-cli/releases/latest"
 
 // Max characters to limit name to
 const MAX_NAME_COL_LEN = 30

@@ -17,6 +17,7 @@ package cmd
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -74,17 +75,17 @@ func init() {
 	uploadArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact")
 	uploadArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
 
-	// COLLECTION
-	// artifactCmd.AddCommand(addArtifactToCollectionCmd)
-	// artifactCmd.AddCommand(removeArtifactFromCollectionCmd)
-
 	// ADD METADATA
 	artifactCmd.AddCommand(addArtifactMetadataCmd)
 	addArtifactMetadataCmd.Flags().StringVarP(&metaFile, "file", "f", "", "Path to file containing metadata")
 	artifactCmd.AddCommand(removeArtifactMetadataCmd)
+
+	// COLLECTION
+	artifactCmd.AddCommand(addArtifactToCollectionCmd)
+	// artifactCmd.AddCommand(removeArtifactFromCollectionCmd)
 }
 
-const DEF_CHUNK_SIZE = 1000000 // -1 ... no chunking
+const DEF_CHUNK_SIZE = 10000000 // -1 ... no chunking
 
 type ArtifactPostResponse struct {
 	// Artifact ID
@@ -97,6 +98,13 @@ type ArtifactPostResponse struct {
 	MimeType string `form:"mime-type,omitempty" json:"mime-type,omitempty" xml:"mime-type,omitempty"`
 	// Size of data
 	Size int64 `form:"size,omitempty" json:"size,omitempty" xml:"size,omitempty"`
+}
+
+const ArtifactInCollectionSchema = "urn:common:schema:in_collection.1"
+
+type ArtifactInCollection struct {
+	ArtifactID   string `json:"artifact"`
+	CollectionID string `json:"collection"`
 }
 
 var (
@@ -279,25 +287,40 @@ var (
 
 	// NOT SURE HOW WE BEST HANDLE THAT
 	//
-	// addArtifactToCollectionCmd = &cobra.Command{
-	// 	Use:     "add-to-collection artifactID collectionName",
-	// 	Short:   "Add artifact to a collection",
-	// 	Aliases: []string{"add-collection"},
-	// 	Args:    cobra.ExactArgs(2),
+	addArtifactToCollectionCmd = &cobra.Command{
+		Use:     "add-to-collection artifactID collectionName",
+		Short:   "Add artifact to a collection",
+		Aliases: []string{"add-collection"},
+		Args:    cobra.ExactArgs(2),
 
-	// 	Run: func(cmd *cobra.Command, args []string) {
-	// 		artifactID := args[0]
-	// 		collectionName := args[1]
-	// 		logger.Debug("add collection", log.String("artifactID", artifactID), log.String("collectionName", collectionName))
-	// 		adapter := CreateAdapter(true)
-	// 		ctxt := context.Background()
-	// 		_, err := sdk.AddArtifactToCollection(ctxt, artifactID, collectionName, adapter, logger)
-	// 		if err != nil {
-	// 			cobra.CompErrorln(fmt.Sprintf("while adding artifact '%s' to collection(s) '%s' - %v", artifactID, collectionName, err))
-	// 			return
-	// 		}
-	// 	},
-	// }
+		Run: func(cmd *cobra.Command, args []string) {
+			artifactID := args[0]
+			collectionID := args[1]
+			logger.Debug("add collection", log.String("artifactID", artifactID), log.String("collectionID", collectionID))
+			meta := ArtifactInCollection{ArtifactID: artifactID, CollectionID: collectionID}
+			data, err := json.Marshal(meta)
+			if err != nil {
+				cobra.CompErrorln(fmt.Sprintf("while serialise metadata - %v", err))
+
+			}
+			adapter := CreateAdapter(true)
+			ctxt := context.Background()
+			if res, err := sdk.AddUpdateMetadata(ctxt, true, collectionID, ArtifactInCollectionSchema, data, adapter, logger); err == nil {
+				if silent {
+					if m, err := res.AsObject(); err == nil {
+						fmt.Printf("%s\n", m["record-id"])
+					} else {
+						cobra.CheckErr(fmt.Sprintf("Parsing reply: %s", res.AsBytes()))
+					}
+				} else {
+					a.ReplyPrinter(res, outputFormat == "yaml")
+				}
+			} else {
+				cobra.CompErrorln(fmt.Sprintf("while adding metadata '%s' to artifact '%s' - %v", ArtifactInCollectionSchema, artifactID, err))
+				return
+			}
+		},
+	}
 
 	// removeArtifactFromCollectionCmd = &cobra.Command{
 	// 	Use:     "remove-from-collection artifactID collectionName",

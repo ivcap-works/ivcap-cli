@@ -133,7 +133,7 @@ through 'stdin' use '-' as the file name and also include the --format flag`,
 			if err != nil {
 				cobra.CheckErr(fmt.Sprintf("While reading service file '%s' - %s", serviceFile, err))
 			}
-			var req api.CreateRequestBody
+			var req api.CreateServiceRequestBody
 			if err = pyld.AsType(&req); err != nil {
 				return
 			}
