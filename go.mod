@@ -1,6 +1,6 @@
 module github.com/reinventingscience/ivcap-cli
 
-go 1.19
+go 1.21
 
 require (
 	github.com/MicahParks/keyfunc v1.5.3
@@ -42,5 +42,3 @@ require (
 	google.golang.org/appengine v1.6.7 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
 )
-
-//replace github.com/reinventingscience/ivcap-core-api v0.9.1 => ../ivcap-core/api_gateway/api
