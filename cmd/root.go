@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -199,7 +200,15 @@ func GetActiveContext() (ctxt *Context) {
 }
 
 func GetContext(name string, defaultToActiveContext bool) (ctxt *Context) {
+	var err error
+	ctxt, err = GetContextWithError(name, defaultToActiveContext)
+	if err != nil {
+		cobra.CheckErr(err)
+	}
+	return
+}
 
+func GetContextWithError(name string, defaultToActiveContext bool) (ctxt *Context, err error) {
 	config, configFile := ReadConfigFile(true)
 	// config should never be nil
 	if name == "" && defaultToActiveContext {
@@ -207,18 +216,17 @@ func GetContext(name string, defaultToActiveContext bool) (ctxt *Context) {
 	}
 	if name == "" {
 		// no context or active context is found
-		cobra.CheckErr("Cannot find suitable context. Use '--context' or set default via 'context' command")
-		return
+		return nil, errors.New("cannot find suitable context. Use '--context' or set default via 'context' command")
 	}
 
 	for idx, d := range config.Contexts {
 		if d.Name == name {
-			return &config.Contexts[idx] // golang loop reuse same var, don't use "&d"
+			return &config.Contexts[idx], nil // golang loop reuse same var, don't use "&d"
 		}
 	}
 
 	if ctxt == nil {
-		cobra.CheckErr(fmt.Sprintf("unknown context '%s' in config '%s'", name, configFile))
+		return nil, fmt.Errorf("unknown context '%s' in config '%s'", name, configFile)
 	}
 	return
 }
