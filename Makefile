@@ -16,12 +16,12 @@ MOVIE_SIZE=1280x720 # 640x360
 MOVIE_NAME=ivcap-cli.mp4
 
 
-build:
+build: check
 	@echo "Building IVCAP-CLI..."
 	${GOPRIVATE_ENV_CMD} go mod tidy
 	go build -ldflags "-X main.version=${GIT_TAG} -X main.commit=${GIT_COMMIT} -X main.date=${BUILD_DATE}" -o ivcap${EXTENSION}
 
-install: addlicense build 
+install: addlicense build
 	cp ivcap $(shell go env GOBIN)
 	if [[ -d $(shell brew --prefix)/share/zsh/site-functions ]]; then \
 		$(shell go env GOBIN)/ivcap completion zsh > $(shell brew --prefix)/share/zsh/site-functions/_ivcap;\
@@ -29,6 +29,14 @@ install: addlicense build
 
 test:
 	go test -v ./...
+
+check:
+	go vet ./...
+	golangci-lint run  --out-format line-number --tests=false ./...
+	gocritic check -checkTests=false ./...
+	staticcheck -tests=false ./...
+	gosec ./...
+	govulncheck ./...
 
 release: addlicense
   # git tag -a v0.4.0 -m "..."
