@@ -187,9 +187,12 @@ func getTokenResponse(authProvider *AuthProvider, params url.Values, ctxt *Conte
 	params.Set("grant_type", authProvider.grantType)
 	params.Set("client_id", authProvider.ClientID)
 
+	ctx, cancel := NewTimeoutContext()
+	defer cancel()
+
 	var pyld adpt.Payload
 	var err error
-	pyld, err = (*adapter).PostForm(NewTimeoutContext(), authProvider.TokenURL, params, nil, logger)
+	pyld, err = (*adapter).PostForm(ctx, authProvider.TokenURL, params, nil, logger)
 	if err != nil {
 		if apiErr, ok := err.(*adpt.ApiError); ok && allowStatusForbidden {
 			if apiErr.StatusCode == http.StatusForbidden {
@@ -222,7 +225,11 @@ func getTokenResponse(authProvider *AuthProvider, params url.Values, ctxt *Conte
 
 func getLoginInformation(ctxt *Context) (authProvider *AuthProvider) {
 	adpt := CreateAdapter(false)
-	pyld, err := (*adpt).Get(NewTimeoutContext(), "/1/authinfo.yaml", logger)
+
+	ctx, cancel := NewTimeoutContext()
+	defer cancel()
+
+	pyld, err := (*adpt).Get(ctx, "/1/authinfo.yaml", logger)
 	if err != nil {
 		cobra.CheckErr(fmt.Sprintf("oauth: Cannot retrieve authentication info from server - %s", err))
 		return
@@ -247,6 +254,7 @@ func getLoginInformation(ctxt *Context) (authProvider *AuthProvider) {
 	}
 	// If no default provider is given, just pick the first one
 	for _, p := range providers {
+		p := p // golang for loop re-use the same var
 		return verifyProviderInfo(&p)
 	}
 	cobra.CheckErr("oauth: Cannot extract a suitable authentication provider")
@@ -268,12 +276,16 @@ func verifyProviderInfo(p *AuthProvider) *AuthProvider {
 
 func requestDeviceCode(authProvider *AuthProvider) (code *DeviceCode) {
 	adpt := CreateAdapter(false)
+
+	ctx, cancel := NewTimeoutContext()
+	defer cancel()
+
 	params := url.Values{
 		"client_id": {authProvider.ClientID},
 		"scope":     {authProvider.scopes},
 		"audience":  {authProvider.audience},
 	}
-	pyld, err := (*adpt).PostForm(NewTimeoutContext(), authProvider.CodeURL, params, nil, logger)
+	pyld, err := (*adpt).PostForm(ctx, authProvider.CodeURL, params, nil, logger)
 	if err != nil {
 		cobra.CheckErr("oauth: Error while requesting device code from authentication provider")
 		return
@@ -338,25 +350,27 @@ func ParseIDToken(tokenResponse *deviceTokenResponse, ctxt *Context, jwksURL str
 	}
 	idToken, err := jwt.ParseWithClaims(tokenResponse.IDToken, &CustomIdClaims{}, jwks.Keyfunc)
 	if err != nil {
-		if errors.Is(err, jwt.ErrTokenUsedBeforeIssued) {
+		switch {
+		case errors.Is(err, jwt.ErrTokenUsedBeforeIssued):
 			// let's wait a bit and try again as this is most likely due to clock shifts as we immediately check
 			// token after it has been created.
 			logger.Info("oauth: Waiting a few seconds as token is not valid yet")
 			time.Sleep(time.Duration(3 * time.Second))
 			ParseIDToken(tokenResponse, ctxt, jwksURL)
 			return
-		} else if errors.Is(err, jwt.ErrTokenMalformed) {
+		case errors.Is(err, jwt.ErrTokenMalformed):
 			cobra.CheckErr(fmt.Sprintf("malformed ID Token received - %s", err))
-		} else if errors.Is(err, jwt.ErrTokenExpired) || errors.Is(err, jwt.ErrTokenNotValidYet) {
+		case errors.Is(err, jwt.ErrTokenExpired), errors.Is(err, jwt.ErrTokenNotValidYet):
 			// Token is either expired or not active yet
 			cobra.CheckErr(fmt.Sprintf("expired ID Token received - %s", err))
-		} else {
+		default:
 			cobra.CheckErr(fmt.Sprintf("cannot verify ID token - %s", err))
 		}
 	}
 
 	if idToken == nil {
 		cobra.CheckErr("Should never happen. No 'idToken' and no error")
+		return
 	}
 	if claims, ok := idToken.Claims.(*CustomIdClaims); ok && idToken.Valid {
 		// Save the data from the ID token into the config/context

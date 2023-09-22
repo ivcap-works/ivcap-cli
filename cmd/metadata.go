@@ -96,12 +96,11 @@ var (
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			recordID := GetHistory(args[0])
 			ctxt := context.Background()
-			if res, err := sdk.GetMetadata(ctxt, recordID, CreateAdapter(true), logger); err == nil {
-				a.ReplyPrinter(res, outputFormat == "yaml")
-				return nil
-			} else {
+			res, err := sdk.GetMetadata(ctxt, recordID, CreateAdapter(true), logger)
+			if err != nil {
 				return err
 			}
+			return a.ReplyPrinter(res, outputFormat == "yaml")
 		},
 	}
 
@@ -143,9 +142,9 @@ var (
 			if list, res, err := sdk.ListMetadata(ctxt, entityURN, schemaPrefix, ts, CreateAdapter(true), logger); err == nil {
 				switch outputFormat {
 				case "json":
-					a.ReplyPrinter(res, false)
+					return a.ReplyPrinter(res, false)
 				case "yaml":
-					a.ReplyPrinter(res, true)
+					return a.ReplyPrinter(res, true)
 				default:
 					printMetadataTable(list, false)
 				}
@@ -179,18 +178,18 @@ func addUpdateCmd(isAdd bool, cmd *cobra.Command, args []string) (err error) {
 	}
 	logger.Debug("add/update meta", log.String("entity", entity), log.String("schema", schema), log.Reflect("pyld", meta))
 	ctxt := context.Background()
-	if res, err := sdk.AddUpdateMetadata(ctxt, isAdd, entity, schema, pyld.AsBytes(), CreateAdapter(true), logger); err == nil {
-		if silent {
-			if m, err := res.AsObject(); err == nil {
-				fmt.Printf("%s\n", m["record-id"])
-			} else {
-				cobra.CheckErr(fmt.Sprintf("Parsing reply: %s", res.AsBytes()))
-			}
+	res, err := sdk.AddUpdateMetadata(ctxt, isAdd, entity, schema, pyld.AsBytes(), CreateAdapter(true), logger)
+	if err != nil {
+		return err
+	}
+	if silent {
+		if m, err := res.AsObject(); err == nil {
+			fmt.Printf("%s\n", m["record-id"])
 		} else {
-			a.ReplyPrinter(res, outputFormat == "yaml")
+			cobra.CheckErr(fmt.Sprintf("Parsing reply: %s", res.AsBytes()))
 		}
 	} else {
-		return err
+		return a.ReplyPrinter(res, outputFormat == "yaml")
 	}
 	return nil
 }

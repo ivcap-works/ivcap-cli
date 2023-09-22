@@ -18,10 +18,9 @@ import (
 	"context"
 	"fmt"
 	"io/fs"
-	"io/ioutil"
 	"net/http"
 	"os"
-	"strconv"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -31,7 +30,6 @@ import (
 
 	adpt "github.com/reinventingscience/ivcap-cli/pkg/adapter"
 
-	"go.uber.org/zap"
 	log "go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -135,8 +133,8 @@ func init() {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	//var cfg log.Config
-	cfg := zap.NewDevelopmentConfig()
+	// var cfg log.Config
+	cfg := log.NewDevelopmentConfig()
 	// cfg := zap.NewProductionConfig()
 	cfg.OutputPaths = []string{"stdout"}
 
@@ -144,7 +142,7 @@ func initConfig() {
 	if debug {
 		logLevel = zapcore.DebugLevel
 	}
-	cfg.Level = zap.NewAtomicLevelAt(logLevel)
+	cfg.Level = log.NewAtomicLevelAt(logLevel)
 	logger, err := cfg.Build()
 	if err != nil {
 		panic(err)
@@ -213,10 +211,9 @@ func GetContext(name string, defaultToActiveContext bool) (ctxt *Context) {
 		return
 	}
 
-	for _, d := range config.Contexts {
+	for idx, d := range config.Contexts {
 		if d.Name == name {
-			ctxt = &d
-			return
+			return &config.Contexts[idx] // golang loop reuse same var, don't use "&d"
 		}
 	}
 
@@ -251,7 +248,7 @@ func SetContext(ctxt *Context, failIfNotExist bool) {
 func ReadConfigFile(createIfNoConfig bool) (config *Config, configFile string) {
 	configFile = GetConfigFilePath()
 	var data []byte
-	data, err := ioutil.ReadFile(configFile)
+	data, err := os.ReadFile(filepath.Clean(configFile))
 	if err != nil {
 		if _, ok := err.(*os.PathError); ok {
 			if createIfNoConfig {
@@ -284,7 +281,7 @@ func WriteConfigFile(config *Config) {
 
 	configFile := GetConfigFilePath()
 
-	if err = ioutil.WriteFile(configFile, b, fs.FileMode(0600)); err != nil {
+	if err = os.WriteFile(configFile, b, fs.FileMode(0600)); err != nil {
 		cobra.CheckErr(fmt.Sprintf("cannot write to config file %s - %v", configFile, err))
 	}
 }
@@ -298,7 +295,7 @@ func GetConfigDir(createIfNoExist bool) (configDir string) {
 	configDir = userConfigDir + string(os.PathSeparator) + CONFIG_FILE_DIR
 	// Create it if it doesn't exist
 	if createIfNoExist {
-		err = os.MkdirAll(configDir, 0755)
+		err = os.MkdirAll(configDir, 0640)
 		if err != nil && !os.IsExist(err) {
 			cobra.CheckErr(fmt.Sprintf("Could not create configuration directory %s - %v", configDir, err))
 			return
@@ -318,7 +315,7 @@ func makeConfigFilePath(fileName string) (path string) {
 	return
 }
 
-//****** HISTORY ****
+// ****** HISTORY ****
 
 var history map[string]string
 
@@ -367,7 +364,7 @@ func GetHistory(token string) (value string) {
 	var vp *string
 	path := getHistoryFilePath()
 	var data []byte
-	data, err := ioutil.ReadFile(path)
+	data, err := os.ReadFile(filepath.Clean(path))
 	var hm map[string]string
 	if err == nil {
 		if err := yaml.Unmarshal(data, &hm); err != nil {
@@ -404,7 +401,7 @@ func saveHistory() (err error) {
 
 	path := makeConfigFilePath(HISTORY_FILE_NAME)
 
-	if err = ioutil.WriteFile(path, b, fs.FileMode(0600)); err != nil {
+	if err = os.WriteFile(path, b, fs.FileMode(0600)); err != nil {
 		cobra.CheckErr(fmt.Sprintf("cannot write history to file %s - %v", path, err))
 	}
 	return
@@ -414,7 +411,7 @@ func getHistoryFilePath() (path string) {
 	return makeConfigFilePath(HISTORY_FILE_NAME)
 }
 
-//****** ADAPTER ****
+// ****** ADAPTER ****
 
 func NewAdapter(
 	url string,
@@ -428,9 +425,9 @@ func NewAdapter(
 	return &adapter, nil
 }
 
-func NewTimeoutContext() (ctxt context.Context) {
+func NewTimeoutContext() (ctxt context.Context, cancel context.CancelFunc) {
 	to := time.Now().Add(time.Duration(timeout) * time.Second)
-	ctxt, _ = context.WithDeadline(context.Background(), to)
+	ctxt, cancel = context.WithDeadline(context.Background(), to)
 	return
 }
 
@@ -480,17 +477,6 @@ func safeTruncString(in *string) (out string) {
 	return
 }
 
-func safeNumber(n *int64) string {
-	if n != nil {
-		if *n <= 0 {
-			return "unknown"
-		}
-		return strconv.Itoa(int(*n))
-	} else {
-		return "???"
-	}
-}
-
 func safeBytes(n *int64) string {
 	if n != nil {
 		if *n <= 0 {
@@ -512,11 +498,11 @@ func payloadFromFile(fileName string, inputFormat string) (pyld adpt.Payload, er
 	return
 }
 
-//***** CHECK FOR NEWER VERSIONS
+// ***** CHECK FOR NEWER VERSIONS
 
 func checkForUpdates(currentVersion string) {
 	path := makeConfigFilePath(VERSION_CHECK_FILE_NAME)
-	if data, err := ioutil.ReadFile(path); err == nil {
+	if data, err := os.ReadFile(filepath.Clean(path)); err == nil {
 		if lastCheck, err := time.Parse(time.RFC3339, string(data)); err == nil {
 			d := time.Since(lastCheck)
 			// fmt.Printf(".... since: %d < %d - %s\n", d, CHECK_VERSION_INTERVAL, path)
@@ -553,7 +539,7 @@ func checkForUpdates(currentVersion string) {
 	}
 
 	ts := time.Now().Format(time.RFC3339)
-	if err := ioutil.WriteFile(path, []byte(ts), fs.FileMode(0600)); err != nil {
+	if err := os.WriteFile(path, []byte(ts), fs.FileMode(0600)); err != nil {
 		logger.Debug("cannot write version check timestamp", log.Error(err))
 	}
 }

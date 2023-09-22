@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"path/filepath"
 
 	api "github.com/reinventingscience/ivcap-core-api/http/artifact"
 	meta "github.com/reinventingscience/ivcap-core-api/http/metadata"
@@ -52,7 +53,7 @@ func init() {
 
 	// READ
 	artifactCmd.AddCommand(readArtifactCmd)
-	//readArtifactCmd.Flags().StringVarP(&recordID, "artifact-id", "i", "", "ID of artifact to retrieve")
+	// readArtifactCmd.Flags().StringVarP(&recordID, "artifact-id", "i", "", "ID of artifact to retrieve")
 	readArtifactCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
 	// DOWNLOAD
@@ -140,12 +141,14 @@ var (
 			if res, err := sdk.ListArtifactsRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
 				switch outputFormat {
 				case "json":
-					a.ReplyPrinter(res, false)
+					return a.ReplyPrinter(res, false)
 				case "yaml":
-					a.ReplyPrinter(res, true)
+					return a.ReplyPrinter(res, true)
 				default:
 					var list api.ListResponseBody
-					res.AsType(&list)
+					if err = res.AsType(&list); err != nil {
+						return fmt.Errorf("failed to parse response body: %w", err)
+					}
 					printArtifactTable(&list, false)
 				}
 				return nil
@@ -167,11 +170,11 @@ var (
 
 			switch outputFormat {
 			case "json", "yaml":
-				if res, err := sdk.ReadArtifactRaw(context.Background(), req, adapter, logger); err == nil {
-					a.ReplyPrinter(res, outputFormat == "yaml")
-				} else {
+				res, err := sdk.ReadArtifactRaw(context.Background(), req, adapter, logger)
+				if err != nil {
 					return err
 				}
+				return a.ReplyPrinter(res, outputFormat == "yaml")
 			default:
 				if artifact, err := sdk.ReadArtifact(context.Background(), req, adapter, logger); err == nil {
 					if meta, _, err := sdk.ListMetadata(context.Background(), recordID, "", nil, adapter, logger); err == nil {
@@ -224,7 +227,10 @@ var (
 				cobra.CompErrorln(fmt.Sprintf("while parsing API reply - %v", err))
 				return
 			}
-			upload(ctxt, reader, artifactID, path, size, 0, adapter)
+			if err = upload(ctxt, reader, artifactID, path, size, 0, adapter); err != nil {
+				cobra.CompErrorln(fmt.Sprintf("while upload - %v", err))
+				return
+			}
 			if silent {
 				fmt.Printf("%s\n", artifactID)
 			}
@@ -313,7 +319,10 @@ var (
 						cobra.CheckErr(fmt.Sprintf("Parsing reply: %s", res.AsBytes()))
 					}
 				} else {
-					a.ReplyPrinter(res, outputFormat == "yaml")
+					if err = a.ReplyPrinter(res, outputFormat == "yaml"); err != nil {
+						cobra.CheckErr("print reply")
+						return
+					}
 				}
 			} else {
 				cobra.CompErrorln(fmt.Sprintf("while adding metadata '%s' to artifact '%s' - %v", ArtifactInCollectionSchema, artifactID, err))
@@ -407,11 +416,11 @@ func upload(
 
 	switch outputFormat {
 	case "json", "yaml":
-		if res, err := sdk.ReadArtifactRaw(ctxt, readReq, adapter, logger); err == nil {
-			a.ReplyPrinter(res, outputFormat == "yaml")
-		} else {
+		res, err := sdk.ReadArtifactRaw(ctxt, readReq, adapter, logger)
+		if err != nil {
 			return err
 		}
+		return a.ReplyPrinter(res, outputFormat == "yaml")
 	default:
 		var readResp *api.ReadResponseBody
 		if readResp, err = sdk.ReadArtifact(ctxt, readReq, adapter, logger); err == nil {
@@ -451,7 +460,7 @@ func downloadArtifact(cmd *cobra.Command, args []string) error {
 		if outputFile == "-" {
 			outFile = os.Stdout
 		} else {
-			outFile, err = os.Create(outputFile)
+			outFile, err = os.Create(filepath.Clean(outputFile))
 			if err != nil {
 				return
 			}
@@ -530,7 +539,7 @@ func getReader(fileName string, proposedFormat string) (reader io.Reader, format
 	if fileName == "-" {
 		file = os.Stdin
 	} else {
-		if file, err = os.Open(fileName); err != nil {
+		if file, err = os.Open(filepath.Clean(fileName)); err != nil {
 			cobra.CheckErr(fmt.Sprintf("while opening data file '%s' - %v", fileName, err))
 		}
 		if info, err := file.Stat(); err == nil {

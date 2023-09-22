@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	_ "fmt"
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -55,7 +55,9 @@ func ListOrders(ctxt context.Context, cmd *ListOrderRequest, adpt *adapter.Adapt
 		return nil, err
 	}
 	var list api.ListResponseBody
-	pyl.AsType(&list)
+	if err = pyl.AsType(&list); err != nil {
+		return nil, fmt.Errorf("failed to parse list response body: %w", err)
+	}
 	return &list, nil
 }
 
@@ -83,7 +85,9 @@ func CreateOrder(ctxt context.Context, cmd *api.CreateRequestBody, adpt *adapter
 		return nil, err
 	}
 	var resp api.CreateResponseBody
-	pyl.AsType(&resp)
+	if err = pyl.AsType(&resp); err != nil {
+		return nil, fmt.Errorf("failed to parse create response body: %w", err)
+	}
 	return &resp, nil
 }
 
@@ -109,7 +113,9 @@ func ReadOrder(ctxt context.Context, cmd *ReadOrderRequest, adpt *adapter.Adapte
 		return nil, err
 	}
 	var order api.ReadResponseBody
-	pyl.AsType(&order)
+	if err = pyl.AsType(&order); err != nil {
+		return nil, fmt.Errorf("failed to parse order response body: %w", err)
+	}
 	return &order, nil
 }
 

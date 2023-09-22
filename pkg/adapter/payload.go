@@ -19,9 +19,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 
 	"gopkg.in/yaml.v2"
 
@@ -47,7 +48,7 @@ func ToPayload(body []byte, resp *http.Response, logger *log.Logger) Payload {
 }
 
 func LoadPayloadFromStdin(isYAML bool) (Payload, error) {
-	if data, err := ioutil.ReadAll(os.Stdin); err != nil {
+	if data, err := io.ReadAll(os.Stdin); err != nil {
 		return nil, err
 	} else {
 		return LoadPayloadFromBytes(data, isYAML)
@@ -55,7 +56,7 @@ func LoadPayloadFromStdin(isYAML bool) (Payload, error) {
 }
 
 func LoadPayloadFromFile(fileName string, isYAML bool) (Payload, error) {
-	if data, err := ioutil.ReadFile(fileName); err != nil {
+	if data, err := os.ReadFile(filepath.Clean(fileName)); err != nil {
 		return nil, err
 	} else {
 		return LoadPayloadFromBytes(data, isYAML)
