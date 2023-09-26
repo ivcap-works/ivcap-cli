@@ -120,13 +120,15 @@ func Execute(version string) {
 	}
 }
 
+const DEFAULT_SERVICE_TIMEOUT_IN_SECONDS = 30
+
 func init() {
 	cobra.OnInitialize(initConfig)
 
 	rootCmd.PersistentFlags().StringVar(&contextName, "context", "", "Context (deployment) to use")
 	rootCmd.PersistentFlags().StringVar(&accessTokenF, "access-token", "",
 		fmt.Sprintf("Access token to use for authentication with API server [%s]", ACCESS_TOKEN_ENV))
-	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", 10, "Max. number of seconds to wait for completion")
+	rootCmd.PersistentFlags().IntVar(&timeout, "timeout", DEFAULT_SERVICE_TIMEOUT_IN_SECONDS, "Max. number of seconds to wait for completion")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logging level to DEBUG")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Set format for displaying output [json, yaml]")
 	rootCmd.PersistentFlags().BoolVar(&silent, "silent", false, "Do not show any progress information")

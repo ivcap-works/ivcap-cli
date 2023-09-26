@@ -206,7 +206,7 @@ var (
 			var size int64
 			reader, contentType, size = getReader(inputFile, contentType)
 			logger.Debug("create artifact", log.String("content-type", contentType), log.String("inputFile", inputFile))
-			adapter := CreateAdapterWithTimeout(true, 100000)
+			adapter := CreateAdapterWithTimeout(true, timeout)
 			req := &sdk.CreateArtifactRequest{
 				Name:       artifactName,
 				Size:       size,

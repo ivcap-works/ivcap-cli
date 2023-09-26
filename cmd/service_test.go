@@ -13,8 +13,6 @@ import (
 	api "github.com/reinventingscience/ivcap-core-api/http/service"
 )
 
-const DEFAULT_SERVICE_TIMEOUT_IN_SECONDS = 60
-
 var (
 	createReqBody = []byte(`
 {
