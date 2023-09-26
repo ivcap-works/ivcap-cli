@@ -20,7 +20,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"strconv"
 	"strings"
@@ -48,7 +47,10 @@ func ListArtifacts(ctxt context.Context, cmd *ListArtifactRequest, adpt *adapter
 		return nil, err
 	}
 	var list api.ListResponseBody
-	pyl.AsType(&list)
+	if err = pyl.AsType(&list); err != nil {
+		return nil, fmt.Errorf("failed to parse list response body: %w", err)
+	}
+
 	return &list, nil
 }
 
@@ -65,7 +67,7 @@ func ListArtifactsRaw(ctxt context.Context, cmd *ListArtifactRequest, adpt *adap
 	if len(pa) > 0 {
 		path = path + "?" + strings.Join(pa, "&")
 	}
-	//fmt.Printf("PATH: %s\n", path)
+	// fmt.Printf("PATH: %s\n", path)
 	return (*adpt).Get(ctxt, path, logger)
 }
 
@@ -112,9 +114,13 @@ func UploadArtifact(
 	if offset > 0 {
 		switch r := reader.(type) {
 		case io.Seeker:
-			r.Seek(offset, io.SeekCurrent)
+			if _, err = r.Seek(offset, io.SeekCurrent); err != nil {
+				return fmt.Errorf("reader seek error : %w", err)
+			}
 		default:
-			io.CopyN(ioutil.Discard, r, offset)
+			if _, err = io.CopyN(io.Discard, r, offset); err != nil {
+				return fmt.Errorf("io copyN error: %w", err)
+			}
 		}
 	}
 

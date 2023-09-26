@@ -18,7 +18,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	_ "fmt"
+	"fmt"
 	"net/url"
 	"strconv"
 	"strings"
@@ -55,7 +55,9 @@ func ListServices(ctxt context.Context, cmd *ListServiceRequest, adpt *adapter.A
 		return nil, err
 	}
 	var list api.ListResponseBody
-	pyl.AsType(&list)
+	if err = pyl.AsType(&list); err != nil {
+		return nil, fmt.Errorf("failed to parse response body: %w", err)
+	}
 	return &list, nil
 }
 
@@ -72,7 +74,7 @@ func ListServicesRaw(ctxt context.Context, cmd *ListServiceRequest, adpt *adapte
 	if len(pa) > 0 {
 		path = path + "?" + strings.Join(pa, "&")
 	}
-	//fmt.Printf("PATH: %s\n", path)
+	// fmt.Printf("PATH: %s\n", path)
 	return (*adpt).Get(ctxt, path, logger)
 }
 

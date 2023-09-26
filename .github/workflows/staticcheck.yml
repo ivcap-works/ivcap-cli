@@ -1,0 +1,29 @@
+name: Staticcheck Scan
+
+on:
+  push:
+    branches:
+      - "master"
+      - "main"
+    paths-ignore:
+      - "**.md"
+  pull_request:
+    branches:
+      - "*"
+    paths-ignore:
+      - "**.md"
+
+jobs:
+  staticcheck-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Repository
+        uses: actions/checkout@v3
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21
+      - name: Install staticcheck
+        run: go install honnef.co/go/tools/cmd/staticcheck@latest
+      - name: Run staticcheck
+        run: staticcheck -tests=false ./...

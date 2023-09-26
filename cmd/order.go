@@ -80,7 +80,7 @@ var (
 			switch outputFormat {
 			case "json", "yaml":
 				if res, err := sdk.ListOrdersRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
-					a.ReplyPrinter(res, outputFormat == "yaml")
+					return a.ReplyPrinter(res, outputFormat == "yaml")
 				} else {
 					return err
 				}
@@ -108,7 +108,7 @@ var (
 			switch outputFormat {
 			case "json", "yaml":
 				if res, err := sdk.ReadOrderRaw(context.Background(), req, adapter, logger); err == nil {
-					a.ReplyPrinter(res, outputFormat == "yaml")
+					return a.ReplyPrinter(res, outputFormat == "yaml")
 				} else {
 					return err
 				}
@@ -131,7 +131,7 @@ var (
 		Use:     "create [flags] service-id [... paramName=value]",
 		Aliases: []string{"c"},
 		Short:   "Create a new order",
-		Long: `Create a new order for a service identified by it's id and add any 
+		Long: `Create a new order for a service identified by it's id and add any
 potential paramters using the format 'paramName=value'. Please not that there
 cannot be any spaces between the parameter name, the '=' and the value. If the value
 contains spaces, put it into quotes which will not be removed by your shell.
@@ -139,7 +139,7 @@ contains spaces, put it into quotes which will not be removed by your shell.
 An example:
 
   ivcap order create --name "test order" ivcap:service:d939b74d-0070-59a4-a832-36c5c07e657d msg="Hello World"
-	
+
 `,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
@@ -187,7 +187,7 @@ An example:
 			switch outputFormat {
 			case "json", "yaml":
 				if res, err := sdk.CreateOrderRaw(ctxt, req, CreateAdapter(true), logger); err == nil {
-					a.ReplyPrinter(res, outputFormat == "yaml")
+					return a.ReplyPrinter(res, outputFormat == "yaml")
 				} else {
 					return err
 				}

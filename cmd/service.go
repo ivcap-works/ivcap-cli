@@ -77,12 +77,14 @@ var (
 			if res, err := sdk.ListServicesRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
 				switch outputFormat {
 				case "json":
-					a.ReplyPrinter(res, false)
+					return a.ReplyPrinter(res, false)
 				case "yaml":
-					a.ReplyPrinter(res, true)
+					return a.ReplyPrinter(res, true)
 				default:
 					var list api.ListResponseBody
-					res.AsType(&list)
+					if err = res.AsType(&list); err != nil {
+						return err
+					}
 					printServiceTable(&list, false)
 				}
 				return nil
@@ -104,7 +106,7 @@ var (
 			switch outputFormat {
 			case "json", "yaml":
 				if res, err := sdk.ReadServiceRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
-					a.ReplyPrinter(res, outputFormat == "yaml")
+					return a.ReplyPrinter(res, outputFormat == "yaml")
 				} else {
 					return err
 				}
@@ -123,7 +125,7 @@ var (
 		Use:   "create [flags] -f service-file|-",
 		Short: "Create a new service",
 		Long: `Define a new service to available on the platform. The service is
-described in a service definition file. If the service definition is provided 
+described in a service definition file. If the service definition is provided
 through 'stdin' use '-' as the file name and also include the --format flag`,
 		Args: cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
@@ -137,20 +139,19 @@ through 'stdin' use '-' as the file name and also include the --format flag`,
 			if err = pyld.AsType(&req); err != nil {
 				return
 			}
-			if res, err := sdk.CreateServiceRaw(ctxt, &req, CreateAdapter(true), logger); err == nil {
-				a.ReplyPrinter(res, outputFormat == "yaml")
-			} else {
+			res, err := sdk.CreateServiceRaw(ctxt, &req, CreateAdapter(true), logger)
+			if err != nil {
 				return err
 			}
-			return nil
+			return a.ReplyPrinter(res, outputFormat == "yaml")
 		},
 	}
 
 	updateServiceCmd = &cobra.Command{
 		Use:   "update [flags] service-id -f service-file|-",
 		Short: "Update an existing service",
-		Long: `Update an existing service description or create it if it does not exist 
-AND the --create flag is set. If the service definition is provided 
+		Long: `Update an existing service description or create it if it does not exist
+AND the --create flag is set. If the service definition is provided
 through 'stdin' use '-' as the file name and also include the --format flag `,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
@@ -173,12 +174,11 @@ through 'stdin' use '-' as the file name and also include the --format flag `,
 			if err = pyld.AsType(&req); err != nil {
 				return
 			}
-			if res, err := sdk.UpdateServiceRaw(ctxt, serviceID, createAnyway, &req, CreateAdapter(true), logger); err == nil {
-				a.ReplyPrinter(res, outputFormat == "yaml")
-			} else {
+			res, err := sdk.UpdateServiceRaw(ctxt, serviceID, createAnyway, &req, CreateAdapter(true), logger)
+			if err != nil {
 				return err
 			}
-			return nil
+			return a.ReplyPrinter(res, outputFormat == "yaml")
 		},
 	}
 )

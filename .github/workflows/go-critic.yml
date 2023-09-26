@@ -1,0 +1,32 @@
+name: Gocritic Scan
+
+on:
+  push:
+    branches:
+      - "master"
+      - "main"
+    paths-ignore:
+      - "**.md"
+  pull_request:
+    branches:
+      - "*"
+    paths-ignore:
+      - "**.md"
+
+jobs:
+  gocritic-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch Repository
+        uses: actions/checkout@v3
+      - name: Granting private modules access
+        run: |
+            git config --global url."ssh://git@github.com/".insteadOf "https://github.com/"
+      - name: Install Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21
+      - name: Install go-critic
+        run: go install -v github.com/go-critic/go-critic/cmd/gocritic@latest
+      - name: Run gocritic
+        run: gocritic check -checkTests=False ./...

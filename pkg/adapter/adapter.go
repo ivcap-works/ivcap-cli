@@ -20,9 +20,7 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
-	"net/url"
 	neturl "net/url"
 	"strings"
 	"time"
@@ -115,7 +113,7 @@ func (a *restAdapter) Post(ctxt context.Context, path string, body io.Reader, le
 	return Connect(ctxt, "POST", path, body, length, headers, &a.ctxt, nil, logger)
 }
 
-func (a *restAdapter) PostForm(ctxt context.Context, path string, data url.Values, headers *map[string]string, logger *log.Logger) (Payload, error) {
+func (a *restAdapter) PostForm(ctxt context.Context, path string, data neturl.Values, headers *map[string]string, logger *log.Logger) (Payload, error) {
 	ed := data.Encode()
 	body := strings.NewReader(ed)
 	if headers == nil {
@@ -171,7 +169,6 @@ func Connect(
 	}
 	if url == "" {
 		if connCtxt.URL == "" {
-			//logger.Error("Missing 'host'")
 			return nil, &MissingUrlError{AdapterError{path}}
 		}
 		url = connCtxt.URL + path
@@ -229,7 +226,7 @@ func Connect(
 		err := respHandler(resp, path, logger)
 		return nil, err
 	}
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Warn("Accessing response body failed.", log.Error(err))
 		return nil, &ClientError{AdapterError{path}, err}
