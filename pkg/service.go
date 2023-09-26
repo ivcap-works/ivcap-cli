@@ -62,7 +62,7 @@ func ListServices(ctxt context.Context, cmd *ListServiceRequest, adpt *adapter.A
 }
 
 func ListServicesRaw(ctxt context.Context, cmd *ListServiceRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	path := servicePath(nil, adpt)
+	path := servicePath(nil)
 
 	pa := []string{}
 	if cmd.Offset > 0 {
@@ -92,8 +92,22 @@ func CreateServiceRaw(ctxt context.Context, cmd *api.CreateServiceRequestBody, a
 	}
 	// fmt.Printf("RECORD %+v - %s\n", cmd, body)
 
-	path := servicePath(nil, adpt)
+	path := servicePath(nil)
 	return (*adpt).Post(ctxt, path, bytes.NewReader(body), int64(len(body)), nil, logger)
+}
+
+func CreateService(ctxt context.Context, cmd *api.CreateServiceRequestBody, adpt *adapter.Adapter, logger *log.Logger) (*api.CreateServiceResponseBody, error) {
+	res, err := CreateServiceRaw(ctxt, cmd, adpt, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create service: %w", err)
+	}
+
+	var service api.CreateServiceResponseBody
+	if err := res.AsType(&service); err != nil {
+		return nil, fmt.Errorf("failed to decode create service response body; %w", err)
+	}
+
+	return &service, nil
 }
 
 /**** UPDATE ****/
@@ -111,11 +125,25 @@ func UpdateServiceRaw(ctxt context.Context, id string, createAnyway bool, cmd *a
 	}
 	// fmt.Printf("RECORD %+v - %s\n", cmd, body)
 
-	path := servicePath(&id, adpt)
+	path := servicePath(&id)
 	if createAnyway {
 		path += "?force-create=true"
 	}
 	return (*adpt).Put(ctxt, path, bytes.NewReader(body), int64(len(body)), nil, logger)
+}
+
+func UpdateService(ctxt context.Context, id string, createAnyway bool, cmd *api.UpdateRequestBody, adpt *adapter.Adapter, logger *log.Logger) (*api.UpdateResponseBody, error) {
+	res, err := UpdateServiceRaw(ctxt, id, createAnyway, cmd, adpt, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to update service: %w", err)
+	}
+
+	var service api.UpdateResponseBody
+	if err := res.AsType(&service); err != nil {
+		return nil, fmt.Errorf("failed to decode update service response body; %w", err)
+	}
+
+	return &service, nil
 }
 
 /**** READ ****/
@@ -137,13 +165,13 @@ func ReadService(ctxt context.Context, cmd *ReadServiceRequest, adpt *adapter.Ad
 }
 
 func ReadServiceRaw(ctxt context.Context, cmd *ReadServiceRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	path := servicePath(&cmd.Id, adpt)
+	path := servicePath(&cmd.Id)
 	return (*adpt).Get(ctxt, path, logger)
 }
 
 /**** UTILS ****/
 
-func servicePath(id *string, adpt *adapter.Adapter) string {
+func servicePath(id *string) string {
 	path := "/1/services"
 	if id != nil {
 		path = path + "/" + *id
