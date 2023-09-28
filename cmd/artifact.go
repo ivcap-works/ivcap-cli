@@ -66,6 +66,7 @@ func init() {
 	createArtifactCmd.Flags().StringVarP(&artifactCollection, "collection", "c", "", "Assigns artifact to a specific collection")
 	createArtifactCmd.Flags().StringVarP(&inputFile, "file", "f", "", "Path to file containing artifact content")
 	createArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact")
+	createArtifactCmd.Flags().StringVarP(&policy, "policy", "p", "", "Policy controlling access")
 	createArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
 
 	// UPLOAD
@@ -117,6 +118,7 @@ var (
 	metaFile           string
 	contentType        string
 	chunkSize          int64
+	policy             string
 
 	artifactCmd = &cobra.Command{
 		Use:     "artifact",
@@ -211,6 +213,7 @@ var (
 				Name:       artifactName,
 				Size:       size,
 				Collection: artifactCollection,
+				Policy:     policy,
 			}
 			ctxt := context.Background()
 			resp, err := sdk.CreateArtifact(ctxt, req, contentType, size, nil, adapter, logger)
