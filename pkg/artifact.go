@@ -77,6 +77,7 @@ type CreateArtifactRequest struct {
 	Name       string            `json:"name"`
 	Size       int64             `json:"size"`
 	Collection string            `json:"collection"`
+	Policy     string            `json:"policy"`
 	Meta       map[string]string `json:"meta"`
 }
 
@@ -266,7 +267,10 @@ func CreateArtifactRaw(
 		headers["X-Name"] = BaseEncode(cmd.Name)
 	}
 	if cmd.Collection != "" {
-		headers["X-Collection"] = BaseEncode(cmd.Collection)
+		headers["X-Collection"] = cmd.Collection
+	}
+	if cmd.Policy != "" {
+		headers["X-Policy"] = cmd.Policy
 	}
 	var meta []string
 	for key, value := range cmd.Meta {
