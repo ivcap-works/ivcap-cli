@@ -114,7 +114,8 @@ var (
 				}
 			default:
 				if order, err := sdk.ReadOrder(context.Background(), req, adapter, logger); err == nil {
-					if meta, _, err := sdk.ListMetadata(context.Background(), recordID, "", nil, adapter, logger); err == nil {
+					selector := sdk.MetadataSelector{Entity: recordID}
+					if meta, _, err := sdk.ListMetadata(context.Background(), selector, adapter, logger); err == nil {
 						printOrder(order, meta, false)
 					} else {
 						return err

@@ -17,7 +17,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/araddon/dateparse"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -48,6 +47,8 @@ func init() {
 	metaCmd.AddCommand(metaQueryCmd)
 	metaQueryCmd.Flags().StringVarP(&schemaPrefix, "schema", "s", "", "URN/UUID prefix of schema")
 	metaQueryCmd.Flags().StringVarP(&entityURN, "entity", "e", "", "URN/UUID of entity")
+	metaQueryCmd.Flags().StringVarP(&aspectJsonFilter, "json-path", "p", "", "json path filter on aspect ('$.images[*] ? (@.size > 10000)')")
+	metaQueryCmd.Flags().StringVarP(&aspectFilter, "filter", "f", "", "simple filter on aspect ('FirstName ~= 'Scott'')")
 	metaQueryCmd.Flags().StringVarP(&atTime, "time-at", "t", "", "Timestamp for which to request information [now]")
 
 	metaCmd.AddCommand(metaRevokeCmd)
@@ -56,6 +57,8 @@ func init() {
 var schemaURN string
 var schemaPrefix string
 var entityURN string
+var aspectJsonFilter string
+var aspectFilter string
 var atTime string
 
 var (
@@ -130,16 +133,27 @@ var (
 			if entityURN != "" {
 				entityURN = GetHistory(entityURN)
 			}
-			var ts *time.Time
+			selector := sdk.MetadataSelector{
+				Entity:       entityURN,
+				SchemaPrefix: schemaPrefix,
+			}
+
+			if aspectFilter != "" {
+				selector.SimpleFilter = &aspectFilter
+			}
+			if aspectJsonFilter != "" {
+				selector.JsonFilter = &aspectJsonFilter
+			}
 			if atTime != "" {
 				t, err := dateparse.ParseLocal(atTime)
 				if err != nil {
 					cobra.CheckErr(fmt.Sprintf("Can't parse '%s' into a date - %s", atTime, err))
 				}
-				ts = &t
+				selector.Timestamp = &t
 			}
+
 			ctxt := context.Background()
-			if list, res, err := sdk.ListMetadata(ctxt, entityURN, schemaPrefix, ts, CreateAdapter(true), logger); err == nil {
+			if list, res, err := sdk.ListMetadata(ctxt, selector, CreateAdapter(true), logger); err == nil {
 				switch outputFormat {
 				case "json":
 					return a.ReplyPrinter(res, false)
