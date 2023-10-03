@@ -315,7 +315,7 @@ var (
 			}
 			adapter := CreateAdapter(true)
 			ctxt := context.Background()
-			if res, err := sdk.AddUpdateMetadata(ctxt, true, collectionID, ArtifactInCollectionSchema, data, adapter, logger); err == nil {
+			if res, err := sdk.AddUpdateMetadata(ctxt, true, collectionID, ArtifactInCollectionSchema, policy, data, adapter, logger); err == nil {
 				if silent {
 					if m, err := res.AsObject(); err == nil {
 						fmt.Printf("%s\n", m["record-id"])

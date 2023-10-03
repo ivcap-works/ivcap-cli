@@ -29,13 +29,16 @@ import (
 	log "go.uber.org/zap"
 )
 
-func AddUpdateMetadata(ctxt context.Context, isAdd bool, entity string, schema string, meta []byte, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+func AddUpdateMetadata(ctxt context.Context, isAdd bool, entity string, schema string, policy string, meta []byte, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	q := []string{}
 	if entity != "" {
 		q = append(q, fmt.Sprintf("entity-id=%s", url.QueryEscape(entity)))
 	}
 	if schema != "" {
 		q = append(q, fmt.Sprintf("schema=%s", url.QueryEscape(schema)))
+	}
+	if policy != "" {
+		q = append(q, fmt.Sprintf("policy-id=%s", url.QueryEscape(policy)))
 	}
 	path := fmt.Sprintf("%s?%s", metadataPath(nil, adpt), strings.Join(q, "&"))
 	if isAdd {

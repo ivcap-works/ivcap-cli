@@ -36,11 +36,13 @@ func init() {
 	metaAddCmd.Flags().StringVarP(&schemaURN, "schema", "s", "", "URN/UUID of schema")
 	metaAddCmd.Flags().StringVarP(&metaFile, "file", "f", "", "Path to file containing metdata")
 	metaAddCmd.Flags().StringVarP(&inputFormat, "format", "", "json", "Format of service description file [json, yaml]")
+	metaAddCmd.Flags().StringVarP(&policy, "policy", "p", "", "Policy controlling access")
 
 	metaCmd.AddCommand(metaUpdateCmd)
 	metaUpdateCmd.Flags().StringVarP(&schemaURN, "schema", "s", "", "URN/UUID of schema")
 	metaUpdateCmd.Flags().StringVarP(&metaFile, "file", "f", "", "Path to file containing metdata")
 	metaUpdateCmd.Flags().StringVarP(&inputFormat, "format", "", "json", "Format of service description file [json, yaml]")
+	metaUpdateCmd.Flags().StringVarP(&policy, "policy", "p", "", "Policy controlling access")
 
 	metaCmd.AddCommand(metaGetCmd)
 
@@ -192,7 +194,7 @@ func addUpdateCmd(isAdd bool, cmd *cobra.Command, args []string) (err error) {
 	}
 	logger.Debug("add/update meta", log.String("entity", entity), log.String("schema", schema), log.Reflect("pyld", meta))
 	ctxt := context.Background()
-	res, err := sdk.AddUpdateMetadata(ctxt, isAdd, entity, schema, pyld.AsBytes(), CreateAdapter(true), logger)
+	res, err := sdk.AddUpdateMetadata(ctxt, isAdd, entity, schema, policy, pyld.AsBytes(), CreateAdapter(true), logger)
 	if err != nil {
 		return err
 	}
