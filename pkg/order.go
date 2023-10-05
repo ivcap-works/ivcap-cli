@@ -15,10 +15,12 @@
 package client
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
@@ -62,7 +64,7 @@ func ListOrders(ctxt context.Context, cmd *ListOrderRequest, adpt *adapter.Adapt
 }
 
 func ListOrdersRaw(ctxt context.Context, cmd *ListOrderRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	path := orderPath(nil, adpt)
+	path := orderPath(nil)
 
 	pa := []string{}
 	if cmd.Offset > 0 {
@@ -97,7 +99,7 @@ func CreateOrderRaw(ctxt context.Context, cmd *api.CreateRequestBody, adpt *adap
 		logger.Error("error marshalling body.", log.Error(err))
 		return nil, err
 	}
-	path := orderPath(nil, adpt)
+	path := orderPath(nil)
 	return (*adpt).Post(ctxt, path, bytes.NewReader(body), int64(len(body)), nil, logger)
 }
 
@@ -120,13 +122,35 @@ func ReadOrder(ctxt context.Context, cmd *ReadOrderRequest, adpt *adapter.Adapte
 }
 
 func ReadOrderRaw(ctxt context.Context, cmd *ReadOrderRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	path := orderPath(&cmd.Id, adpt)
+	path := orderPath(&cmd.Id)
 	return (*adpt).Get(ctxt, path, logger)
+}
+
+func DownloadOrderLog(ctxt context.Context, req *api.LogsRequestBody, adpt *adapter.Adapter, logger *log.Logger) error {
+	path := "/1/orders/logs"
+	body, err := json.Marshal(req)
+	if err != nil {
+		return fmt.Errorf("error marshalling body: %w", err)
+	}
+	handler := func(resp *http.Response, path string, logger *log.Logger) error {
+		scanner := bufio.NewScanner(resp.Body)
+		for scanner.Scan() {
+			fmt.Println(scanner.Text())
+		}
+
+		if err := scanner.Err(); err != nil {
+			return fmt.Errorf("scan download logs error: %w", err)
+		}
+		return nil
+	}
+
+	_, err = (*adpt).PostWithHandler(ctxt, path, bytes.NewReader(body), int64(len(body)), nil, handler, logger)
+	return err
 }
 
 /**** UTILS ****/
 
-func orderPath(id *string, adpt *adapter.Adapter) string {
+func orderPath(id *string) string {
 	path := "/1/orders"
 	if id != nil {
 		path = path + "/" + *id

@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	meta "github.com/reinventingscience/ivcap-core-api/http/metadata"
 	api "github.com/reinventingscience/ivcap-core-api/http/order"
@@ -29,6 +30,11 @@ import (
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
+)
+
+var (
+	downloadLogFrom, downloadLogTo string
+	namespace, container           string
 )
 
 func init() {
@@ -50,6 +56,13 @@ func init() {
 	createOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 	createOrderCmd.Flags().StringVar(&accountID, "account-id", "", "override the account ID to use for the order")
 	createOrderCmd.Flags().BoolVar(&skipParameterCheck, "skip-parameter-check", false, "fskip checking order paramters first ONLY USE FOR TESTING")
+
+	// Logs
+	orderCmd.AddCommand(downloadLogCmd)
+	downloadLogCmd.Flags().StringVar(&downloadLogFrom, "from", "", "from time string in format YYYY-MM-DDTHH:MI:SS")
+	downloadLogCmd.Flags().StringVar(&downloadLogTo, "to", "", "from time string in format YYYY-MM-DDTHH:MI:SS")
+	downloadLogCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "namespace name")
+	downloadLogCmd.Flags().StringVarP(&container, "containter", "c", "", "container name")
 }
 
 var (
@@ -200,6 +213,43 @@ An example:
 				}
 			}
 			return nil
+		},
+	}
+
+	downloadLogCmd = &cobra.Command{
+		Use:   "logs [flags] order-id",
+		Short: "Download order logs for specific order",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			recordID := GetHistory(args[0])
+			req := &api.LogsRequestBody{
+				OrderID: recordID,
+			}
+			if downloadLogFrom != "" {
+				t, err := time.Parse(time.RFC3339, downloadLogFrom)
+				if err != nil {
+					return fmt.Errorf("invalid from parameter format: %s", downloadLogFrom)
+				}
+				tm := t.Unix()
+				req.From = &tm
+			}
+			if downloadLogTo != "" {
+				t, err := time.Parse(time.RFC3339, downloadLogTo)
+				if err != nil {
+					return fmt.Errorf("invalid to parameter format: %s", downloadLogTo)
+				}
+				tm := t.Unix()
+				req.To = &tm
+			}
+			if namespace != "" {
+				req.NamespaceName = &namespace
+			}
+			if container != "" {
+				req.ContainerName = &container
+			}
+
+			adapter := CreateAdapter(true)
+			return sdk.DownloadOrderLog(context.Background(), req, adapter, logger)
 		},
 	}
 )

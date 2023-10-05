@@ -19,6 +19,8 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
+replace github.com/reinventingscience/ivcap-core-api v0.27.1 => ../ivcap-core-api
+
 require (
 	github.com/dimfeld/httptreemux/v5 v5.5.0 // indirect
 	github.com/golang/protobuf v1.5.2 // indirect

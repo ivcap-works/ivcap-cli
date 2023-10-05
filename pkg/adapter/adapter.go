@@ -113,6 +113,10 @@ func (a *restAdapter) Post(ctxt context.Context, path string, body io.Reader, le
 	return Connect(ctxt, "POST", path, body, length, headers, &a.ctxt, nil, logger)
 }
 
+func (a *restAdapter) PostWithHandler(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, respHandler ResponseHandler, logger *log.Logger) (Payload, error) {
+	return Connect(ctxt, "POST", path, body, length, headers, &a.ctxt, respHandler, logger)
+}
+
 func (a *restAdapter) PostForm(ctxt context.Context, path string, data neturl.Values, headers *map[string]string, logger *log.Logger) (Payload, error) {
 	ed := data.Encode()
 	body := strings.NewReader(ed)
