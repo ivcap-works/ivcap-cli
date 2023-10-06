@@ -63,6 +63,7 @@ func RevokeMetadata(ctxt context.Context, recordID string, adpt *adapter.Adapter
 type MetadataSelector struct {
 	Entity       string
 	SchemaPrefix string
+	Page         string
 	SimpleFilter *string
 	JsonFilter   *string
 	Timestamp    *time.Time
@@ -74,25 +75,28 @@ func ListMetadata(ctxt context.Context,
 	logger *log.Logger,
 ) (*api.ListResponseBody, adapter.Payload, error) {
 	path := metadataPath(nil, adpt)
-	q := make([]string, 0)
+	q := url.Values{}
 	if selector.Entity != "" {
-		q = append(q, fmt.Sprintf("entity-id=%s", url.QueryEscape(selector.Entity)))
+		q.Set("entity-id", selector.Entity)
 	}
 	if selector.SchemaPrefix != "" {
-		q = append(q, fmt.Sprintf("schema=%s", url.QueryEscape(selector.SchemaPrefix)))
+		q.Set("schema", selector.SchemaPrefix)
+	}
+	if selector.Page != "" {
+		q.Set("page", selector.Page)
 	}
 	if selector.SimpleFilter != nil {
-		q = append(q, fmt.Sprintf("filter=%s", url.QueryEscape(*selector.SimpleFilter)))
+		q.Set("filter", *selector.SimpleFilter)
 	}
 	if selector.JsonFilter != nil {
-		q = append(q, fmt.Sprintf("aspect-path=%s", url.QueryEscape(*selector.JsonFilter)))
+		q.Set("aspect-path", *selector.JsonFilter)
 	}
 	if selector.Timestamp != nil {
 		ts := selector.Timestamp.Format(time.RFC3339)
-		q = append(q, fmt.Sprintf("at-time=%s", url.QueryEscape(ts)))
+		q.Set("at-time", ts)
 	}
 	if len(q) > 0 {
-		path = fmt.Sprintf("%s?%s", path, strings.Join(q, "&"))
+		path = fmt.Sprintf("%s?%s", path, q.Encode())
 	}
 	if pyld, err := (*adpt).Get(ctxt, path, logger); err == nil {
 		var list api.ListResponseBody

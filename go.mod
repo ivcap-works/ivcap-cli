@@ -9,7 +9,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.4.2
 	github.com/jedib0t/go-pretty/v6 v6.3.1
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
-	github.com/reinventingscience/ivcap-core-api v0.27.1
+	github.com/reinventingscience/ivcap-core-api v0.28.4
 	github.com/schollz/progressbar/v3 v3.9.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.6.1
@@ -18,8 +18,6 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
-
-replace github.com/reinventingscience/ivcap-core-api v0.27.1 => ../ivcap-core-api
 
 require (
 	github.com/dimfeld/httptreemux/v5 v5.5.0 // indirect

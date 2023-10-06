@@ -17,6 +17,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -294,6 +295,13 @@ func printOrder(order *api.ReadResponseBody, meta *meta.ListResponseBody, wide b
 	rows2 := make([]table.Row, len(order.Products))
 	for i, p := range order.Products {
 		rows2[i] = table.Row{MakeHistory(p.ID), safeString(p.Name), safeString(p.MimeType)}
+	}
+	if order.ProductLinks != nil && order.ProductLinks.Next != nil {
+		u, err := url.Parse(*order.ProductLinks.Next)
+		if err == nil {
+			page := u.Query().Get("page")
+			rows2 = append(rows2, table.Row{"Next page token", page, ""})
+		}
 	}
 	tw3.AppendRows(rows2)
 

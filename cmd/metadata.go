@@ -17,6 +17,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"net/url"
 
 	"github.com/araddon/dateparse"
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -49,19 +50,23 @@ func init() {
 	metaCmd.AddCommand(metaQueryCmd)
 	metaQueryCmd.Flags().StringVarP(&schemaPrefix, "schema", "s", "", "URN/UUID prefix of schema")
 	metaQueryCmd.Flags().StringVarP(&entityURN, "entity", "e", "", "URN/UUID of entity")
-	metaQueryCmd.Flags().StringVarP(&aspectJsonFilter, "json-path", "p", "", "json path filter on aspect ('$.images[*] ? (@.size > 10000)')")
+	metaQueryCmd.Flags().StringVarP(&aspectJsonFilter, "json-path", "j", "", "json path filter on aspect ('$.images[*] ? (@.size > 10000)')")
 	metaQueryCmd.Flags().StringVarP(&aspectFilter, "filter", "f", "", "simple filter on aspect ('FirstName ~= 'Scott'')")
 	metaQueryCmd.Flags().StringVarP(&atTime, "time-at", "t", "", "Timestamp for which to request information [now]")
+	metaQueryCmd.Flags().StringVarP(&page, "page", "p", "", "query page token, for example to get next page")
 
 	metaCmd.AddCommand(metaRevokeCmd)
 }
 
-var schemaURN string
-var schemaPrefix string
-var entityURN string
-var aspectJsonFilter string
-var aspectFilter string
-var atTime string
+var (
+	schemaURN        string
+	schemaPrefix     string
+	entityURN        string
+	aspectJsonFilter string
+	aspectFilter     string
+	atTime           string
+	page             string
+)
 
 var (
 	metaCmd = &cobra.Command{
@@ -129,8 +134,8 @@ var (
 		Aliases: []string{"q", "search", "s", "list", "l"},
 		Long:    `.....`,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			if entityURN == "" && schemaPrefix == "" {
-				cobra.CheckErr("Need at least one of '--schema' or '--entity'")
+			if entityURN == "" && schemaPrefix == "" && page == "" {
+				cobra.CheckErr("Need at least one of '--schema', '--entity' or '--page'")
 			}
 			if entityURN != "" {
 				entityURN = GetHistory(entityURN)
@@ -138,6 +143,7 @@ var (
 			selector := sdk.MetadataSelector{
 				Entity:       entityURN,
 				SchemaPrefix: schemaPrefix,
+				Page:         page,
 			}
 
 			if aspectFilter != "" {
@@ -242,6 +248,15 @@ func printMetadataTable(list *api.ListResponseBody, wide bool) {
 	}
 	p = append(p, table.Row{"Records", tw2.Render()})
 
+	if list.Links != nil && list.Links.Next != nil {
+		u, err := url.Parse(*list.Links.Next)
+		if err == nil {
+			page := u.Query().Get("page")
+			p = append(p, table.Row{"Next Page Token", page})
+		}
+	}
+
 	tw.AppendRows(p)
+
 	fmt.Printf("\n%s\n\n", tw.Render())
 }
