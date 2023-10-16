@@ -16,6 +16,9 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
 	"sync"
 	"testing"
 
@@ -94,6 +97,10 @@ var (
           "limit": "100m",
           "request": "10m"
         },
+        "ephemeral-storage": {
+           "limit": "4Gi",
+           "request": "2Gi"
+        },
         "image": "alpine",
         "memory": {
           "limit": "100Mi",
@@ -165,15 +172,26 @@ func TestCreateService(t *testing.T) {
 
 	res, err := sdk.CreateService(context.Background(), &req, adapter, tlogger)
 	if err != nil {
-		t.Fatalf("failed to create service: %v", err)
-	}
+		var apiError *a.ApiError
+		if errors.As(err, &apiError) && apiError.StatusCode == http.StatusConflict {
+			var payload api.CreateServiceAlreadyCreatedResponseBody
+			if err := json.Unmarshal(apiError.Payload.AsBytes(), &payload); err == nil {
+				t.Logf("service already exists: %s", *payload.ID)
+				serviceID = *payload.ID
+			} else {
+				t.Fatalf("failed to parse payload :%v", err)
+			}
+		} else {
+			t.Fatalf("failed to create service: %v", err)
+		}
+	} else {
+		if res.ID == nil {
+			t.Fatalf("missing ID from create service body: %v", err)
+		}
 
-	if res.ID == nil {
-		t.Fatalf("missing ID from create service body: %v", err)
+		// set service ID
+		serviceID = *res.ID
 	}
-
-	// set service ID
-	serviceID = *res.ID
 }
 
 func TestListService(t *testing.T) {
@@ -280,6 +298,10 @@ var (
 			"cpu": {
 			  "limit": "100m",
 			  "request": "10m"
+			},
+			"ephemeral-storage": {
+				"limit": "10Gi",
+				"request": "2Gi"
 			},
 			"image": "alpine",
 			"memory": {
