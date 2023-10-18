@@ -24,7 +24,7 @@ builds:
 brews:
   - name: ivcap
     homepage: "https://github.com/ivcap-works/ivcap-cli"
-    tap:
+    repository:
       owner: ivcap-works
       name: homebrew-ivcap
     commit_author:
