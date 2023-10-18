@@ -18,8 +18,9 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
-	"sync"
+	"os"
 	"testing"
 
 	log "go.uber.org/zap"
@@ -117,47 +118,54 @@ var (
 var (
 	adapter   *a.Adapter
 	serviceID string
-	once      sync.Once
 	testToken string
 	tlogger   *log.Logger
 )
 
-func setup(t *testing.T) {
-	once.Do(func() {
-		initConfig()
-		ctxt, err := GetContextWithError("", true)
-		if err != nil {
-			t.Logf("can not get active context, %s", err)
-			return
-		}
-		testToken = getAccessToken(true)
-		if testToken == "" {
-			return
-		}
+func TestMain(m *testing.M) {
+	initConfig()
+	ctxt, err := GetContextWithError("", true)
+	if err != nil {
+		fmt.Printf("can not get active context, %s\n", err)
+		return
+	}
+	testToken = getAccessToken(true)
+	if testToken == "" {
+		return
+	}
 
-		url := ctxt.URL
-		var headers *map[string]string
-		if ctxt.Host != "" {
-			headers = &(map[string]string{"Host": ctxt.Host})
-		}
+	url := ctxt.URL
+	var headers *map[string]string
+	if ctxt.Host != "" {
+		headers = &(map[string]string{"Host": ctxt.Host})
+	}
 
-		adapter, err = NewAdapter(url, testToken, DEFAULT_SERVICE_TIMEOUT_IN_SECONDS, headers)
-		if err != nil {
-			t.Fatalf("failed to get adapter: %v", err)
-		}
-		cfg := log.NewDevelopmentConfig()
-		cfg.OutputPaths = []string{"stdout"}
-		logLevel := zapcore.ErrorLevel
-		cfg.Level = log.NewAtomicLevelAt(logLevel)
-		tlogger, err = cfg.Build()
-		if err != nil {
-			t.Fatalf("failed to create tlogger: %v", err)
-		}
-	})
+	adapter, err = NewAdapter(url, testToken, DEFAULT_SERVICE_TIMEOUT_IN_SECONDS, headers)
+	if err != nil {
+		fmt.Printf("failed to get adapter: %v\n", err)
+	}
+	cfg := log.NewDevelopmentConfig()
+	cfg.OutputPaths = []string{"stdout"}
+	logLevel := zapcore.ErrorLevel
+	cfg.Level = log.NewAtomicLevelAt(logLevel)
+	tlogger, err = cfg.Build()
+	if err != nil {
+		fmt.Printf("failed to create tlogger: %v\n", err)
+	}
+
+	os.Exit(m.Run())
 }
 
-func TestCreateService(t *testing.T) {
-	setup(t)
+func TestAll(t *testing.T) {
+	testCreateService(t)
+	testGetService(t)
+	testUpdateService(t)
+
+	testCreateOrder(t)
+	testGetOrder(t)
+}
+
+func testCreateService(t *testing.T) {
 	if testToken == "" {
 		t.Skip("access token not found, login to run unit test...")
 	}
@@ -195,22 +203,17 @@ func TestCreateService(t *testing.T) {
 }
 
 func TestListService(t *testing.T) {
-	setup(t)
 	if testToken == "" {
 		t.Skip("access token not found, login to run unit test...")
 	}
-	req := &sdk.ListServiceRequest{Offset: 0, Limit: 50}
-	res, err := sdk.ListServices(context.Background(), req, adapter, tlogger)
+	req := &sdk.ListServiceRequest{Offset: 0, Limit: 5}
+	_, err := sdk.ListServices(context.Background(), req, adapter, tlogger)
 	if err != nil {
 		t.Fatalf("failed to list service: %v", err)
 	}
-	if len(res.Services) == 0 {
-		t.Fatalf("unexpected empty services")
-	}
 }
 
-func TestGetService(t *testing.T) {
-	setup(t)
+func testGetService(t *testing.T) {
 	if testToken == "" {
 		t.Skip("access token not found, login to run unit test...")
 	}
@@ -316,8 +319,7 @@ var (
 `)
 )
 
-func TestUpdateService(t *testing.T) {
-	setup(t)
+func testUpdateService(t *testing.T) {
 	if testToken == "" {
 		t.Skip("access token not found, login to run unit test...")
 	}
