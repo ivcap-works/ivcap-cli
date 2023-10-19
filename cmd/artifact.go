@@ -194,7 +194,7 @@ var (
 	}
 
 	downloadArtifactCmd = &cobra.Command{
-		Use:   "download [flags] artifact_id [-o file|-]",
+		Use:   "download [flags] artifact_id [-f file|-]",
 		Short: "Download the content associated with this artifact",
 		Args:  cobra.ExactArgs(1),
 		RunE:  downloadArtifact,
