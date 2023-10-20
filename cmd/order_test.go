@@ -58,7 +58,6 @@ func testCreateOrder(t *testing.T) {
 	if res.ID == nil {
 		t.Fatalf("order id not exists")
 	}
-	t.Logf("Order '%s' with status '%s' submitted.\n", *res.ID, *res.Status)
 
 	orderID = *res.ID
 }

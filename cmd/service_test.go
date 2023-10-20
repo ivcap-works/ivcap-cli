@@ -126,11 +126,16 @@ func TestMain(m *testing.M) {
 	initConfig()
 	ctxt, err := GetContextWithError("", true)
 	if err != nil {
-		fmt.Printf("can not get active context, %s\n", err)
+		fmt.Printf("Can not get active context, %s\n", err)
+		return
+	}
+	if ctxt.Name != "minikube" {
+		fmt.Printf("Unit test should run against minikube, please set to minikube context\n")
 		return
 	}
 	testToken = getAccessToken(true)
 	if testToken == "" {
+		fmt.Printf("Access token not found\n")
 		return
 	}
 
@@ -142,7 +147,8 @@ func TestMain(m *testing.M) {
 
 	adapter, err = NewAdapter(url, testToken, DEFAULT_SERVICE_TIMEOUT_IN_SECONDS, headers)
 	if err != nil {
-		fmt.Printf("failed to get adapter: %v\n", err)
+		fmt.Printf("Failed to get adapter: %v\n", err)
+		return
 	}
 	cfg := log.NewDevelopmentConfig()
 	cfg.OutputPaths = []string{"stdout"}
@@ -150,7 +156,8 @@ func TestMain(m *testing.M) {
 	cfg.Level = log.NewAtomicLevelAt(logLevel)
 	tlogger, err = cfg.Build()
 	if err != nil {
-		fmt.Printf("failed to create tlogger: %v\n", err)
+		fmt.Printf("Failed to create tlogger: %v\n", err)
+		return
 	}
 
 	os.Exit(m.Run())
@@ -163,6 +170,9 @@ func TestAll(t *testing.T) {
 
 	testCreateOrder(t)
 	testGetOrder(t)
+
+	testAddArtifact(t)
+	testGetArtifact(t)
 }
 
 func testCreateService(t *testing.T) {
