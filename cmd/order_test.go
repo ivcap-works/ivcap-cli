@@ -31,11 +31,15 @@ var (
 		"parameters": [
 		  {
 			"name": "region",
-			"value": "Upper Valley"
+			"value": "there"
 		  },
 		  {
 			"name": "threshold",
 			"value": "10"
+		  },
+		  {
+			"name": "log-version",
+			"value": "true"
 		  }
 		],
 		"tags": [

@@ -48,6 +48,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/reinventingscience/ivcap-core-api v0.28.5 h1:sQ+vEQXUkEKgGX2Hk4kJDBOdmdutVlDsNKxUwFQ3aXs=
 github.com/reinventingscience/ivcap-core-api v0.28.5/go.mod h1:GHQJ8S/rsc/wf6X0ZNrmVXrLdtN6/XR8EPh/4f89LP8=
+github.com/reinventingscience/ivcap-core-api v0.28.6 h1:0D43dOFWhxajqvgM0aa/KvWxl0NTz4ZRE2CeQbfGEHc=
+github.com/reinventingscience/ivcap-core-api v0.28.6/go.mod h1:GHQJ8S/rsc/wf6X0ZNrmVXrLdtN6/XR8EPh/4f89LP8=
 github.com/rivo/uniseg v0.1.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
 github.com/rivo/uniseg v0.2.0 h1:S1pD9weZBuJdFmowNwbpi7BJ8TNftyUImj/0WQi72jY=
 github.com/rivo/uniseg v0.2.0/go.mod h1:J6wj4VEh+S6ZtnVlnTBMWIodfgj8LQOQFoIToxlJtxc=
