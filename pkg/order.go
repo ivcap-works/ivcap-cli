@@ -148,6 +148,28 @@ func DownloadOrderLog(ctxt context.Context, req *api.LogsRequestBody, adpt *adap
 	return err
 }
 
+func TopOrder(ctxt context.Context, req *api.TopRequestBody, adpt *adapter.Adapter, logger *log.Logger) (*api.TopResponseBody, error) {
+	pyl, err := TopOrderRaw(ctxt, req, adpt, logger)
+	if err != nil {
+		return nil, err
+	}
+
+	var resp api.TopResponseBody
+	if err = pyl.AsType(&resp); err != nil {
+		return nil, fmt.Errorf("failed to parse create response body: %w", err)
+	}
+	return &resp, nil
+}
+
+func TopOrderRaw(ctxt context.Context, req *api.TopRequestBody, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	path := "/1/orders/top"
+	body, err := json.Marshal(req)
+	if err != nil {
+		return nil, fmt.Errorf("error marshalling body: %w", err)
+	}
+	return (*adpt).Post(ctxt, path, bytes.NewReader(body), int64(len(body)), nil, logger)
+}
+
 /**** UTILS ****/
 
 func orderPath(id *string) string {

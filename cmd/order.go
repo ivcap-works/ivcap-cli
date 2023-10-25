@@ -33,11 +33,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var (
-	downloadLogFrom, downloadLogTo string
-	namespace, container           string
-)
-
 func init() {
 	rootCmd.AddCommand(orderCmd)
 
@@ -64,12 +59,18 @@ func init() {
 	downloadLogCmd.Flags().StringVar(&downloadLogTo, "to", "", "from time string in format YYYY-MM-DDTHH:MI:SS")
 	downloadLogCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "namespace name")
 	downloadLogCmd.Flags().StringVarP(&container, "containter", "c", "", "container name")
+
+	// Top
+	orderCmd.AddCommand(topCmd)
+	topCmd.Flags().StringVarP(&topOrderNamespace, "namespace", "n", "", "namespace name")
 }
 
 var (
-	name               string
-	accountID          string
-	skipParameterCheck bool
+	name                                    string
+	accountID                               string
+	skipParameterCheck                      bool
+	downloadLogFrom, downloadLogTo          string
+	namespace, container, topOrderNamespace string
 
 	orderCmd = &cobra.Command{
 		Use:     "order",
@@ -251,6 +252,34 @@ An example:
 
 			adapter := CreateAdapter(true)
 			return sdk.DownloadOrderLog(context.Background(), req, adapter, logger)
+		},
+	}
+
+	topCmd = &cobra.Command{
+		Use:   "top [flags] order-id",
+		Short: "check container resources for specific order",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			recordID := GetHistory(args[0])
+			req := &api.TopRequestBody{
+				OrderID: recordID,
+			}
+			if topOrderNamespace != "" {
+				req.NamespaceName = &topOrderNamespace
+			}
+
+			adapter := CreateAdapter(true)
+			ctx := context.Background()
+			res, err := sdk.TopOrderRaw(ctx, req, adapter, logger)
+			if err != nil {
+				return err
+			}
+			switch outputFormat {
+			case "json":
+				return a.ReplyPrinter(res, outputFormat == "yaml")
+			default:
+				return a.ReplyPrinter(res, true)
+			}
 		},
 	}
 )
