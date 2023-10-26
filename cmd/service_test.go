@@ -282,6 +282,13 @@ var (
 			"name": "threshold",
 			"type": "float",
 			"unit": "m"
+		  },
+		  {
+			"label": "Rainfall/month threshold",
+			"name": "log-version",
+			"type": "bool",
+			"unary": true,
+			"optional": true
 		  }
 		],
 		"provider-id": "urn:ivcap:provider:0f0e3f57-80f7-4899-9b69-459af2efd789",
@@ -304,9 +311,9 @@ var (
 		  "argo": "Maxime eius voluptatibus tempore assumenda et qui.",
 		  "basic": {
 			"command": [
-			  "/bin/sh",
+			  "/usr/local/bin/python",
 			  "-c",
-			  "echo $PATH"
+			  "import sys,time; print('cmd entry:', sys.argv); time.sleep(60)"
 			],
 			"cpu": {
 			  "limit": "100m",
@@ -316,7 +323,7 @@ var (
 				"limit": "10Gi",
 				"request": "2Gi"
 			},
-			"image": "alpine",
+			"image": "python",
 			"memory": {
 			  "limit": "100Mi",
 			  "request": "10Mi"
