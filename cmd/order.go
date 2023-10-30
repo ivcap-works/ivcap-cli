@@ -189,13 +189,9 @@ An example:
 				params[i] = &api.ParameterT{Name: &name, Value: &value}
 			}
 
-			if accountID == "" {
-				accountID = GetActiveContext().AccountID
-			}
 			req := &api.CreateRequestBody{
 				ServiceID:  serviceId,
 				Parameters: params,
-				AccountID:  &accountID, // do we really need to account ID.
 			}
 			if name != "" {
 				req.Name = &name

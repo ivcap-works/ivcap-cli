@@ -34,7 +34,6 @@ import (
 var (
 	createReqBody = []byte(`
 {
-    "account-id": "urn:ivcap:account:0f0e3f57-80f7-4899-9b69-459af2efd789",
     "banner": "http://quigleyjakubowski.net/otilia_miller",
     "description": "This service ...",
     "metadata": [
@@ -248,7 +247,6 @@ func testGetService(t *testing.T) {
 var (
 	updateReqBody = []byte(`
 	{
-		"account-id": "urn:ivcap:account:0f0e3f57-80f7-4899-9b69-459af2efd789",
 		"banner": "http://quigleyjakubowski.net/otilia_miller",
 		"description": "This service is updated",
 		"metadata": [
