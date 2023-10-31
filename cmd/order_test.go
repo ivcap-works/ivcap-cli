@@ -26,7 +26,6 @@ import (
 var (
 	createOrderReqBody = []byte(`
 	{
-		"account-id": "urn:ivcap:account:0f0e3f57-80f7-4899-9b69-459af2efd789",
 		"name": "Some order name",
 		"parameters": [
 		  {
