@@ -29,7 +29,7 @@ type ResponseHandler func(response *http.Response, path string, logger *log.Logg
 type Adapter interface {
 	Head(ctxt context.Context, path string, headers *map[string]string, logger *log.Logger) (Payload, error)
 	Get(ctxt context.Context, path string, logger *log.Logger) (Payload, error)
-	Get2(ctxt context.Context, path string, headers *map[string]string, respHandler ResponseHandler, logger *log.Logger) error
+	GetWithHandler(ctxt context.Context, path string, headers *map[string]string, respHandler ResponseHandler, logger *log.Logger) error
 	Post(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error)
 	PostWithHandler(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, respHandler ResponseHandler, logger *log.Logger) (Payload, error)
 	PostForm(ctxt context.Context, path string, data url.Values, headers *map[string]string, logger *log.Logger) (Payload, error)

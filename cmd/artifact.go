@@ -479,7 +479,7 @@ func downloadArtifact(cmd *cobra.Command, args []string) error {
 		return
 	}
 
-	err = (*adapter).Get2(ctxt, url.Path, nil, downloadHandler, logger)
+	err = (*adapter).GetWithHandler(ctxt, url.Path, nil, downloadHandler, logger)
 	if err != nil {
 		return err
 	}

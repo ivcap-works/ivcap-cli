@@ -220,7 +220,7 @@ An example:
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := GetHistory(args[0])
-			req := &api.LogsRequestBody{
+			req := &sdk.LogsRequestBody{
 				OrderID: recordID,
 			}
 			if downloadLogFrom != "" {
@@ -229,7 +229,7 @@ An example:
 					return fmt.Errorf("invalid from parameter format: %s", downloadLogFrom)
 				}
 				tm := t.Unix()
-				req.From = &tm
+				req.From = tm
 			}
 			if downloadLogTo != "" {
 				t, err := time.Parse(time.RFC3339, downloadLogTo)
@@ -237,13 +237,13 @@ An example:
 					return fmt.Errorf("invalid to parameter format: %s", downloadLogTo)
 				}
 				tm := t.Unix()
-				req.To = &tm
+				req.To = tm
 			}
 			if namespace != "" {
-				req.NamespaceName = &namespace
+				req.NamespaceName = namespace
 			}
 			if container != "" {
-				req.ContainerName = &container
+				req.ContainerName = container
 			}
 
 			adapter := CreateAdapter(true)
@@ -257,11 +257,11 @@ An example:
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := GetHistory(args[0])
-			req := &api.TopRequestBody{
+			req := &sdk.TopRequestBody{
 				OrderID: recordID,
 			}
 			if topOrderNamespace != "" {
-				req.NamespaceName = &topOrderNamespace
+				req.NamespaceName = topOrderNamespace
 			}
 
 			adapter := CreateAdapter(true)
