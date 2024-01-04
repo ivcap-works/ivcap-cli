@@ -115,12 +115,9 @@ func ReadOrderRaw(ctxt context.Context, cmd *ReadOrderRequest, adpt *adapter.Ada
 }
 
 type LogsRequestBody struct {
-	From          int64
-	To            int64
-	NamespaceName string
-	ContainerName string
-	OrderID       string
-	PolicyID      string
+	From    int64
+	To      int64
+	OrderID string
 }
 
 func DownloadOrderLog(ctxt context.Context, req *LogsRequestBody, adpt *adapter.Adapter, logger *log.Logger) error {
@@ -132,15 +129,6 @@ func DownloadOrderLog(ctxt context.Context, req *LogsRequestBody, adpt *adapter.
 	}
 	if req.To != 0 {
 		values.Add("to", strconv.FormatInt(req.To, 10))
-	}
-	if req.ContainerName != "" {
-		values.Add("containerName", req.ContainerName)
-	}
-	if req.NamespaceName != "" {
-		values.Add("namespaceName", req.NamespaceName)
-	}
-	if req.PolicyID != "" {
-		values.Add("policyID", req.PolicyID)
 	}
 
 	path += "?" + values.Encode()
@@ -159,14 +147,8 @@ func DownloadOrderLog(ctxt context.Context, req *LogsRequestBody, adpt *adapter.
 	return (*adpt).GetWithHandler(ctxt, path, nil, handler, logger)
 }
 
-type TopRequestBody struct {
-	OrderID       string
-	NamespaceName string
-	PolicyID      string
-}
-
-func TopOrder(ctxt context.Context, req *TopRequestBody, adpt *adapter.Adapter, logger *log.Logger) (*api.TopResponseBody, error) {
-	pyl, err := TopOrderRaw(ctxt, req, adpt, logger)
+func TopOrder(ctxt context.Context, orderID string, adpt *adapter.Adapter, logger *log.Logger) (*api.TopResponseBody, error) {
+	pyl, err := TopOrderRaw(ctxt, orderID, adpt, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -178,18 +160,8 @@ func TopOrder(ctxt context.Context, req *TopRequestBody, adpt *adapter.Adapter, 
 	return &resp, nil
 }
 
-func TopOrderRaw(ctxt context.Context, req *TopRequestBody, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	path := "/1/orders/" + req.OrderID + "/top"
-
-	values := url.Values{}
-	if req.NamespaceName != "" {
-		values.Add("namespaceName", req.NamespaceName)
-	}
-	if req.PolicyID != "" {
-		values.Add("policyID", req.PolicyID)
-	}
-
-	path += "?" + values.Encode()
+func TopOrderRaw(ctxt context.Context, orderID string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	path := "/1/orders/" + orderID + "/top"
 
 	return (*adpt).Get(ctxt, path, logger)
 }
