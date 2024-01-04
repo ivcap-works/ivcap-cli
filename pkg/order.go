@@ -115,12 +115,10 @@ func ReadOrderRaw(ctxt context.Context, cmd *ReadOrderRequest, adpt *adapter.Ada
 }
 
 type LogsRequestBody struct {
-	From          int64
-	To            int64
-	NamespaceName string
-	ContainerName string
-	OrderID       string
-	PolicyID      string
+	From     int64
+	To       int64
+	OrderID  string
+	PolicyID string
 }
 
 func DownloadOrderLog(ctxt context.Context, req *LogsRequestBody, adpt *adapter.Adapter, logger *log.Logger) error {
@@ -132,12 +130,6 @@ func DownloadOrderLog(ctxt context.Context, req *LogsRequestBody, adpt *adapter.
 	}
 	if req.To != 0 {
 		values.Add("to", strconv.FormatInt(req.To, 10))
-	}
-	if req.ContainerName != "" {
-		values.Add("containerName", req.ContainerName)
-	}
-	if req.NamespaceName != "" {
-		values.Add("namespaceName", req.NamespaceName)
 	}
 	if req.PolicyID != "" {
 		values.Add("policyID", req.PolicyID)
@@ -160,9 +152,8 @@ func DownloadOrderLog(ctxt context.Context, req *LogsRequestBody, adpt *adapter.
 }
 
 type TopRequestBody struct {
-	OrderID       string
-	NamespaceName string
-	PolicyID      string
+	OrderID  string
+	PolicyID string
 }
 
 func TopOrder(ctxt context.Context, req *TopRequestBody, adpt *adapter.Adapter, logger *log.Logger) (*api.TopResponseBody, error) {
@@ -182,9 +173,6 @@ func TopOrderRaw(ctxt context.Context, req *TopRequestBody, adpt *adapter.Adapte
 	path := "/1/orders/" + req.OrderID + "/top"
 
 	values := url.Values{}
-	if req.NamespaceName != "" {
-		values.Add("namespaceName", req.NamespaceName)
-	}
 	if req.PolicyID != "" {
 		values.Add("policyID", req.PolicyID)
 	}

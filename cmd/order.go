@@ -57,20 +57,19 @@ func init() {
 	orderCmd.AddCommand(downloadLogCmd)
 	downloadLogCmd.Flags().StringVar(&downloadLogFrom, "from", "", "from time string in format YYYY-MM-DDTHH:MI:SS")
 	downloadLogCmd.Flags().StringVar(&downloadLogTo, "to", "", "from time string in format YYYY-MM-DDTHH:MI:SS")
-	downloadLogCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "namespace name")
-	downloadLogCmd.Flags().StringVarP(&container, "containter", "c", "", "container name")
+	downloadLogCmd.Flags().StringVar(&policyID, "policy-id", "", "override the policy ID to use for the logs")
 
 	// Top
 	orderCmd.AddCommand(topCmd)
-	topCmd.Flags().StringVarP(&topOrderNamespace, "namespace", "n", "", "namespace name")
+	orderCmd.Flags().StringVar(&policyID, "policy-id", "", "override the policy ID to use for the top")
 }
 
 var (
-	name                                    string
-	accountID                               string
-	skipParameterCheck                      bool
-	downloadLogFrom, downloadLogTo          string
-	namespace, container, topOrderNamespace string
+	name                           string
+	accountID                      string
+	skipParameterCheck             bool
+	downloadLogFrom, downloadLogTo string
+	policyID                       string
 
 	orderCmd = &cobra.Command{
 		Use:     "order",
@@ -239,11 +238,8 @@ An example:
 				tm := t.Unix()
 				req.To = tm
 			}
-			if namespace != "" {
-				req.NamespaceName = namespace
-			}
-			if container != "" {
-				req.ContainerName = container
+			if policyID != "" {
+				req.PolicyID = policyID
 			}
 
 			adapter := CreateAdapter(true)
@@ -260,8 +256,8 @@ An example:
 			req := &sdk.TopRequestBody{
 				OrderID: recordID,
 			}
-			if topOrderNamespace != "" {
-				req.NamespaceName = topOrderNamespace
+			if policyID != "" {
+				req.PolicyID = policyID
 			}
 
 			adapter := CreateAdapter(true)
