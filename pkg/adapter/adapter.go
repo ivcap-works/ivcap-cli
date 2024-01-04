@@ -104,7 +104,7 @@ func (a *restAdapter) Get(ctxt context.Context, path string, logger *log.Logger)
 	return Connect(ctxt, "GET", path, nil, -1, nil, &a.ctxt, nil, logger)
 }
 
-func (a *restAdapter) Get2(ctxt context.Context, path string, headers *map[string]string, respHandler ResponseHandler, logger *log.Logger) error {
+func (a *restAdapter) GetWithHandler(ctxt context.Context, path string, headers *map[string]string, respHandler ResponseHandler, logger *log.Logger) error {
 	_, err := Connect(ctxt, "GET", path, nil, -1, headers, &a.ctxt, respHandler, logger)
 	return err
 }
