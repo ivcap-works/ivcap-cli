@@ -17,7 +17,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/reinventingscience/ivcap-cli/cmd"
+	"github.com/ivcap-works/ivcap-cli/cmd"
 )
 
 var (

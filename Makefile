@@ -4,12 +4,12 @@ ifeq ($(OS),Windows_NT)
 	space := $(subst ,, )
 	BUILD_DATE := $(subst $(space),,$(strip $(shell date /T))-$(shell time /T))
 	GIT_TAG := $(shell git describe --abbrev=0 --tags 2> nul)
-	GOPRIVATE_OS_ENV_CMD := set GOPRIVATE="github.com/reinventingscience/ivcap-core-api" &&
+	GOPRIVATE_OS_ENV_CMD := set GOPRIVATE="github.com/ivcap-works/ivcap-core-api" &&
 	EXTENSION := .exe
 else
 	BUILD_DATE := $(shell date "+%Y-%m-%dT%H:%M")
 	GIT_TAG := $(shell git describe --abbrev=0 --tags 2>/dev/null || true)
-	GOPRIVATE_OS_ENV_CMD := export GOPRIVATE="github.com/reinventingscience/ivcap-core-api" &&
+	GOPRIVATE_OS_ENV_CMD := export GOPRIVATE="github.com/ivcap-works/ivcap-core-api" &&
 endif
 
 MOVIE_SIZE=1280x720 # 640x360

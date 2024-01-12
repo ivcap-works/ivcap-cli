@@ -24,7 +24,7 @@ import (
 
 	"github.com/MicahParks/keyfunc"
 	"github.com/golang-jwt/jwt/v4"
-	adpt "github.com/reinventingscience/ivcap-cli/pkg/adapter"
+	adpt "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 	"github.com/skip2/go-qrcode"
 	"github.com/spf13/cobra"
 	log "go.uber.org/zap"

@@ -20,11 +20,11 @@ import (
 	"net/url"
 
 	"github.com/araddon/dateparse"
+	sdk "github.com/ivcap-works/ivcap-cli/pkg"
+	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	api "github.com/ivcap-works/ivcap-core-api/http/metadata"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
-	sdk "github.com/reinventingscience/ivcap-cli/pkg"
-	a "github.com/reinventingscience/ivcap-cli/pkg/adapter"
-	api "github.com/reinventingscience/ivcap-core-api/http/metadata"
 
 	"github.com/spf13/cobra"
 	log "go.uber.org/zap"

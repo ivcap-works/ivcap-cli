@@ -20,10 +20,10 @@ import (
 	"os"
 	"strings"
 
-	api "github.com/reinventingscience/ivcap-core-api/http/service"
+	api "github.com/ivcap-works/ivcap-core-api/http/service"
 
-	sdk "github.com/reinventingscience/ivcap-cli/pkg"
-	a "github.com/reinventingscience/ivcap-cli/pkg/adapter"
+	sdk "github.com/ivcap-works/ivcap-cli/pkg"
+	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"

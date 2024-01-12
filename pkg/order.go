@@ -25,9 +25,9 @@ import (
 	"strconv"
 	"strings"
 
-	api "github.com/reinventingscience/ivcap-core-api/http/order"
+	api "github.com/ivcap-works/ivcap-core-api/http/order"
 
-	"github.com/reinventingscience/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/adapter"
 
 	log "go.uber.org/zap"
 )

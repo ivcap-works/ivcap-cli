@@ -27,7 +27,7 @@ import (
 
 	log "go.uber.org/zap"
 
-	sdk "github.com/reinventingscience/ivcap-cli/pkg"
+	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 )
 
 func TestListArtifact(t *testing.T) {
