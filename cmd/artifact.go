@@ -226,7 +226,7 @@ var (
 			if !silent {
 				fmt.Printf("Created artifact '%s'\n", artifactID)
 			}
-			path, err := (*adapter).GetPath(*resp.Data.Self)
+			path, err := (*adapter).GetPath(*resp.DataHref)
 			if err != nil {
 				cobra.CompErrorln(fmt.Sprintf("while parsing API reply - %v", err))
 				return
@@ -263,7 +263,7 @@ var (
 				cobra.CompErrorln(fmt.Sprintf("while getting a status update on '%s' - %v", artifactID, err))
 				return
 			}
-			path, err := (*adapter).GetPath(*readResp.Data.Self)
+			path, err := (*adapter).GetPath(*readResp.DataHref)
 			if err != nil {
 				cobra.CompErrorln(fmt.Sprintf("while parsing API reply - %v", err))
 				return
@@ -446,11 +446,10 @@ func downloadArtifact(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	data := artifact.Data
-	if data == nil || data.Self == nil {
+	if artifact.DataHref == nil {
 		cobra.CheckErr("No data available")
 	}
-	url, err := url.ParseRequestURI(*data.Self)
+	url, err := url.ParseRequestURI(*artifact.DataHref)
 	if err != nil {
 		return err
 	}
@@ -491,8 +490,8 @@ func printArtifactTable(list *api.ListResponseBody, wide bool) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"ID", "Name", "Status", "Size", "MimeType"})
-	rows := make([]table.Row, len(list.Artifacts))
-	for i, o := range list.Artifacts {
+	rows := make([]table.Row, len(list.Items))
+	for i, o := range list.Items {
 		rows[i] = table.Row{MakeHistory(o.ID), safeTruncString(o.Name), safeString(o.Status),
 			safeBytes(o.Size), safeString(o.MimeType)}
 	}
@@ -504,9 +503,9 @@ func printArtifact(artifact *api.ReadResponseBody, meta *meta.ListResponseBody, 
 	tw3 := table.NewWriter()
 	tw3.SetStyle(table.StyleLight)
 	if meta != nil {
-		rows2 := make([]table.Row, len(meta.Records))
-		for i, p := range meta.Records {
-			rows2[i] = table.Row{MakeHistory(p.RecordID), safeString(p.Schema)}
+		rows2 := make([]table.Row, len(meta.Items))
+		for i, p := range meta.Items {
+			rows2[i] = table.Row{MakeHistory(p.ID), safeString(p.Schema)}
 		}
 		tw3.AppendRows(rows2)
 	}
@@ -526,7 +525,7 @@ func printArtifact(artifact *api.ReadResponseBody, meta *meta.ListResponseBody, 
 		{"Status", safeString(artifact.Status)},
 		{"Size", safeBytes(artifact.Size)},
 		{"Mime-type", safeString(artifact.MimeType)},
-		{"Account ID", safeString(artifact.Account.ID)},
+		{"Account ID", safeString(artifact.Account)},
 		{"Metadata", tw3.Render()},
 	})
 	fmt.Printf("\n%s\n\n", tw.Render())

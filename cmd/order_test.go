@@ -66,7 +66,7 @@ func testCreateOrder(t *testing.T) {
 	if err = pyld.AsType(&req); err != nil {
 		t.Fatalf("failed to unmarshal request body: %v", err)
 	}
-	req.ServiceID = serviceID
+	req.Service = serviceID
 
 	res, err := sdk.CreateOrder(context.Background(), &req, adapter, tlogger)
 	if err != nil {

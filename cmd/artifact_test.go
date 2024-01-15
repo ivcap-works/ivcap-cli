@@ -67,7 +67,7 @@ func testAddArtifact(t *testing.T) {
 	}
 	testArtifactID = *resp.ID
 
-	path, err := (*adapter).GetPath(*resp.Data.Self)
+	path, err := (*adapter).GetPath(*resp.DataHref)
 	if err != nil {
 		t.Fatalf("while parsing API reply - %v", err)
 	}
@@ -89,7 +89,7 @@ func testGetArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to get artifact: %v", err)
 	}
-	if artifact.Data == nil || artifact.Data.Self == nil {
+	if artifact.DataHref == nil {
 		t.Fatalf("No data available")
 	}
 	if artifact.ID == nil || *artifact.ID != testArtifactID {
@@ -100,9 +100,9 @@ func testGetArtifact(t *testing.T) {
 		t.Fatalf("error while list artifact metadata: %v", err)
 	}
 
-	u, err := url.ParseRequestURI(*artifact.Data.Self)
+	u, err := url.ParseRequestURI(*artifact.DataHref)
 	if err != nil {
-		t.Fatalf("error parsing url: %s, %v", *artifact.Data.Self, err)
+		t.Fatalf("error parsing url: %s, %v", *artifact.DataHref, err)
 	}
 
 	downloadHandler := func(resp *http.Response, path string, logger *log.Logger) error {
