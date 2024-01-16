@@ -57,20 +57,16 @@ func init() {
 	orderCmd.AddCommand(downloadLogCmd)
 	downloadLogCmd.Flags().StringVar(&downloadLogFrom, "from", "", "from time string in format YYYY-MM-DDTHH:MI:SS")
 	downloadLogCmd.Flags().StringVar(&downloadLogTo, "to", "", "from time string in format YYYY-MM-DDTHH:MI:SS")
-	downloadLogCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "namespace name")
-	downloadLogCmd.Flags().StringVarP(&container, "containter", "c", "", "container name")
 
 	// Top
 	orderCmd.AddCommand(topCmd)
-	topCmd.Flags().StringVarP(&topOrderNamespace, "namespace", "n", "", "namespace name")
 }
 
 var (
-	name                                    string
-	accountID                               string
-	skipParameterCheck                      bool
-	downloadLogFrom, downloadLogTo          string
-	namespace, container, topOrderNamespace string
+	name                           string
+	accountID                      string
+	skipParameterCheck             bool
+	downloadLogFrom, downloadLogTo string
 
 	orderCmd = &cobra.Command{
 		Use:     "order",
@@ -220,7 +216,7 @@ An example:
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := GetHistory(args[0])
-			req := &api.LogsRequestBody{
+			req := &sdk.LogsRequestBody{
 				OrderID: recordID,
 			}
 			if downloadLogFrom != "" {
@@ -229,7 +225,7 @@ An example:
 					return fmt.Errorf("invalid from parameter format: %s", downloadLogFrom)
 				}
 				tm := t.Unix()
-				req.From = &tm
+				req.From = tm
 			}
 			if downloadLogTo != "" {
 				t, err := time.Parse(time.RFC3339, downloadLogTo)
@@ -237,13 +233,7 @@ An example:
 					return fmt.Errorf("invalid to parameter format: %s", downloadLogTo)
 				}
 				tm := t.Unix()
-				req.To = &tm
-			}
-			if namespace != "" {
-				req.NamespaceName = &namespace
-			}
-			if container != "" {
-				req.ContainerName = &container
+				req.To = tm
 			}
 
 			adapter := CreateAdapter(true)
@@ -257,16 +247,10 @@ An example:
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := GetHistory(args[0])
-			req := &api.TopRequestBody{
-				OrderID: recordID,
-			}
-			if topOrderNamespace != "" {
-				req.NamespaceName = &topOrderNamespace
-			}
 
 			adapter := CreateAdapter(true)
 			ctx := context.Background()
-			res, err := sdk.TopOrderRaw(ctx, req, adapter, logger)
+			res, err := sdk.TopOrderRaw(ctx, recordID, adapter, logger)
 			if err != nil {
 				return err
 			}

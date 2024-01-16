@@ -1,6 +1,6 @@
 module github.com/reinventingscience/ivcap-cli
 
-go 1.21.4
+go 1.21.5
 
 require (
 	github.com/MicahParks/keyfunc v1.5.3

@@ -39,18 +39,6 @@ type ListOrderRequest struct {
 	Limit  int
 }
 
-// type ListResult struct {
-// 	HasMore       bool   `json:"hasMore"`
-// 	NextPageToken string `json:"nextPageToken"`
-// 	Records       []struct {
-// 		Aspects   map[string]interface{} `json:"aspects"`
-// 		ID        string                 `json:"id"`
-// 		Name      string                 `json:"name"`
-// 		SourceTag string                 `json:"sourceTag"`
-// 		TenantID  int                    `json:"tenantId"`
-// 	} `json:"records"`
-// }
-
 func ListOrders(ctxt context.Context, cmd *ListOrderRequest, adpt *adapter.Adapter, logger *log.Logger) (*api.ListResponseBody, error) {
 	pyl, err := ListOrdersRaw(ctxt, cmd, adpt, logger)
 	if err != nil {
@@ -126,12 +114,24 @@ func ReadOrderRaw(ctxt context.Context, cmd *ReadOrderRequest, adpt *adapter.Ada
 	return (*adpt).Get(ctxt, path, logger)
 }
 
-func DownloadOrderLog(ctxt context.Context, req *api.LogsRequestBody, adpt *adapter.Adapter, logger *log.Logger) error {
-	path := "/1/orders/logs"
-	body, err := json.Marshal(req)
-	if err != nil {
-		return fmt.Errorf("error marshalling body: %w", err)
+type LogsRequestBody struct {
+	From    int64
+	To      int64
+	OrderID string
+}
+
+func DownloadOrderLog(ctxt context.Context, req *LogsRequestBody, adpt *adapter.Adapter, logger *log.Logger) error {
+	path := "/1/orders/" + req.OrderID + "/logs"
+
+	values := url.Values{}
+	if req.From != 0 {
+		values.Add("from", strconv.FormatInt(req.From, 10))
 	}
+	if req.To != 0 {
+		values.Add("to", strconv.FormatInt(req.To, 10))
+	}
+
+	path += "?" + values.Encode()
 	handler := func(resp *http.Response, path string, logger *log.Logger) error {
 		scanner := bufio.NewScanner(resp.Body)
 		for scanner.Scan() {
@@ -144,12 +144,11 @@ func DownloadOrderLog(ctxt context.Context, req *api.LogsRequestBody, adpt *adap
 		return nil
 	}
 
-	_, err = (*adpt).PostWithHandler(ctxt, path, bytes.NewReader(body), int64(len(body)), nil, handler, logger)
-	return err
+	return (*adpt).GetWithHandler(ctxt, path, nil, handler, logger)
 }
 
-func TopOrder(ctxt context.Context, req *api.TopRequestBody, adpt *adapter.Adapter, logger *log.Logger) (*api.TopResponseBody, error) {
-	pyl, err := TopOrderRaw(ctxt, req, adpt, logger)
+func TopOrder(ctxt context.Context, orderID string, adpt *adapter.Adapter, logger *log.Logger) (*api.TopResponseBody, error) {
+	pyl, err := TopOrderRaw(ctxt, orderID, adpt, logger)
 	if err != nil {
 		return nil, err
 	}
@@ -161,13 +160,10 @@ func TopOrder(ctxt context.Context, req *api.TopRequestBody, adpt *adapter.Adapt
 	return &resp, nil
 }
 
-func TopOrderRaw(ctxt context.Context, req *api.TopRequestBody, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	path := "/1/orders/top"
-	body, err := json.Marshal(req)
-	if err != nil {
-		return nil, fmt.Errorf("error marshalling body: %w", err)
-	}
-	return (*adpt).Post(ctxt, path, bytes.NewReader(body), int64(len(body)), nil, logger)
+func TopOrderRaw(ctxt context.Context, orderID string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	path := "/1/orders/" + orderID + "/top"
+
+	return (*adpt).Get(ctxt, path, logger)
 }
 
 /**** UTILS ****/

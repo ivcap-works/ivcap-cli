@@ -132,7 +132,7 @@ func testGetArtifact(t *testing.T) {
 		return nil
 	}
 
-	if err := (*adapter).Get2(context.Background(), u.Path, nil, downloadHandler, logger); err != nil {
+	if err := (*adapter).GetWithHandler(context.Background(), u.Path, nil, downloadHandler, logger); err != nil {
 		t.Fatalf("failed to download artifact: %v", err)
 	}
 }
