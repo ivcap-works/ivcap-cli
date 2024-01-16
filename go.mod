@@ -1,4 +1,4 @@
-module github.com/reinventingscience/ivcap-cli
+module github.com/ivcap-works/ivcap-cli
 
 go 1.21.5
 
@@ -7,9 +7,9 @@ require (
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-jwt/jwt/v4 v4.4.2
+	github.com/ivcap-works/ivcap-core-api v0.31.6
 	github.com/jedib0t/go-pretty/v6 v6.3.1
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
-	github.com/reinventingscience/ivcap-core-api v0.28.7
 	github.com/schollz/progressbar/v3 v3.9.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/spf13/cobra v1.6.1

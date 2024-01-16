@@ -23,9 +23,9 @@ import (
 	"fmt"
 	"net/url"
 
-	api "github.com/reinventingscience/ivcap-core-api/http/metadata"
+	api "github.com/ivcap-works/ivcap-core-api/http/metadata"
 
-	"github.com/reinventingscience/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/adapter"
 	log "go.uber.org/zap"
 )
 

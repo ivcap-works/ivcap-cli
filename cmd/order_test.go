@@ -18,9 +18,9 @@ import (
 	"context"
 	"testing"
 
-	sdk "github.com/reinventingscience/ivcap-cli/pkg"
-	a "github.com/reinventingscience/ivcap-cli/pkg/adapter"
-	api "github.com/reinventingscience/ivcap-core-api/http/order"
+	sdk "github.com/ivcap-works/ivcap-cli/pkg"
+	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	api "github.com/ivcap-works/ivcap-core-api/http/order"
 )
 
 var (
@@ -66,7 +66,7 @@ func testCreateOrder(t *testing.T) {
 	if err = pyld.AsType(&req); err != nil {
 		t.Fatalf("failed to unmarshal request body: %v", err)
 	}
-	req.ServiceID = serviceID
+	req.Service = serviceID
 
 	res, err := sdk.CreateOrder(context.Background(), &req, adapter, tlogger)
 	if err != nil {

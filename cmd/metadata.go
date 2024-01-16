@@ -17,14 +17,13 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"net/url"
 
 	"github.com/araddon/dateparse"
+	sdk "github.com/ivcap-works/ivcap-cli/pkg"
+	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	api "github.com/ivcap-works/ivcap-core-api/http/metadata"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
-	sdk "github.com/reinventingscience/ivcap-cli/pkg"
-	a "github.com/reinventingscience/ivcap-cli/pkg/adapter"
-	api "github.com/reinventingscience/ivcap-core-api/http/metadata"
 
 	"github.com/spf13/cobra"
 	log "go.uber.org/zap"
@@ -220,9 +219,9 @@ func printMetadataTable(list *api.ListResponseBody, wide bool) {
 	tw2 := table.NewWriter()
 	tw2.AppendHeader(table.Row{"ID", "Entity", "Schema"})
 	tw2.SetStyle(table.StyleLight)
-	rows := make([]table.Row, len(list.Records))
-	for i, p := range list.Records {
-		rows[i] = table.Row{MakeHistory(p.RecordID), safeString(p.Entity), safeString(p.Schema)}
+	rows := make([]table.Row, len(list.Items))
+	for i, p := range list.Items {
+		rows[i] = table.Row{MakeHistory(p.ID), safeString(p.Entity), safeString(p.Schema)}
 	}
 	tw2.AppendRows(rows)
 
@@ -237,8 +236,8 @@ func printMetadataTable(list *api.ListResponseBody, wide bool) {
 	})
 
 	p := []table.Row{}
-	if list.EntityID != nil {
-		p = append(p, table.Row{"Entity", *list.EntityID})
+	if list.Entity != nil {
+		p = append(p, table.Row{"Entity", *list.Entity})
 	}
 	if list.Schema != nil {
 		p = append(p, table.Row{"Schema", *list.Schema})
@@ -248,13 +247,14 @@ func printMetadataTable(list *api.ListResponseBody, wide bool) {
 	}
 	p = append(p, table.Row{"Records", tw2.Render()})
 
-	if list.Links != nil && list.Links.Next != nil {
-		u, err := url.Parse(*list.Links.Next)
-		if err == nil {
-			page := u.Query().Get("page")
-			p = append(p, table.Row{"Next Page Token", page})
-		}
-	}
+	// TODO, recover the Next page ?
+	// if list.Links != nil && list.Links.Next != nil {
+	// 	u, err := url.Parse(*list.Links.Next)
+	// 	if err == nil {
+	// 		page := u.Query().Get("page")
+	// 		p = append(p, table.Row{"Next Page Token", page})
+	// 	}
+	// }
 
 	tw.AppendRows(p)
 

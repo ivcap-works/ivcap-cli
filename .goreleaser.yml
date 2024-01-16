@@ -32,9 +32,9 @@ brews:
       email: max.ott@data61.csiro.au
 
 # - name: ivcap
-#   homepage: "https://github.com/reinventingscience/ivcap-cli"
+#   homepage: "https://github.com/ivcap-works/ivcap-cli"
 #   tap:
-#     owner: reinventingscience
+#     owner: ivcap-works
 #     name: homebrew-resci
 #   commit_author:
 #     name: maxott

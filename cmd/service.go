@@ -20,10 +20,10 @@ import (
 	"os"
 	"strings"
 
-	api "github.com/reinventingscience/ivcap-core-api/http/service"
+	api "github.com/ivcap-works/ivcap-core-api/http/service"
 
-	sdk "github.com/reinventingscience/ivcap-cli/pkg"
-	a "github.com/reinventingscience/ivcap-cli/pkg/adapter"
+	sdk "github.com/ivcap-works/ivcap-cli/pkg"
+	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -187,9 +187,9 @@ func printServiceTable(list *api.ListResponseBody, wide bool) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"ID", "Name", "Provider"})
-	rows := make([]table.Row, len(list.Services))
-	for i, o := range list.Services {
-		rows[i] = table.Row{MakeHistory(o.ID), safeTruncString(o.Name), safeString(o.Provider.ID)}
+	rows := make([]table.Row, len(list.Items))
+	for i, o := range list.Items {
+		rows[i] = table.Row{MakeHistory(o.ID), safeTruncString(o.Name), safeString(o.Account)}
 	}
 	t.AppendRows(rows)
 	t.Render()
@@ -235,8 +235,7 @@ func printService(service *api.ReadResponseBody, wide bool) {
 		{"Name", safeString(service.Name)},
 		{"Description", safeString(service.Description)},
 		{"Status", safeString(service.Status)},
-		{"Provider ID", safeString(service.Provider.ID)},
-		{"Account ID", safeString(service.Account.ID)},
+		{"Provider ID", safeString(service.Account)},
 		{"Parameters", tw2.Render()},
 	})
 	fmt.Printf("\n%s\n\n", tw.Render())

@@ -29,7 +29,7 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
-	adpt "github.com/reinventingscience/ivcap-cli/pkg/adapter"
+	adpt "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 
 	log "go.uber.org/zap"
 	"go.uber.org/zap/zapcore"

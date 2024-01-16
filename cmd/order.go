@@ -17,16 +17,15 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"net/url"
 	"os"
 	"strings"
 	"time"
 
-	meta "github.com/reinventingscience/ivcap-core-api/http/metadata"
-	api "github.com/reinventingscience/ivcap-core-api/http/order"
+	meta "github.com/ivcap-works/ivcap-core-api/http/metadata"
+	api "github.com/ivcap-works/ivcap-core-api/http/order"
 
-	sdk "github.com/reinventingscience/ivcap-cli/pkg"
-	a "github.com/reinventingscience/ivcap-cli/pkg/adapter"
+	sdk "github.com/ivcap-works/ivcap-cli/pkg"
+	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -186,7 +185,7 @@ An example:
 			}
 
 			req := &api.CreateRequestBody{
-				ServiceID:  serviceId,
+				Service:    serviceId,
 				Parameters: params,
 			}
 			if name != "" {
@@ -266,14 +265,14 @@ An example:
 
 func printOrdersTable(list *api.ListResponseBody, wide bool) {
 	srv2name := make(map[string]string)
-	rows := make([]table.Row, len(list.Orders))
-	for i, o := range list.Orders {
+	rows := make([]table.Row, len(list.Items))
+	for i, o := range list.Items {
 		var serviceName string
-		if o.ServiceID != nil {
+		if o.Service != nil {
 			var ok bool
-			if serviceName, ok = srv2name[*o.ServiceID]; !ok {
-				serviceName = GetServiceNameForId(o.ServiceID)
-				srv2name[*o.ServiceID] = serviceName
+			if serviceName, ok = srv2name[*o.Service]; !ok {
+				serviceName = GetServiceNameForId(o.Service)
+				srv2name[*o.Service] = serviceName
 			}
 		}
 		rows[i] = table.Row{MakeHistory(o.ID), safeString(o.Name), safeString(o.Status),
@@ -301,17 +300,18 @@ func printOrder(order *api.ReadResponseBody, meta *meta.ListResponseBody, wide b
 
 	tw3 := table.NewWriter()
 	tw3.SetStyle(table.StyleLight)
-	rows2 := make([]table.Row, len(order.Products))
-	for i, p := range order.Products {
+	rows2 := make([]table.Row, len(order.Products.Items))
+	for i, p := range order.Products.Items {
 		rows2[i] = table.Row{MakeHistory(p.ID), safeString(p.Name), safeString(p.MimeType)}
 	}
-	if order.ProductLinks != nil && order.ProductLinks.Next != nil {
-		u, err := url.Parse(*order.ProductLinks.Next)
-		if err == nil {
-			page := u.Query().Get("page")
-			rows2 = append(rows2, table.Row{"Next page token", page, ""})
-		}
-	}
+	// TODO, recover the Next page token
+	// if order.ProductLinks != nil && order.ProductLinks.Next != nil {
+	// 	u, err := url.Parse(*order.ProductLinks.Next)
+	// 	if err == nil {
+	// 		page := u.Query().Get("page")
+	// 		rows2 = append(rows2, table.Row{"Next page token", page, ""})
+	// 	}
+	// }
 	tw3.AppendRows(rows2)
 
 	tw := table.NewWriter()
@@ -327,9 +327,9 @@ func printOrder(order *api.ReadResponseBody, meta *meta.ListResponseBody, wide b
 	tw4 := table.NewWriter()
 	tw4.SetStyle(table.StyleLight)
 	if meta != nil {
-		rows2 := make([]table.Row, len(meta.Records))
-		for i, p := range meta.Records {
-			rows2[i] = table.Row{MakeHistory(p.RecordID), safeString(p.Schema)}
+		rows2 := make([]table.Row, len(meta.Items))
+		for i, p := range meta.Items {
+			rows2[i] = table.Row{MakeHistory(p.ID), safeString(p.Schema)}
 		}
 		tw4.AppendRows(rows2)
 	}
@@ -339,8 +339,8 @@ func printOrder(order *api.ReadResponseBody, meta *meta.ListResponseBody, wide b
 		{"Name", safeString(order.Name)},
 		{"Status", safeString(order.Status)},
 		{"Ordered", safeDate(order.OrderedAt, false)},
-		{"Service", fmt.Sprintf("%s (%s)", GetServiceNameForId(order.Service.ID), MakeHistory(order.Service.ID))},
-		{"Account ID", safeString(order.Account.ID)},
+		{"Service", fmt.Sprintf("%s (%s)", GetServiceNameForId(order.Service), MakeHistory(order.Service))},
+		{"Account ID", safeString(order.Account)},
 		{"Parameters", tw2.Render()},
 		{"Products", tw3.Render()},
 		{"Metadata", tw4.Render()},

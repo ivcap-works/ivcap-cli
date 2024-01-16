@@ -26,9 +26,9 @@ import (
 	log "go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 
-	sdk "github.com/reinventingscience/ivcap-cli/pkg"
-	a "github.com/reinventingscience/ivcap-cli/pkg/adapter"
-	api "github.com/reinventingscience/ivcap-core-api/http/service"
+	sdk "github.com/ivcap-works/ivcap-cli/pkg"
+	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	api "github.com/ivcap-works/ivcap-core-api/http/service"
 )
 
 var (
