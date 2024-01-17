@@ -20,12 +20,14 @@ import (
 	"fmt"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
+	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
@@ -67,6 +69,14 @@ var (
 	limit        int
 	outputFormat string
 	silent       bool
+
+	schemaURN        string
+	schemaPrefix     string
+	entityURN        string
+	aspectJsonFilter string
+	aspectFilter     string
+	atTime           string
+	page             string
 )
 
 var logger *log.Logger
@@ -453,7 +463,7 @@ func safeString(s *string) string {
 	if s != nil {
 		return *s
 	} else {
-		return "???"
+		return ""
 	}
 }
 
@@ -552,4 +562,20 @@ func checkForUpdates(currentVersion string) {
 	if err := os.WriteFile(path, []byte(ts), fs.FileMode(0600)); err != nil {
 		logger.Debug("cannot write version check timestamp", log.Error(err))
 	}
+}
+
+func addNextPageRow(
+	nextPage *string,
+	pIn []table.Row,
+) (pOut []table.Row) {
+	if nextPage == nil {
+		return pIn
+	}
+	u, err := url.Parse(*nextPage)
+	if err == nil {
+		page := u.Query().Get("page")
+		pOut = pIn
+		pOut = append(pOut, table.Row{"... " + MakeHistory(&page)})
+	}
+	return
 }

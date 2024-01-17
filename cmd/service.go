@@ -186,11 +186,12 @@ through 'stdin' use '-' as the file name and also include the --format flag `,
 func printServiceTable(list *api.ListResponseBody, wide bool) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"ID", "Name", "Provider"})
+	t.AppendHeader(table.Row{"ID", "Name", "Account"})
 	rows := make([]table.Row, len(list.Items))
 	for i, o := range list.Items {
 		rows[i] = table.Row{MakeHistory(o.ID), safeTruncString(o.Name), safeString(o.Account)}
 	}
+	rows = addNextPageRow(findNextServicePage(list.Links), rows)
 	t.AppendRows(rows)
 	t.Render()
 }
@@ -235,7 +236,7 @@ func printService(service *api.ReadResponseBody, wide bool) {
 		{"Name", safeString(service.Name)},
 		{"Description", safeString(service.Description)},
 		{"Status", safeString(service.Status)},
-		{"Provider ID", safeString(service.Account)},
+		{"Account ID", safeString(service.Account)},
 		{"Parameters", tw2.Render()},
 	})
 	fmt.Printf("\n%s\n\n", tw.Render())
@@ -268,4 +269,16 @@ func GetServiceNameForId(serviceID *string) string {
 	} else {
 		return *serviceID
 	}
+}
+
+func findNextServicePage(links []*api.LinkTResponseBody) *string {
+	if links == nil {
+		return nil
+	}
+	for _, l := range links {
+		if l.Rel != nil && *l.Rel == "next" {
+			return l.Href
+		}
+	}
+	return nil
 }

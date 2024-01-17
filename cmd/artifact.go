@@ -49,6 +49,7 @@ func init() {
 	artifactCmd.AddCommand(listArtifactCmd)
 	listArtifactCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
 	listArtifactCmd.Flags().IntVar(&limit, "limit", -1, "max number of records to be returned")
+	listArtifactCmd.Flags().StringVarP(&page, "page", "p", "", "page cursor")
 	listArtifactCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
 	// READ
@@ -139,6 +140,10 @@ var (
 			}
 			if limit > 0 {
 				req.Limit = limit
+			}
+			if page != "" {
+				p := GetHistory(page)
+				req.Page = &p
 			}
 			if res, err := sdk.ListArtifactsRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
 				switch outputFormat {
@@ -446,10 +451,12 @@ func downloadArtifact(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if artifact.DataHref == nil {
+	data := artifact.DataHref
+	if data == nil { // } || data.Self == nil {
 		cobra.CheckErr("No data available")
+		return nil // should never get here, but linter complaints otherwise
 	}
-	url, err := url.ParseRequestURI(*artifact.DataHref)
+	url, err := url.ParseRequestURI(*data)
 	if err != nil {
 		return err
 	}
@@ -495,6 +502,7 @@ func printArtifactTable(list *api.ListResponseBody, wide bool) {
 		rows[i] = table.Row{MakeHistory(o.ID), safeTruncString(o.Name), safeString(o.Status),
 			safeBytes(o.Size), safeString(o.MimeType)}
 	}
+	rows = addNextPageRow(findNextArtifactPage(list.Links), rows)
 	t.AppendRows(rows)
 	t.Render()
 }
@@ -577,4 +585,16 @@ func getFileContentType(file *os.File) (contentType string, err error) {
 	}
 	_, err = file.Seek(0, 0)
 	return
+}
+
+func findNextArtifactPage(links []*api.LinkTResponseBody) *string {
+	if links == nil {
+		return nil
+	}
+	for _, l := range links {
+		if l.Rel != nil && *l.Rel == "next" {
+			return l.Href
+		}
+	}
+	return nil
 }

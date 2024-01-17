@@ -58,16 +58,6 @@ func init() {
 }
 
 var (
-	schemaURN        string
-	schemaPrefix     string
-	entityURN        string
-	aspectJsonFilter string
-	aspectFilter     string
-	atTime           string
-	page             string
-)
-
-var (
 	metaCmd = &cobra.Command{
 		Use:     "metadata",
 		Aliases: []string{"m", "meta"},
@@ -81,7 +71,7 @@ var (
 		Long:    `.....`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			return addUpdateCmd(true, cmd, args)
+			return addMetaUpdateCmd(true, cmd, args)
 		},
 	}
 
@@ -92,7 +82,7 @@ var (
 		Long:    `This command will only succeed if there is only one active record for the entity/schema pair`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			return addUpdateCmd(false, cmd, args)
+			return addMetaUpdateCmd(false, cmd, args)
 		},
 	}
 
@@ -177,7 +167,7 @@ var (
 	}
 )
 
-func addUpdateCmd(isAdd bool, cmd *cobra.Command, args []string) (err error) {
+func addMetaUpdateCmd(isAdd bool, cmd *cobra.Command, args []string) (err error) {
 	entity := args[0]
 	pyld, err := payloadFromFile(metaFile, inputFormat)
 	if err != nil {
@@ -246,17 +236,20 @@ func printMetadataTable(list *api.ListResponseBody, wide bool) {
 		p = append(p, table.Row{"At Time", safeDate(list.AtTime, false)})
 	}
 	p = append(p, table.Row{"Records", tw2.Render()})
-
-	// TODO, recover the Next page ?
-	// if list.Links != nil && list.Links.Next != nil {
-	// 	u, err := url.Parse(*list.Links.Next)
-	// 	if err == nil {
-	// 		page := u.Query().Get("page")
-	// 		p = append(p, table.Row{"Next Page Token", page})
-	// 	}
-	// }
-
+	p = addNextPageRow(findNextMetadataPage(list.Links), p)
 	tw.AppendRows(p)
 
 	fmt.Printf("\n%s\n\n", tw.Render())
+}
+
+func findNextMetadataPage(links []*api.LinkTResponseBody) *string {
+	if links == nil {
+		return nil
+	}
+	for _, l := range links {
+		if l.Rel != nil && *l.Rel == "next" {
+			return l.Href
+		}
+	}
+	return nil
 }

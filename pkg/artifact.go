@@ -39,6 +39,7 @@ import (
 type ListArtifactRequest struct {
 	Offset int
 	Limit  int
+	Page   *string
 }
 
 func ListArtifacts(ctxt context.Context, cmd *ListArtifactRequest, adpt *adapter.Adapter, logger *log.Logger) (*api.ListResponseBody, error) {
@@ -63,6 +64,9 @@ func ListArtifactsRaw(ctxt context.Context, cmd *ListArtifactRequest, adpt *adap
 	}
 	if cmd.Limit > 0 {
 		pa = append(pa, "limit="+url.QueryEscape(strconv.Itoa(cmd.Limit)))
+	}
+	if cmd.Page != nil {
+		pa = append(pa, "page="+url.QueryEscape(*cmd.Page))
 	}
 	if len(pa) > 0 {
 		path = path + "?" + strings.Join(pa, "&")
