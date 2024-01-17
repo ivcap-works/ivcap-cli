@@ -21,7 +21,7 @@ import (
 	"github.com/araddon/dateparse"
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
-	api "github.com/ivcap-works/ivcap-core-api/http/metadata"
+	api "github.com/ivcap-works/ivcap-core-api/http/aspect"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 
@@ -30,72 +30,85 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(metaCmd)
+	rootCmd.AddCommand(aspectCmd)
 
-	metaCmd.AddCommand(metaAddCmd)
-	metaAddCmd.Flags().StringVarP(&schemaURN, "schema", "s", "", "URN/UUID of schema")
-	metaAddCmd.Flags().StringVarP(&metaFile, "file", "f", "", "Path to file containing metdata")
-	metaAddCmd.Flags().StringVarP(&inputFormat, "format", "", "json", "Format of service description file [json, yaml]")
-	metaAddCmd.Flags().StringVarP(&policy, "policy", "p", "", "Policy controlling access")
+	aspectCmd.AddCommand(aspectAddCmd)
+	aspectAddCmd.Flags().StringVarP(&schemaURN, "schema", "s", "", "URN/UUID of schema")
+	aspectAddCmd.Flags().StringVarP(&aspectFile, "file", "f", "", "Path to file containing metdata")
+	aspectAddCmd.Flags().StringVarP(&inputFormat, "format", "", "json", "Format of service description file [json, yaml]")
+	aspectAddCmd.Flags().StringVarP(&policy, "policy", "p", "", "Policy controlling access")
 
-	metaCmd.AddCommand(metaUpdateCmd)
-	metaUpdateCmd.Flags().StringVarP(&schemaURN, "schema", "s", "", "URN/UUID of schema")
-	metaUpdateCmd.Flags().StringVarP(&metaFile, "file", "f", "", "Path to file containing metdata")
-	metaUpdateCmd.Flags().StringVarP(&inputFormat, "format", "", "json", "Format of service description file [json, yaml]")
-	metaUpdateCmd.Flags().StringVarP(&policy, "policy", "p", "", "Policy controlling access")
+	aspectCmd.AddCommand(aspectUpdateCmd)
+	aspectUpdateCmd.Flags().StringVarP(&schemaURN, "schema", "s", "", "URN/UUID of schema")
+	aspectUpdateCmd.Flags().StringVarP(&aspectFile, "file", "f", "", "Path to file containing metdata")
+	aspectUpdateCmd.Flags().StringVarP(&inputFormat, "format", "", "json", "Format of service description file [json, yaml]")
+	aspectUpdateCmd.Flags().StringVarP(&policy, "policy", "p", "", "Policy controlling access")
 
-	metaCmd.AddCommand(metaGetCmd)
+	aspectCmd.AddCommand(aspectGetCmd)
 
-	metaCmd.AddCommand(metaQueryCmd)
-	metaQueryCmd.Flags().StringVarP(&schemaPrefix, "schema", "s", "", "URN/UUID prefix of schema")
-	metaQueryCmd.Flags().StringVarP(&entityURN, "entity", "e", "", "URN/UUID of entity")
-	metaQueryCmd.Flags().StringVarP(&aspectJsonFilter, "json-path", "j", "", "json path filter on aspect ('$.images[*] ? (@.size > 10000)')")
-	metaQueryCmd.Flags().StringVarP(&aspectFilter, "filter", "f", "", "simple filter on aspect ('FirstName ~= 'Scott'')")
-	metaQueryCmd.Flags().StringVarP(&atTime, "time-at", "t", "", "Timestamp for which to request information [now]")
-	metaQueryCmd.Flags().StringVarP(&page, "page", "p", "", "query page token, for example to get next page")
+	aspectCmd.AddCommand(aspectQueryCmd)
+	aspectQueryCmd.Flags().StringVarP(&schemaPrefix, "schema", "s", "", "URN/UUID prefix of schema")
+	aspectQueryCmd.Flags().StringVarP(&entityURN, "entity", "e", "", "URN/UUID of entity")
+	aspectQueryCmd.Flags().StringVarP(&aspectJsonFilter, "json-path", "j", "", "json path filter on aspect ('$.images[*] ? (@.size > 10000)')")
+	aspectQueryCmd.Flags().StringVarP(&aspectFilter, "filter", "f", "", "simple filter on aspect ('FirstName ~= 'Scott'')")
+	aspectQueryCmd.Flags().StringVarP(&atTime, "time-at", "t", "", "Timestamp for which to request information [now]")
+	aspectQueryCmd.Flags().IntVar(&limit, "limit", DEF_LIMIT, "max number of records to be returned")
+	aspectQueryCmd.Flags().StringVarP(&page, "page", "p", "", "query page token, for example to get next page")
 
-	metaCmd.AddCommand(metaRevokeCmd)
+	aspectCmd.AddCommand(aspectRetractCmd)
 }
 
 var (
-	metaCmd = &cobra.Command{
-		Use:     "metadata",
-		Aliases: []string{"m", "meta"},
-		Short:   "Add/get/revoke/query metadata",
+	aspectFile string
+
+// schemaURN        string
+// schemaPrefix     string
+// entityURN        string
+// aspectJsonFilter string
+// aspectFilter     string
+// atTime           string
+// page             string
+)
+
+var (
+	aspectCmd = &cobra.Command{
+		Use:     "aspect",
+		Aliases: []string{"as", "aspect"},
+		Short:   "Add/get/retract/query aspects",
 	}
 
-	metaAddCmd = &cobra.Command{
-		Use:     "add [flags] entity [-s schemaName] -f -|meta --format json|yaml",
-		Short:   "Add metadata of a specific schema to an entity",
+	aspectAddCmd = &cobra.Command{
+		Use:     "add [flags] entity [-s schemaName] -f -|aspect --format json|yaml",
+		Short:   "Add aspect of a specific schema to an entity",
 		Aliases: []string{"a", "+"},
 		Long:    `.....`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			return addMetaUpdateCmd(true, cmd, args)
+			return addAspectUpdateCmd(true, cmd, args)
 		},
 	}
 
-	metaUpdateCmd = &cobra.Command{
-		Use:     "update entity [-s schemaName] -f -|meta --format json|yaml",
-		Short:   "Update a metadata record for an entity and a specific schema",
+	aspectUpdateCmd = &cobra.Command{
+		Use:     "update entity [-s schemaName] -f -|aspect --format json|yaml",
+		Short:   "Update an aspect record for an entity and a specific schema",
 		Aliases: []string{"a", "+"},
 		Long:    `This command will only succeed if there is only one active record for the entity/schema pair`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			return addMetaUpdateCmd(false, cmd, args)
+			return addAspectUpdateCmd(false, cmd, args)
 		},
 	}
 
-	metaGetCmd = &cobra.Command{
-		Use:     "get recordID",
-		Short:   "Get the metadata record",
+	aspectGetCmd = &cobra.Command{
+		Use:     "get aspect-id",
+		Short:   "Get a specifric aspect record",
 		Aliases: []string{"g"},
 		Long:    `.....`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			recordID := GetHistory(args[0])
+			aspectID := GetHistory(args[0])
 			ctxt := context.Background()
-			res, err := sdk.GetMetadata(ctxt, recordID, CreateAdapter(true), logger)
+			res, err := sdk.GetAspect(ctxt, aspectID, CreateAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -103,23 +116,23 @@ var (
 		},
 	}
 
-	metaRevokeCmd = &cobra.Command{
-		Use:     "revoke [flags] record-id",
-		Short:   "Revoke a specific metadata record",
+	aspectRetractCmd = &cobra.Command{
+		Use:     "retract [flags] aspect-id",
+		Short:   "Retract a specific aspect record",
 		Aliases: []string{"r"},
 		Long:    `.....`,
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			recordID := GetHistory(args[0])
+			aspectID := GetHistory(args[0])
 			ctxt := context.Background()
-			_, err = sdk.RevokeMetadata(ctxt, recordID, CreateAdapter(true), logger)
+			_, err = sdk.RetractAspect(ctxt, aspectID, CreateAdapter(true), logger)
 			return
 		},
 	}
 
-	metaQueryCmd = &cobra.Command{
+	aspectQueryCmd = &cobra.Command{
 		Use:     "query [-e entity] [-s schemaPrefix] [-t time-at]",
-		Short:   "Query the metadata store for any combination of entity, schema and time.",
+		Short:   "Query the aspect store for any combination of entity, schema and time.",
 		Aliases: []string{"q", "search", "s", "list", "l"},
 		Long:    `.....`,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
@@ -129,10 +142,11 @@ var (
 			if entityURN != "" {
 				entityURN = GetHistory(entityURN)
 			}
-			selector := sdk.MetadataSelector{
+			selector := sdk.AspectSelector{
 				Entity:       entityURN,
 				SchemaPrefix: schemaPrefix,
-				Page:         page,
+				Page:         GetHistory(page),
+				Limit:        limit,
 			}
 
 			if aspectFilter != "" {
@@ -150,14 +164,14 @@ var (
 			}
 
 			ctxt := context.Background()
-			if list, res, err := sdk.ListMetadata(ctxt, selector, CreateAdapter(true), logger); err == nil {
+			if list, res, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger); err == nil {
 				switch outputFormat {
 				case "json":
 					return a.ReplyPrinter(res, false)
 				case "yaml":
 					return a.ReplyPrinter(res, true)
 				default:
-					printMetadataTable(list, false)
+					printAspectTable(list, false)
 				}
 				return nil
 			} else {
@@ -167,29 +181,29 @@ var (
 	}
 )
 
-func addMetaUpdateCmd(isAdd bool, cmd *cobra.Command, args []string) (err error) {
+func addAspectUpdateCmd(isAdd bool, cmd *cobra.Command, args []string) (err error) {
 	entity := args[0]
-	pyld, err := payloadFromFile(metaFile, inputFormat)
+	pyld, err := payloadFromFile(aspectFile, inputFormat)
 	if err != nil {
-		cobra.CheckErr(fmt.Sprintf("While reading metadata file '%s' - %s", metaFile, err))
+		cobra.CheckErr(fmt.Sprintf("While reading aspect file '%s' - %s", aspectFile, err))
 	}
 
-	meta, err := pyld.AsObject()
+	aspect, err := pyld.AsObject()
 	if err != nil {
-		cobra.CheckErr(fmt.Sprintf("Cannot parse meta file '%s' - %s", metaFile, err))
+		cobra.CheckErr(fmt.Sprintf("Cannot parse aspect file '%s' - %s", aspectFile, err))
 	}
 	var schema string
 	schema = schemaURN
 	if schema == "" {
-		if s, ok := meta["$schema"]; ok {
+		if s, ok := aspect["$schema"]; ok {
 			schema = fmt.Sprintf("%s", s)
 		} else {
 			cobra.CheckErr("Missing schema name")
 		}
 	}
-	logger.Debug("add/update meta", log.String("entity", entity), log.String("schema", schema), log.Reflect("pyld", meta))
+	logger.Debug("add/update aspect", log.String("entity", entity), log.String("schema", schema), log.Reflect("pyld", aspect))
 	ctxt := context.Background()
-	res, err := sdk.AddUpdateMetadata(ctxt, isAdd, entity, schema, policy, pyld.AsBytes(), CreateAdapter(true), logger)
+	res, err := sdk.AddUpdateAspect(ctxt, isAdd, entity, schema, policy, pyld.AsBytes(), CreateAdapter(true), logger)
 	if err != nil {
 		return err
 	}
@@ -205,7 +219,7 @@ func addMetaUpdateCmd(isAdd bool, cmd *cobra.Command, args []string) (err error)
 	return nil
 }
 
-func printMetadataTable(list *api.ListResponseBody, wide bool) {
+func printAspectTable(list *api.ListResponseBody, wide bool) {
 	tw2 := table.NewWriter()
 	tw2.AppendHeader(table.Row{"ID", "Entity", "Schema"})
 	tw2.SetStyle(table.StyleLight)
@@ -236,13 +250,13 @@ func printMetadataTable(list *api.ListResponseBody, wide bool) {
 		p = append(p, table.Row{"At Time", safeDate(list.AtTime, false)})
 	}
 	p = append(p, table.Row{"Records", tw2.Render()})
-	p = addNextPageRow(findNextMetadataPage(list.Links), p)
+	p = addNextPageRow(findNextAspectPage(list.Links), p)
 	tw.AppendRows(p)
 
 	fmt.Printf("\n%s\n\n", tw.Render())
 }
 
-func findNextMetadataPage(links []*api.LinkTResponseBody) *string {
+func findNextAspectPage(links []*api.LinkTResponseBody) *string {
 	if links == nil {
 		return nil
 	}

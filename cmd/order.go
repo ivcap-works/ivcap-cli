@@ -37,8 +37,8 @@ func init() {
 
 	// LIST
 	orderCmd.AddCommand(listOrderCmd)
-	listOrderCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
-	listOrderCmd.Flags().IntVar(&limit, "limit", -1, "max number of records to be returned")
+	listOrderCmd.Flags().IntVar(&limit, "limit", DEF_LIMIT, "max number of records to be returned")
+	listOrderCmd.Flags().StringVarP(&page, "page", "p", "", "page cursor")
 	listOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
 	// READ
@@ -80,11 +80,12 @@ var (
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			req := &sdk.ListOrderRequest{Offset: 0, Limit: 50}
-			if offset > 0 {
-				req.Offset = offset
-			}
 			if limit > 0 {
 				req.Limit = limit
+			}
+			if page != "" {
+				p := GetHistory(page)
+				req.Page = &p
 			}
 
 			switch outputFormat {
@@ -278,6 +279,8 @@ func printOrdersTable(list *api.ListResponseBody, wide bool) {
 		rows[i] = table.Row{MakeHistory(o.ID), safeString(o.Name), safeString(o.Status),
 			safeDate(o.OrderedAt, true), serviceName}
 	}
+	rows = addNextPageRow(findNextOrderPage(list.Links), rows)
+
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
 	t.AppendHeader(table.Row{"ID", "Name", "Status", "Order At", "Service ID"})
@@ -300,19 +303,14 @@ func printOrder(order *api.ReadResponseBody, meta *meta.ListResponseBody, wide b
 
 	tw3 := table.NewWriter()
 	tw3.SetStyle(table.StyleLight)
-	rows2 := make([]table.Row, len(order.Products.Items))
-	for i, p := range order.Products.Items {
-		rows2[i] = table.Row{MakeHistory(p.ID), safeString(p.Name), safeString(p.MimeType)}
+	if order.Products != nil {
+		rows2 := make([]table.Row, len(order.Products.Items))
+		for i, p := range order.Products.Items {
+			rows2[i] = table.Row{MakeHistory(p.ID), safeString(p.Name), safeString(p.MimeType)}
+		}
+		rows2 = addNextPageRow(findNextOrderPage(order.Products.Links), rows2)
+		tw3.AppendRows(rows2)
 	}
-	// TODO, recover the Next page token
-	// if order.ProductLinks != nil && order.ProductLinks.Next != nil {
-	// 	u, err := url.Parse(*order.ProductLinks.Next)
-	// 	if err == nil {
-	// 		page := u.Query().Get("page")
-	// 		rows2 = append(rows2, table.Row{"Next page token", page, ""})
-	// 	}
-	// }
-	tw3.AppendRows(rows2)
 
 	tw := table.NewWriter()
 	tw.SetStyle(table.StyleLight)
@@ -346,4 +344,16 @@ func printOrder(order *api.ReadResponseBody, meta *meta.ListResponseBody, wide b
 		{"Metadata", tw4.Render()},
 	})
 	fmt.Printf("\n%s\n\n", tw.Render())
+}
+
+func findNextOrderPage(links []*api.LinkTResponseBody) *string {
+	if links == nil {
+		return nil
+	}
+	for _, l := range links {
+		if l.Rel != nil && *l.Rel == "next" {
+			return l.Href
+		}
+	}
+	return nil
 }
