@@ -52,7 +52,7 @@ func init() {
 	aspectQueryCmd.Flags().StringVarP(&aspectJsonFilter, "json-path", "j", "", "json path filter on aspect ('$.images[*] ? (@.size > 10000)')")
 	aspectQueryCmd.Flags().StringVarP(&aspectFilter, "filter", "f", "", "simple filter on aspect ('FirstName ~= 'Scott'')")
 	aspectQueryCmd.Flags().StringVarP(&atTime, "time-at", "t", "", "Timestamp for which to request information [now]")
-	aspectQueryCmd.Flags().IntVar(&limit, "limit", 10, "max number of records to be returned")
+	aspectQueryCmd.Flags().IntVar(&limit, "limit", DEF_LIMIT, "max number of records to be returned")
 	aspectQueryCmd.Flags().StringVarP(&page, "page", "p", "", "query page token, for example to get next page")
 
 	aspectCmd.AddCommand(aspectRetractCmd)

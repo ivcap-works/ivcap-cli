@@ -35,7 +35,7 @@ func init() {
 
 	serviceCmd.AddCommand(listServiceCmd)
 	listServiceCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
-	listServiceCmd.Flags().IntVar(&limit, "limit", -1, "max number of records to be returned")
+	listServiceCmd.Flags().IntVar(&limit, "limit", DEF_LIMIT, "max number of records to be returned")
 	listServiceCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
 	serviceCmd.AddCommand(readServiceCmd)

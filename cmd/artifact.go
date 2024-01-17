@@ -48,7 +48,7 @@ func init() {
 	// LIST
 	artifactCmd.AddCommand(listArtifactCmd)
 	listArtifactCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
-	listArtifactCmd.Flags().IntVar(&limit, "limit", -1, "max number of records to be returned")
+	listArtifactCmd.Flags().IntVar(&limit, "limit", DEF_LIMIT, "max number of records to be returned")
 	listArtifactCmd.Flags().StringVarP(&page, "page", "p", "", "page cursor")
 	listArtifactCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 

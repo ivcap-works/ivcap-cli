@@ -54,6 +54,8 @@ const CHECK_VERSION_INTERVAL = time.Duration(24 * time.Hour)
 
 var ACCESS_TOKEN_ENV = ENV_PREFIX + "_ACCESS_TOKEN"
 
+const DEF_LIMIT = 10
+
 // flags
 var (
 	contextName         string

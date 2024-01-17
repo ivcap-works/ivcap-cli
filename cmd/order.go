@@ -37,7 +37,7 @@ func init() {
 
 	// LIST
 	orderCmd.AddCommand(listOrderCmd)
-	listOrderCmd.Flags().IntVar(&limit, "limit", -1, "max number of records to be returned")
+	listOrderCmd.Flags().IntVar(&limit, "limit", DEF_LIMIT, "max number of records to be returned")
 	listOrderCmd.Flags().StringVarP(&page, "page", "p", "", "page cursor")
 	listOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
