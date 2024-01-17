@@ -305,7 +305,7 @@ func GetConfigDir(createIfNoExist bool) (configDir string) {
 	configDir = userConfigDir + string(os.PathSeparator) + CONFIG_FILE_DIR
 	// Create it if it doesn't exist
 	if createIfNoExist {
-		err = os.MkdirAll(configDir, 0640)
+		err = os.MkdirAll(configDir, 0750)
 		if err != nil && !os.IsExist(err) {
 			cobra.CheckErr(fmt.Sprintf("Could not create configuration directory %s - %v", configDir, err))
 			return
