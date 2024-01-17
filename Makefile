@@ -22,7 +22,7 @@ build: check
 	go build -ldflags "-X main.version=${GIT_TAG} -X main.commit=${GIT_COMMIT} -X main.date=${BUILD_DATE}" -o ivcap${EXTENSION}
 
 install: addlicense build
-	cp ivcap $(shell go env GOBIN)
+	$(shell go install)
 	if [[ -d $(shell brew --prefix)/share/zsh/site-functions ]]; then \
 		$(shell go env GOBIN)/ivcap completion zsh > $(shell brew --prefix)/share/zsh/site-functions/_ivcap;\
   fi
