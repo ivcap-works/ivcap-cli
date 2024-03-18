@@ -214,11 +214,15 @@ func printService(service *api.ReadResponseBody, wide bool) {
 		{Number: 2, WidthMax: MAX_NAME_COL_LEN},
 	})
 	tw2.Style().Options.SeparateRows = true
-	tw2.AppendHeader(table.Row{"Name", "Description", "Type", "Default"})
+	tw2.AppendHeader(table.Row{"Name", "Description", "Type", "Default", "Optional"})
 	rows := make([]table.Row, len(service.Parameters))
 	for i, p := range service.Parameters {
 		ptype := getPType(p)
-		rows[i] = table.Row{safeString(p.Name), safeString(p.Description), ptype, safeString(p.Default)}
+		var optional bool
+		if p.Optional != nil {
+			optional = *p.Optional
+		}
+		rows[i] = table.Row{safeString(p.Name), safeString(p.Description), ptype, safeString(p.Default), optional}
 	}
 	tw2.AppendRows(rows)
 
