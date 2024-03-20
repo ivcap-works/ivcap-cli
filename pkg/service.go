@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"net/url"
 	"strconv"
-	"strings"
 
 	api "github.com/ivcap-works/ivcap-core-api/http/service"
 
@@ -33,8 +32,10 @@ import (
 /**** LIST ****/
 
 type ListServiceRequest struct {
-	Offset int
-	Limit  int
+	Offset    int
+	Limit     int
+	OrderBy   string
+	OrderDesc bool
 }
 
 // type ListServiceResult struct {
@@ -63,19 +64,24 @@ func ListServices(ctxt context.Context, cmd *ListServiceRequest, adpt *adapter.A
 
 func ListServicesRaw(ctxt context.Context, cmd *ListServiceRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	path := servicePath(nil)
+	u, err := url.Parse(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse path %s to url: %w", path, err)
+	}
 
-	pa := []string{}
+	query := u.Query()
 	if cmd.Offset > 0 {
-		pa = append(pa, "offset="+url.QueryEscape(strconv.Itoa(cmd.Offset)))
+		query.Set("offset", strconv.FormatInt(int64(cmd.Offset), 10))
 	}
 	if cmd.Limit > 0 {
-		pa = append(pa, "limit="+url.QueryEscape(strconv.Itoa(cmd.Limit)))
+		query.Set("limit", strconv.FormatInt(int64(cmd.Limit), 10))
 	}
-	if len(pa) > 0 {
-		path = path + "?" + strings.Join(pa, "&")
-	}
-	// fmt.Printf("PATH: %s\n", path)
-	return (*adpt).Get(ctxt, path, logger)
+	query.Set("order-by", cmd.OrderBy)
+	query.Set("order-desc", strconv.FormatBool(cmd.OrderDesc))
+
+	u.RawQuery = query.Encode()
+
+	return (*adpt).Get(ctxt, u.String(), logger)
 }
 
 /**** CREATE ****/
