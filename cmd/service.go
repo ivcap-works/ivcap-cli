@@ -38,8 +38,8 @@ func init() {
 	serviceCmd.AddCommand(listServiceCmd)
 	listServiceCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
 	listServiceCmd.Flags().IntVar(&limit, "limit", DEF_LIMIT, "max number of records to be returned")
-	listServiceCmd.Flags().StringVar(&orderBy, "order-by", defaultServiceOrderBy, "service listed order by")
-	listServiceCmd.Flags().BoolVar(&orderDesc, "order-desc", defaultServiceOrderDesc, "service listed order by")
+	listServiceCmd.Flags().StringVar(&srvOrderBy, "order-by", defaultServiceOrderBy, "service listed order by")
+	listServiceCmd.Flags().BoolVar(&srvOrderDesc, "order-desc", defaultServiceOrderDesc, "service listed order by")
 
 	listServiceCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
@@ -59,8 +59,8 @@ func init() {
 var createAnyway bool
 var inputFormat string
 var serviceFile string
-var orderBy string
-var orderDesc bool
+var srvOrderBy string
+var srvOrderDesc bool
 
 var (
 	serviceCmd = &cobra.Command{
@@ -77,8 +77,8 @@ var (
 			req := &sdk.ListServiceRequest{
 				Offset:    0,
 				Limit:     50,
-				OrderBy:   orderBy,
-				OrderDesc: orderDesc,
+				OrderBy:   srvOrderBy,
+				OrderDesc: srvOrderDesc,
 			}
 			if offset > 0 {
 				req.Offset = offset
