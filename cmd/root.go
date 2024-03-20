@@ -464,9 +464,8 @@ func SetLogger(l *log.Logger) {
 func safeString(s *string) string {
 	if s != nil {
 		return *s
-	} else {
-		return ""
 	}
+	return ""
 }
 
 func safeDate(s *string, humanizeOnly bool) string {

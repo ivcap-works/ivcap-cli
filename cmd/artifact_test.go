@@ -95,7 +95,7 @@ func testGetArtifact(t *testing.T) {
 	if artifact.ID == nil || *artifact.ID != testArtifactID {
 		t.Fatalf("artifact id does not match, expected: %s, got: %s", testArtifactID, *artifact.ID)
 	}
-	selector := sdk.MetadataSelector{Entity: recordID}
+	selector := sdk.MetadataSelector{Entity: testArtifactID}
 	if _, _, err := sdk.ListMetadata(context.Background(), selector, adapter, logger); err != nil {
 		t.Fatalf("error while list artifact metadata: %v", err)
 	}

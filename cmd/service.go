@@ -31,11 +31,16 @@ import (
 )
 
 func init() {
+	const defaultServiceOrderBy string = "valid_from"
+	const defaultServiceOrderDesc bool = true
 	rootCmd.AddCommand(serviceCmd)
 
 	serviceCmd.AddCommand(listServiceCmd)
 	listServiceCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
 	listServiceCmd.Flags().IntVar(&limit, "limit", DEF_LIMIT, "max number of records to be returned")
+	listServiceCmd.Flags().StringVar(&srvOrderBy, "order-by", defaultServiceOrderBy, "service listed order by")
+	listServiceCmd.Flags().BoolVar(&srvOrderDesc, "order-desc", defaultServiceOrderDesc, "service listed order by")
+
 	listServiceCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
 	serviceCmd.AddCommand(readServiceCmd)
@@ -54,6 +59,8 @@ func init() {
 var createAnyway bool
 var inputFormat string
 var serviceFile string
+var srvOrderBy string
+var srvOrderDesc bool
 
 var (
 	serviceCmd = &cobra.Command{
@@ -67,7 +74,12 @@ var (
 		Short: "List existing service",
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			req := &sdk.ListServiceRequest{Offset: 0, Limit: 50}
+			req := &sdk.ListServiceRequest{
+				Offset:    0,
+				Limit:     50,
+				OrderBy:   srvOrderBy,
+				OrderDesc: srvOrderDesc,
+			}
 			if offset > 0 {
 				req.Offset = offset
 			}
@@ -214,11 +226,15 @@ func printService(service *api.ReadResponseBody, wide bool) {
 		{Number: 2, WidthMax: MAX_NAME_COL_LEN},
 	})
 	tw2.Style().Options.SeparateRows = true
-	tw2.AppendHeader(table.Row{"Name", "Description", "Type", "Default"})
+	tw2.AppendHeader(table.Row{"Name", "Description", "Type", "Default", "Optional"})
 	rows := make([]table.Row, len(service.Parameters))
 	for i, p := range service.Parameters {
 		ptype := getPType(p)
-		rows[i] = table.Row{safeString(p.Name), safeString(p.Description), ptype, safeString(p.Default)}
+		var optional bool
+		if p.Optional != nil {
+			optional = *p.Optional
+		}
+		rows[i] = table.Row{safeString(p.Name), safeString(p.Description), ptype, safeString(p.Default), optional}
 	}
 	tw2.AppendRows(rows)
 

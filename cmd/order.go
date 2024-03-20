@@ -33,6 +33,8 @@ import (
 )
 
 func init() {
+	const defaultOrdersOrderBy string = "valid_from"
+	const defaultOrdersOrderDesc bool = true
 	rootCmd.AddCommand(orderCmd)
 
 	// LIST
@@ -40,6 +42,8 @@ func init() {
 	listOrderCmd.Flags().IntVar(&limit, "limit", DEF_LIMIT, "max number of records to be returned")
 	listOrderCmd.Flags().StringVarP(&page, "page", "p", "", "page cursor")
 	listOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
+	listOrderCmd.Flags().StringVar(&ordersOrderBy, "order-by", defaultOrdersOrderBy, "service listed order by")
+	listOrderCmd.Flags().BoolVar(&ordersOrderDesc, "order-desc", defaultOrdersOrderDesc, "service listed order by")
 
 	// READ
 	orderCmd.AddCommand(readOrderCmd)
@@ -66,6 +70,8 @@ var (
 	accountID                      string
 	skipParameterCheck             bool
 	downloadLogFrom, downloadLogTo string
+	ordersOrderBy                  string
+	ordersOrderDesc                bool
 
 	orderCmd = &cobra.Command{
 		Use:     "order",
@@ -79,7 +85,12 @@ var (
 		Short:   "List existing orders",
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			req := &sdk.ListOrderRequest{Offset: 0, Limit: 50}
+			req := &sdk.ListOrderRequest{
+				Offset:    0,
+				Limit:     50,
+				OrderBy:   ordersOrderBy,
+				OrderDesc: ordersOrderDesc,
+			}
 			if limit > 0 {
 				req.Limit = limit
 			}
