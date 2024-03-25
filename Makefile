@@ -1,3 +1,4 @@
+SHELL := /usr/bin/env bash
 
 GIT_COMMIT := $(shell git rev-list --abbrev-commit --tags --max-count=1)
 ifeq ($(OS),Windows_NT)
