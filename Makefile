@@ -1,3 +1,4 @@
+SHELL := /usr/bin/env bash
 
 GIT_COMMIT := $(shell git rev-list --abbrev-commit --tags --max-count=1)
 ifeq ($(OS),Windows_NT)
@@ -15,14 +16,15 @@ endif
 MOVIE_SIZE=1280x720 # 640x360
 MOVIE_NAME=ivcap-cli.mp4
 
+LD_FLAGS="-X main.version=${GIT_TAG} -X main.commit=${GIT_COMMIT} -X main.date=${BUILD_DATE}"
 
 build: check
 	@echo "Building IVCAP-CLI..."
 	${GOPRIVATE_ENV_CMD} go mod tidy
-	go build -ldflags "-X main.version=${GIT_TAG} -X main.commit=${GIT_COMMIT} -X main.date=${BUILD_DATE}" -o ivcap${EXTENSION}
+	go -C ivcap build -ldflags ${LD_FLAGS}
 
-install: addlicense build
-	$(shell go install)
+install: addlicense check
+	go -C ivcap install -ldflags ${LD_FLAGS}
 	if [[ -d $(shell brew --prefix)/share/zsh/site-functions ]]; then \
 		$(shell go env GOBIN)/ivcap completion zsh > $(shell brew --prefix)/share/zsh/site-functions/_ivcap;\
   fi
