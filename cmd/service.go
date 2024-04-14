@@ -31,36 +31,29 @@ import (
 )
 
 func init() {
-	const defaultServiceOrderBy string = "valid_from"
-	const defaultServiceOrderDesc bool = true
 	rootCmd.AddCommand(serviceCmd)
 
+	// LIST
 	serviceCmd.AddCommand(listServiceCmd)
-	listServiceCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
-	listServiceCmd.Flags().IntVar(&limit, "limit", DEF_LIMIT, "max number of records to be returned")
-	listServiceCmd.Flags().StringVar(&srvOrderBy, "order-by", defaultServiceOrderBy, "service listed order by")
-	listServiceCmd.Flags().BoolVar(&srvOrderDesc, "order-desc", defaultServiceOrderDesc, "service listed order by")
+	addListFlags(listServiceCmd)
 
-	listServiceCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
-
+	// READ
 	serviceCmd.AddCommand(readServiceCmd)
-	readServiceCmd.Flags().StringVarP(&recordID, "service-id", "i", "", "ID of service to retrieve")
 
+	// CREATE
 	serviceCmd.AddCommand(createServiceCmd)
-	createServiceCmd.Flags().StringVarP(&serviceFile, "file", "f", "", "Path to service description file")
+	addFileFlag(createServiceCmd, "Path to service description file")
+	// createServiceCmd.Flags().StringVarP(&serviceFile, "file", "f", "", "Path to service description file")
 	createServiceCmd.Flags().StringVar(&inputFormat, "format", "", "Format of service description file [json, yaml]")
 
 	serviceCmd.AddCommand(updateServiceCmd)
+	addFlags(updateServiceCmd, []Flag{InputFormat})
 	updateServiceCmd.Flags().BoolVarP(&createAnyway, "create", "", false, "Create service record if it doesn't exist")
-	updateServiceCmd.Flags().StringVarP(&serviceFile, "file", "f", "", "Path to service description file")
-	updateServiceCmd.Flags().StringVar(&inputFormat, "format", "", "Format of service description file [json, yaml]")
+	addFileFlag(updateServiceCmd, "Path to service description file")
 }
 
 var createAnyway bool
 var inputFormat string
-var serviceFile string
-var srvOrderBy string
-var srvOrderDesc bool
 
 var (
 	serviceCmd = &cobra.Command{
@@ -74,18 +67,7 @@ var (
 		Short: "List existing service",
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			req := &sdk.ListServiceRequest{
-				Offset:    0,
-				Limit:     50,
-				OrderBy:   srvOrderBy,
-				OrderDesc: srvOrderDesc,
-			}
-			if offset > 0 {
-				req.Offset = offset
-			}
-			if limit > 0 {
-				req.Limit = limit
-			}
+			req := createListRequest()
 			if res, err := sdk.ListServicesRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
 				switch outputFormat {
 				case "json":
@@ -143,9 +125,9 @@ through 'stdin' use '-' as the file name and also include the --format flag`,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
 
-			pyld, err := payloadFromFile(serviceFile, inputFormat)
+			pyld, err := payloadFromFile(fileName, inputFormat)
 			if err != nil {
-				cobra.CheckErr(fmt.Sprintf("While reading service file '%s' - %s", serviceFile, err))
+				cobra.CheckErr(fmt.Sprintf("While reading service file '%s' - %s", fileName, err))
 			}
 			var req api.CreateServiceRequestBody
 			if err = pyld.AsType(&req); err != nil {
@@ -171,15 +153,15 @@ through 'stdin' use '-' as the file name and also include the --format flag `,
 			serviceID := GetHistory(args[0])
 			// serviceFile := args[1]
 
-			isYaml := inputFormat == "yaml" || strings.HasSuffix(serviceFile, ".yaml") || strings.HasSuffix(serviceFile, ".yml")
+			isYaml := inputFormat == "yaml" || strings.HasSuffix(fileName, ".yaml") || strings.HasSuffix(fileName, ".yml")
 			var pyld a.Payload
-			if serviceFile != "-" {
-				pyld, err = a.LoadPayloadFromFile(serviceFile, isYaml)
+			if fileName != "-" {
+				pyld, err = a.LoadPayloadFromFile(fileName, isYaml)
 			} else {
 				pyld, err = a.LoadPayloadFromStdin(isYaml)
 			}
 			if err != nil {
-				cobra.CheckErr(fmt.Sprintf("While reading service file '%s' - %s", serviceFile, err))
+				cobra.CheckErr(fmt.Sprintf("While reading service file '%s' - %s", fileName, err))
 			}
 
 			var req api.UpdateRequestBody
@@ -248,7 +230,7 @@ func printService(service *api.ReadResponseBody, wide bool) {
 		// {Number: 2, WidthMax: 80},
 	})
 	tw.AppendRows([]table.Row{
-		{"ID", *service.ID},
+		{"ID", fmt.Sprintf("%s (%s)", *service.ID, MakeHistory(service.ID))},
 		{"Name", safeString(service.Name)},
 		{"Description", safeString(service.Description)},
 		{"Status", safeString(service.Status)},

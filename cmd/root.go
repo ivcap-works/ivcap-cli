@@ -16,7 +16,6 @@ package cmd
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io/fs"
 	"net/http"
@@ -29,7 +28,7 @@ import (
 	"github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	"github.com/spf13/cobra/doc"
 
 	adpt "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 
@@ -45,16 +44,7 @@ const RELEASE_CHECK_URL = "https://github.com/ivcap-works/ivcap-cli/releases/lat
 // Max characters to limit name to
 const MAX_NAME_COL_LEN = 30
 
-// Names for config dir and file - stored in the os.UserConfigDir() directory
-const CONFIG_FILE_DIR = "ivcap-cli"
-const CONFIG_FILE_NAME = "config.yaml"
-const HISTORY_FILE_NAME = "history.yaml"
-const VERSION_CHECK_FILE_NAME = "vcheck.txt"
-const CHECK_VERSION_INTERVAL = time.Duration(24 * time.Hour)
-
 var ACCESS_TOKEN_ENV = ENV_PREFIX + "_ACCESS_TOKEN"
-
-const DEF_LIMIT = 10
 
 // flags
 var (
@@ -64,21 +54,6 @@ var (
 	accessTokenProvided bool
 	timeout             int
 	debug               bool
-
-	// common, but not global flags
-	recordID     string
-	offset       int
-	limit        int
-	outputFormat string
-	silent       bool
-
-	schemaURN        string
-	schemaPrefix     string
-	entityURN        string
-	aspectJsonFilter string
-	aspectFilter     string
-	atTime           string
-	page             string
 )
 
 var logger *log.Logger
@@ -132,6 +107,22 @@ func Execute(version string) {
 	}
 }
 
+func CreateDoc() {
+	initLogger()
+	err := doc.GenMarkdownTree(rootCmd, "./doc")
+	if err != nil {
+		logger.Fatal("while creating markdown docs", log.Error(err))
+	}
+	header := &doc.GenManHeader{
+		Title:   "IVCAP",
+		Section: "3",
+	}
+	err = doc.GenManTree(rootCmd, header, "./doc")
+	if err != nil {
+		logger.Fatal("while creating man pages", log.Error(err))
+	}
+}
+
 const DEFAULT_SERVICE_TIMEOUT_IN_SECONDS = 30
 
 func init() {
@@ -144,11 +135,17 @@ func init() {
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Set logging level to DEBUG")
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Set format for displaying output [json, yaml]")
 	rootCmd.PersistentFlags().BoolVar(&silent, "silent", false, "Do not show any progress information")
+	rootCmd.PersistentFlags().BoolVar(&noHistory, "no-history", false, "Do not store history")
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	// var cfg log.Config
+	initLogger()
+	// before proceeding, let's check for updates
+	checkForUpdates(rootCmd.Version)
+}
+
+func initLogger() {
 	cfg := log.NewDevelopmentConfig()
 	// cfg := zap.NewProductionConfig()
 	cfg.OutputPaths = []string{"stdout"}
@@ -164,8 +161,6 @@ func initConfig() {
 	}
 
 	SetLogger(logger)
-	// before proceeding, let's check for updates
-	checkForUpdates(rootCmd.Version)
 }
 
 func CreateAdapter(requiresAuth bool) (adapter *adpt.Adapter) {
@@ -207,230 +202,6 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 		cobra.CheckErr(fmt.Sprintf("cannot create adapter for '%s' - %s", url, err))
 	}
 	return adp
-}
-
-func GetActiveContext() (ctxt *Context) {
-	return GetContext(contextName, true) // choose active context
-}
-
-func GetContext(name string, defaultToActiveContext bool) (ctxt *Context) {
-	var err error
-	ctxt, err = GetContextWithError(name, defaultToActiveContext)
-	if err != nil {
-		cobra.CheckErr(err)
-	}
-	return
-}
-
-func GetContextWithError(name string, defaultToActiveContext bool) (ctxt *Context, err error) {
-	config, configFile := ReadConfigFile(true)
-	// config should never be nil
-	if name == "" && defaultToActiveContext {
-		name = config.ActiveContext
-	}
-	if name == "" {
-		// no context or active context is found
-		return nil, errors.New("cannot find suitable context. Use '--context' or set default via 'context' command")
-	}
-
-	for idx, d := range config.Contexts {
-		if d.Name == name {
-			return &config.Contexts[idx], nil // golang loop reuse same var, don't use "&d"
-		}
-	}
-
-	if ctxt == nil {
-		return nil, fmt.Errorf("unknown context '%s' in config '%s'", name, configFile)
-	}
-	return
-}
-
-func SetContext(ctxt *Context, failIfNotExist bool) {
-	config, _ := ReadConfigFile(true)
-	cxa := config.Contexts
-	for i, c := range cxa {
-		if c.Name == ctxt.Name {
-			config.Contexts[i] = *ctxt
-			WriteConfigFile(config)
-			return
-		}
-	}
-	if failIfNotExist {
-		cobra.CheckErr(fmt.Sprintf("attempting to set/update non existing context '%s'", ctxt.Name))
-	} else {
-		config.Contexts = append(config.Contexts, *ctxt)
-		if len(config.Contexts) == 1 {
-			// First context, make it the active/default one as well
-			config.ActiveContext = ctxt.Name
-		}
-		WriteConfigFile(config)
-	}
-}
-
-func ReadConfigFile(createIfNoConfig bool) (config *Config, configFile string) {
-	configFile = GetConfigFilePath()
-	var data []byte
-	data, err := os.ReadFile(filepath.Clean(configFile))
-	if err != nil {
-		if _, ok := err.(*os.PathError); ok {
-			if createIfNoConfig {
-				config = &Config{
-					Version: "v1",
-				}
-				return
-			} else {
-				cobra.CheckErr("Config file does not exist. Please create the config file with the context command.")
-			}
-		} else {
-			cobra.CheckErr(fmt.Sprintf("Cannot read config file %s - %v", configFile, err))
-		}
-	}
-	var cfg Config
-	if err := yaml.Unmarshal(data, &cfg); err != nil {
-		cobra.CheckErr(fmt.Sprintf("problems parsing config file %s - %v", configFile, err))
-		return
-	}
-	config = &cfg
-	return
-}
-
-func WriteConfigFile(config *Config) {
-	b, err := yaml.Marshal(config)
-	if err != nil {
-		cobra.CheckErr(fmt.Sprintf("cannot marshall content of config file - %v", err))
-		return
-	}
-
-	configFile := GetConfigFilePath()
-
-	if err = os.WriteFile(configFile, b, fs.FileMode(0600)); err != nil {
-		cobra.CheckErr(fmt.Sprintf("cannot write to config file %s - %v", configFile, err))
-	}
-}
-
-func GetConfigDir(createIfNoExist bool) (configDir string) {
-	userConfigDir, err := os.UserConfigDir()
-	if err != nil {
-		cobra.CheckErr(fmt.Sprintf("Cannot find the user configuration directory - %v", err))
-		return
-	}
-	configDir = userConfigDir + string(os.PathSeparator) + CONFIG_FILE_DIR
-	// Create it if it doesn't exist
-	if createIfNoExist {
-		err = os.MkdirAll(configDir, 0750)
-		if err != nil && !os.IsExist(err) {
-			cobra.CheckErr(fmt.Sprintf("Could not create configuration directory %s - %v", configDir, err))
-			return
-		}
-	}
-	return
-}
-
-func GetConfigFilePath() (path string) {
-	path = makeConfigFilePath(CONFIG_FILE_NAME)
-	return
-}
-
-func makeConfigFilePath(fileName string) (path string) {
-	configDir := GetConfigDir(true) // Create the configuration directory if it doesn't exist
-	path = configDir + string(os.PathSeparator) + fileName
-	return
-}
-
-// ****** HISTORY ****
-
-var history map[string]string
-
-func MakeHistory(urn *string) string {
-	if urn == nil {
-		return "???"
-	}
-	if history == nil {
-		history = make(map[string]string)
-	}
-	token := fmt.Sprintf("@%d", len(history)+1)
-	history[token] = *urn
-	return token
-}
-
-// Check if argument is an IVCAP urn and if it
-// is, turn it into a history.
-func MakeMaybeHistory(sp *string) string {
-	if sp == nil {
-		return "???"
-	}
-	// HACK: Should go away in future IVCAP Core version
-	if strings.HasPrefix(*sp, "http://artifact.local/") {
-		u := *sp
-		u = u[len("http://artifact.local/"):]
-		sp = &u
-	}
-	// We assume, all IVCAP urns follow the pattern 'urn:ivcap:_service_:...
-	if !strings.HasPrefix(*sp, "urn:ivcap:") {
-		// no it's not
-		return *sp
-	}
-
-	if history == nil {
-		history = make(map[string]string)
-	}
-	token := fmt.Sprintf("@%d", len(history)+1)
-	history[token] = *sp
-	return fmt.Sprintf("%s (%s)", token, *sp)
-}
-
-func GetHistory(token string) (value string) {
-	if !strings.HasPrefix(token, "@") {
-		return token
-	}
-	var vp *string
-	path := getHistoryFilePath()
-	var data []byte
-	data, err := os.ReadFile(filepath.Clean(path))
-	var hm map[string]string
-	if err == nil {
-		if err := yaml.Unmarshal(data, &hm); err != nil {
-			cobra.CheckErr(fmt.Sprintf("problems parsing history file %s - %v", path, err))
-			return
-		}
-		if val, ok := hm[token]; ok {
-			vp = &val
-		}
-	} else {
-		// fail "normally" if file doesn't exist
-		if _, ok := err.(*os.PathError); !ok {
-			cobra.CheckErr("Error reading history file. Use full names instead.")
-			return
-		}
-	}
-	if vp == nil {
-		cobra.CheckErr(fmt.Sprintf("Unknown history '%s'.", token))
-		return
-	}
-	return *vp
-}
-
-func saveHistory() (err error) {
-	if history == nil {
-		return
-	}
-
-	b, err := yaml.Marshal(history)
-	if err != nil {
-		cobra.CheckErr(fmt.Sprintf("cannot marshall history - %v", err))
-		return
-	}
-
-	path := makeConfigFilePath(HISTORY_FILE_NAME)
-
-	if err = os.WriteFile(path, b, fs.FileMode(0600)); err != nil {
-		cobra.CheckErr(fmt.Sprintf("cannot write history to file %s - %v", path, err))
-	}
-	return
-}
-
-func getHistoryFilePath() (path string) {
-	return makeConfigFilePath(HISTORY_FILE_NAME)
 }
 
 // ****** ADAPTER ****

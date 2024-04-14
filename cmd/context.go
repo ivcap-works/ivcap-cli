@@ -25,13 +25,13 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(configCmd)
+	rootCmd.AddCommand(contextCmd)
 
 	// LIST
-	configCmd.AddCommand(listContextCmd)
+	contextCmd.AddCommand(listContextCmd)
 
 	// CREATE
-	configCmd.AddCommand(createContextCmd)
+	contextCmd.AddCommand(createContextCmd)
 	// We don't really use them right, so better not confuse anyone
 	// createContextCmd.Flags().StringVar(&accountID, "account-id", "", "The account ID to use. Will most likely be set on login")
 	// createContextCmd.Flags().StringVar(&providerID, "provider-id", "", "The account ID to use. Will most likely be set on login")
@@ -39,10 +39,10 @@ func init() {
 	createContextCmd.Flags().IntVar(&ctxtApiVersion, "version", 1, "define API version")
 
 	// SET/USE
-	configCmd.AddCommand(useContextCmd)
+	contextCmd.AddCommand(useContextCmd)
 
 	// READ/GET
-	configCmd.AddCommand(getContextCmd)
+	contextCmd.AddCommand(getContextCmd)
 	getContextCmd.Flags().BoolVar(&refreshToken, "refresh-token", false, "if set, refresh access token if expired")
 }
 
@@ -53,8 +53,8 @@ var (
 	refreshToken   bool
 )
 
-// configCmd represents the config command
-var configCmd = &cobra.Command{
+// contextCmd represents the config command
+var contextCmd = &cobra.Command{
 	Use:     "context",
 	Short:   "Manage and set access to various IVCAP deployments",
 	Aliases: []string{"c"},

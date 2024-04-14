@@ -17,13 +17,11 @@ package cmd
 import (
 	"bufio"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"path/filepath"
 
 	api "github.com/ivcap-works/ivcap-core-api/http/artifact"
-	meta "github.com/ivcap-works/ivcap-core-api/http/metadata"
 
 	// "bytes"
 	// "encoding/json"
@@ -35,6 +33,7 @@ import (
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	asapi "github.com/ivcap-works/ivcap-core-api/http/aspect"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -47,45 +46,39 @@ func init() {
 
 	// LIST
 	artifactCmd.AddCommand(listArtifactCmd)
-	listArtifactCmd.Flags().IntVar(&offset, "offset", -1, "record offset into returned list")
-	listArtifactCmd.Flags().IntVar(&limit, "limit", DEF_LIMIT, "max number of records to be returned")
-	listArtifactCmd.Flags().StringVarP(&page, "page", "p", "", "page cursor")
-	listArtifactCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
+	addListFlags(listArtifactCmd)
 
 	// READ
 	artifactCmd.AddCommand(readArtifactCmd)
-	// readArtifactCmd.Flags().StringVarP(&recordID, "artifact-id", "i", "", "ID of artifact to retrieve")
-	readArtifactCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
 	// DOWNLOAD
 	artifactCmd.AddCommand(downloadArtifactCmd)
-	downloadArtifactCmd.Flags().StringVarP(&outputFile, "file", "f", "", "File to write content to [stdout]")
+	downloadArtifactCmd.Flags().StringVarP(&fileName, "file", "f", "", "File to write content to [stdout]")
 
 	// CREATE
 	artifactCmd.AddCommand(createArtifactCmd)
-	createArtifactCmd.Flags().StringVarP(&artifactName, "name", "n", "", "Human friendly name")
+	addFlags(createArtifactCmd, []Flag{Name, Policy})
 	createArtifactCmd.Flags().StringVarP(&artifactCollection, "collection", "c", "", "Assigns artifact to a specific collection")
-	createArtifactCmd.Flags().StringVarP(&inputFile, "file", "f", "", "Path to file containing artifact content")
+	createArtifactCmd.Flags().StringVarP(&fileName, "file", "f", "", "Path to file containing artifact content")
 	createArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact")
-	createArtifactCmd.Flags().StringVarP(&policy, "policy", "p", "", "Policy controlling access")
 	createArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
 
 	// UPLOAD
 	artifactCmd.AddCommand(uploadArtifactCmd)
-	uploadArtifactCmd.Flags().StringVarP(&artifactName, "name", "n", "", "Human friendly name")
-	uploadArtifactCmd.Flags().StringVarP(&artifactID, "resume", "r", "", "Resume uploading previously created artifact")
-	uploadArtifactCmd.Flags().StringVarP(&inputFile, "file", "f", "", "Path to file containing artifact content")
+	uploadArtifactCmd.Flags().StringVarP(&fileName, "file", "f", "", "Path to file containing artifact content")
 	uploadArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact")
 	uploadArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
 
-	// ADD METADATA
-	artifactCmd.AddCommand(addArtifactMetadataCmd)
-	addArtifactMetadataCmd.Flags().StringVarP(&metaFile, "file", "f", "", "Path to file containing metadata")
-	artifactCmd.AddCommand(removeArtifactMetadataCmd)
+	// // ADD METADATA
+	// artifactCmd.AddCommand(addArtifactMetadataCmd)
+	// addArtifactMetadataCmd.Flags().StringVarP(&metaFile, "file", "f", "", "Path to file containing metadata")
 
-	// COLLECTION
-	artifactCmd.AddCommand(addArtifactToCollectionCmd)
-	// artifactCmd.AddCommand(removeArtifactFromCollectionCmd)
+	// // REMOVE
+	// artifactCmd.AddCommand(removeArtifactMetadataCmd)
+
+	// // COLLECTION
+	// artifactCmd.AddCommand(addArtifactToCollectionCmd)
+	// // artifactCmd.AddCommand(removeArtifactFromCollectionCmd)
 }
 
 const DEF_CHUNK_SIZE = 10000000 // -1 ... no chunking
@@ -111,15 +104,14 @@ type ArtifactInCollection struct {
 }
 
 var (
-	artifactName       string
 	artifactID         string
 	artifactCollection string
-	outputFile         string
-	inputFile          string
-	metaFile           string
-	contentType        string
-	chunkSize          int64
-	policy             string
+	// file         string
+	// file          string
+	// metaFile           string
+	contentType string
+	chunkSize   int64
+	policy      string
 
 	artifactCmd = &cobra.Command{
 		Use:     "artifact",
@@ -134,17 +126,7 @@ var (
 		Short: "List existing artifacts",
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			req := &sdk.ListArtifactRequest{Offset: 0, Limit: 50}
-			if offset > 0 {
-				req.Offset = offset
-			}
-			if limit > 0 {
-				req.Limit = limit
-			}
-			if page != "" {
-				p := GetHistory(page)
-				req.Page = &p
-			}
+			req := createListRequest()
 			if res, err := sdk.ListArtifactsRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
 				switch outputFormat {
 				case "json":
@@ -184,8 +166,8 @@ var (
 				return a.ReplyPrinter(res, outputFormat == "yaml")
 			default:
 				if artifact, err := sdk.ReadArtifact(context.Background(), req, adapter, logger); err == nil {
-					selector := sdk.MetadataSelector{Entity: recordID}
-					if meta, _, err := sdk.ListMetadata(context.Background(), selector, adapter, logger); err == nil {
+					selector := sdk.AspectSelector{Entity: recordID}
+					if meta, _, err := sdk.ListAspect(context.Background(), selector, adapter, logger); err == nil {
 						printArtifact(artifact, meta, false)
 					} else {
 						return err
@@ -199,24 +181,24 @@ var (
 	}
 
 	downloadArtifactCmd = &cobra.Command{
-		Use:   "download [flags] artifact_id [-f file|-]",
+		Use:   "download artifact_id [flags] [-f file|-]",
 		Short: "Download the content associated with this artifact",
 		Args:  cobra.ExactArgs(1),
 		RunE:  downloadArtifact,
 	}
 
 	createArtifactCmd = &cobra.Command{
-		Use:   "create [key=value key=value] -f file|-",
+		Use:   "create [flags] -n name -f file|-",
 		Short: "Create a new artifact",
 
 		Run: func(cmd *cobra.Command, args []string) {
 			var reader io.Reader
 			var size int64
-			reader, contentType, size = getReader(inputFile, contentType)
-			logger.Debug("create artifact", log.String("content-type", contentType), log.String("inputFile", inputFile))
+			reader, contentType, size = getReader(fileName, contentType)
+			logger.Debug("create artifact", log.String("content-type", contentType), log.String("file", fileName))
 			adapter := CreateAdapterWithTimeout(true, timeout)
 			req := &sdk.CreateArtifactRequest{
-				Name:       artifactName,
+				Name:       name,
 				Size:       size,
 				Collection: artifactCollection,
 				Policy:     policy,
@@ -224,7 +206,7 @@ var (
 			ctxt := context.Background()
 			resp, err := sdk.CreateArtifact(ctxt, req, contentType, size, nil, adapter, logger)
 			if err != nil {
-				cobra.CompErrorln(fmt.Sprintf("while creating record for '%s'- %v", inputFile, err))
+				cobra.CompErrorln(fmt.Sprintf("while creating record for '%s'- %v", fileName, err))
 				return
 			}
 			artifactID := *resp.ID
@@ -243,7 +225,6 @@ var (
 			if silent {
 				fmt.Printf("%s\n", artifactID)
 			}
-
 		},
 	}
 
@@ -255,15 +236,15 @@ var (
 
 		Run: func(cmd *cobra.Command, args []string) {
 			artifactID := args[0]
-			reader, contentType, size := getReader(inputFile, contentType)
-			logger.Debug("upload artifact", log.String("content-type", contentType), log.String("inputFile", inputFile))
+			reader, contentType, size := getReader(fileName, contentType)
+			logger.Debug("upload artifact", log.String("content-type", contentType), log.String("file", fileName))
 			adapter := CreateAdapter(true)
 			ctxt := context.Background()
 
 			offset := int64(0)
 
-			read_req := &sdk.ReadArtifactRequest{Id: artifactID}
-			readResp, err := sdk.ReadArtifact(ctxt, read_req, adapter, logger)
+			rreq := &sdk.ReadArtifactRequest{Id: artifactID}
+			readResp, err := sdk.ReadArtifact(ctxt, rreq, adapter, logger)
 			if err != nil {
 				cobra.CompErrorln(fmt.Sprintf("while getting a status update on '%s' - %v", artifactID, err))
 				return
@@ -302,43 +283,43 @@ var (
 
 	// NOT SURE HOW WE BEST HANDLE THAT
 	//
-	addArtifactToCollectionCmd = &cobra.Command{
-		Use:     "add-to-collection artifactID collectionName",
-		Short:   "Add artifact to a collection",
-		Aliases: []string{"add-collection"},
-		Args:    cobra.ExactArgs(2),
+	// addArtifactToCollectionCmd = &cobra.Command{
+	// 	Use:     "add-to-collection artifactID collectionName",
+	// 	Short:   "Add artifact to a collection",
+	// 	Aliases: []string{"add-collection"},
+	// 	Args:    cobra.ExactArgs(2),
 
-		Run: func(cmd *cobra.Command, args []string) {
-			artifactID := args[0]
-			collectionID := args[1]
-			logger.Debug("add collection", log.String("artifactID", artifactID), log.String("collectionID", collectionID))
-			meta := ArtifactInCollection{ArtifactID: artifactID, CollectionID: collectionID}
-			data, err := json.Marshal(meta)
-			if err != nil {
-				cobra.CompErrorln(fmt.Sprintf("while serialise metadata - %v", err))
+	// 	Run: func(cmd *cobra.Command, args []string) {
+	// 		artifactID := args[0]
+	// 		collectionID := args[1]
+	// 		logger.Debug("add collection", log.String("artifactID", artifactID), log.String("collectionID", collectionID))
+	// 		meta := ArtifactInCollection{ArtifactID: artifactID, CollectionID: collectionID}
+	// 		data, err := json.Marshal(meta)
+	// 		if err != nil {
+	// 			cobra.CompErrorln(fmt.Sprintf("while serialise metadata - %v", err))
 
-			}
-			adapter := CreateAdapter(true)
-			ctxt := context.Background()
-			if res, err := sdk.AddUpdateMetadata(ctxt, true, collectionID, ArtifactInCollectionSchema, policy, data, adapter, logger); err == nil {
-				if silent {
-					if m, err := res.AsObject(); err == nil {
-						fmt.Printf("%s\n", m["record-id"])
-					} else {
-						cobra.CheckErr(fmt.Sprintf("Parsing reply: %s", res.AsBytes()))
-					}
-				} else {
-					if err = a.ReplyPrinter(res, outputFormat == "yaml"); err != nil {
-						cobra.CheckErr("print reply")
-						return
-					}
-				}
-			} else {
-				cobra.CompErrorln(fmt.Sprintf("while adding metadata '%s' to artifact '%s' - %v", ArtifactInCollectionSchema, artifactID, err))
-				return
-			}
-		},
-	}
+	// 		}
+	// 		adapter := CreateAdapter(true)
+	// 		ctxt := context.Background()
+	// 		if res, err := sdk.AddUpdateAspect(ctxt, true, collectionID, ArtifactInCollectionSchema, policy, data, adapter, logger); err == nil {
+	// 			if silent {
+	// 				if m, err := res.AsObject(); err == nil {
+	// 					fmt.Printf("%s\n", m["record-id"])
+	// 				} else {
+	// 					cobra.CheckErr(fmt.Sprintf("Parsing reply: %s", res.AsBytes()))
+	// 				}
+	// 			} else {
+	// 				if err = a.ReplyPrinter(res, outputFormat == "yaml"); err != nil {
+	// 					cobra.CheckErr("print reply")
+	// 					return
+	// 				}
+	// 			}
+	// 		} else {
+	// 			cobra.CompErrorln(fmt.Sprintf("while adding metadata '%s' to artifact '%s' - %v", ArtifactInCollectionSchema, artifactID, err))
+	// 			return
+	// 		}
+	// 	},
+	// }
 
 	// removeArtifactFromCollectionCmd = &cobra.Command{
 	// 	Use:     "remove-from-collection artifactID collectionName",
@@ -360,48 +341,48 @@ var (
 	// 	},
 	// }
 
-	addArtifactMetadataCmd = &cobra.Command{
-		Use:     "add-metadata artifactID schemaName -f meta.json",
-		Short:   "Add artifact to a comma separated list of collections",
-		Aliases: []string{"add-meta"},
-		Args:    cobra.ExactArgs(2),
+// 	addArtifactMetadataCmd = &cobra.Command{
+// 		Use:     "add-metadata artifactID schemaName -f meta.json",
+// 		Short:   "Add artifact to a comma separated list of collections",
+// 		Aliases: []string{"add-meta"},
+// 		Args:    cobra.ExactArgs(2),
 
-		Run: func(cmd *cobra.Command, args []string) {
-			artifactID := args[0]
-			schemaName := args[1]
-			logger.Debug("add meta", log.String("artifactID", artifactID), log.String("schemaName", schemaName),
-				log.String("metaFile", metaFile))
-			reader, _, size := getReader(metaFile, "application/json")
+// 		Run: func(cmd *cobra.Command, args []string) {
+// 			artifactID := args[0]
+// 			schemaName := args[1]
+// 			logger.Debug("add meta", log.String("artifactID", artifactID), log.String("schemaName", schemaName),
+// 				log.String("metaFile", metaFile))
+// 			reader, _, size := getReader(metaFile, "application/json")
 
-			adapter := CreateAdapter(true)
-			ctxt := context.Background()
-			_, err := sdk.AddArtifactMeta(ctxt, artifactID, schemaName, reader, size, adapter, logger)
-			if err != nil {
-				cobra.CompErrorln(fmt.Sprintf("while adding metadata '%s' to artifact '%s' - %v", schemaName, artifactID, err))
-				return
-			}
-		},
-	}
+// 			adapter := CreateAdapter(true)
+// 			ctxt := context.Background()
+// 			_, err := sdk.AddArtifactMeta(ctxt, artifactID, schemaName, reader, size, adapter, logger)
+// 			if err != nil {
+// 				cobra.CompErrorln(fmt.Sprintf("while adding metadata '%s' to artifact '%s' - %v", schemaName, artifactID, err))
+// 				return
+// 			}
+// 		},
+// 	}
 
-	removeArtifactMetadataCmd = &cobra.Command{
-		Use:     "remove-metadata artifactID schemaName",
-		Short:   "Remove artifact from a comma separated list of collections",
-		Aliases: []string{"remove-collection", "rm-collection"},
-		Args:    cobra.ExactArgs(2),
+// 	removeArtifactMetadataCmd = &cobra.Command{
+// 		Use:     "remove-metadata artifactID schemaName",
+// 		Short:   "Remove artifact from a comma separated list of collections",
+// 		Aliases: []string{"remove-collection", "rm-collection"},
+// 		Args:    cobra.ExactArgs(2),
 
-		Run: func(cmd *cobra.Command, args []string) {
-			artifactID := args[0]
-			collectionName := args[1]
-			logger.Debug("rm collection", log.String("artifactID", artifactID), log.String("collectionName", collectionName))
-			adapter := CreateAdapter(true)
-			ctxt := context.Background()
-			_, err := sdk.RemoveArtifactToCollection(ctxt, artifactID, collectionName, adapter, logger)
-			if err != nil {
-				cobra.CompErrorln(fmt.Sprintf("while removing artifact '%s' from collection(s) '%s' - %v", artifactID, collectionName, err))
-				return
-			}
-		},
-	}
+//		Run: func(cmd *cobra.Command, args []string) {
+//			artifactID := args[0]
+//			collectionName := args[1]
+//			logger.Debug("rm collection", log.String("artifactID", artifactID), log.String("collectionName", collectionName))
+//			adapter := CreateAdapter(true)
+//			ctxt := context.Background()
+//			_, err := sdk.RemoveArtifactToCollection(ctxt, artifactID, collectionName, adapter, logger)
+//			if err != nil {
+//				cobra.CompErrorln(fmt.Sprintf("while removing artifact '%s' from collection(s) '%s' - %v", artifactID, collectionName, err))
+//				return
+//			}
+//		},
+//	}
 )
 
 func upload(
@@ -414,7 +395,7 @@ func upload(
 	adapter *a.Adapter,
 ) (err error) {
 	if err = sdk.UploadArtifact(ctxt, reader, size, offset, chunkSize, path, adapter, silent, logger); err != nil {
-		cobra.CompErrorln(fmt.Sprintf("while uploading data file '%s' - %v", inputFile, err))
+		cobra.CompErrorln(fmt.Sprintf("while uploading data file '%s' - %v", fileName, err))
 		return
 	}
 	if silent {
@@ -467,10 +448,10 @@ func downloadArtifact(cmd *cobra.Command, args []string) error {
 		}
 
 		var outFile *os.File
-		if outputFile == "-" {
+		if fileName == "-" {
 			outFile = os.Stdout
 		} else {
-			outFile, err = os.Create(filepath.Clean(outputFile))
+			outFile, err = os.Create(filepath.Clean(fileName))
 			if err != nil {
 				return
 			}
@@ -507,7 +488,7 @@ func printArtifactTable(list *api.ListResponseBody, wide bool) {
 	t.Render()
 }
 
-func printArtifact(artifact *api.ReadResponseBody, meta *meta.ListResponseBody, wide bool) {
+func printArtifact(artifact *api.ReadResponseBody, meta *asapi.ListResponseBody, wide bool) {
 	tw3 := table.NewWriter()
 	tw3.SetStyle(table.StyleLight)
 	if meta != nil {
@@ -528,7 +509,7 @@ func printArtifact(artifact *api.ReadResponseBody, meta *meta.ListResponseBody, 
 		{Number: 2, WidthMax: 80},
 	})
 	tw.AppendRows([]table.Row{
-		{"ID", *artifact.ID},
+		{"ID", fmt.Sprintf("%s (%s)", *artifact.ID, MakeHistory(artifact.ID))},
 		{"Name", safeString(artifact.Name)},
 		{"Status", safeString(artifact.Status)},
 		{"Size", safeBytes(artifact.Size)},

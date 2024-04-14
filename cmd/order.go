@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	meta "github.com/ivcap-works/ivcap-core-api/http/metadata"
+	asapi "github.com/ivcap-works/ivcap-core-api/http/aspect"
 	api "github.com/ivcap-works/ivcap-core-api/http/order"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
@@ -33,28 +33,18 @@ import (
 )
 
 func init() {
-	const defaultOrdersOrderBy string = "valid_from"
-	const defaultOrdersOrderDesc bool = true
 	rootCmd.AddCommand(orderCmd)
 
 	// LIST
 	orderCmd.AddCommand(listOrderCmd)
-	listOrderCmd.Flags().IntVar(&offset, "offset", 0, "record offset into returned list")
-	listOrderCmd.Flags().IntVar(&limit, "limit", DEF_LIMIT, "max number of records to be returned")
-	listOrderCmd.Flags().StringVarP(&page, "page", "p", "", "page cursor")
-	listOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
-	listOrderCmd.Flags().StringVar(&ordersOrderBy, "order-by", defaultOrdersOrderBy, "service listed order by")
-	listOrderCmd.Flags().BoolVar(&ordersOrderDesc, "order-desc", defaultOrdersOrderDesc, "service listed order by")
+	addListFlags(listOrderCmd)
 
 	// READ
 	orderCmd.AddCommand(readOrderCmd)
-	readOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
 
 	// CREATE
 	orderCmd.AddCommand(createOrderCmd)
-	createOrderCmd.Flags().StringVarP(&name, "name", "n", "", "Optional name/title attached to order")
-	createOrderCmd.Flags().StringVarP(&outputFormat, "output", "o", "short", "format to use for list (short, yaml, json)")
-	createOrderCmd.Flags().StringVar(&accountID, "account-id", "", "override the account ID to use for the order")
+	addFlags(createOrderCmd, []Flag{Name, Account})
 	createOrderCmd.Flags().BoolVar(&skipParameterCheck, "skip-parameter-check", false, "fskip checking order paramters first ONLY USE FOR TESTING")
 
 	// Logs
@@ -71,8 +61,6 @@ var (
 	accountID                      string
 	skipParameterCheck             bool
 	downloadLogFrom, downloadLogTo string
-	ordersOrderBy                  string
-	ordersOrderDesc                bool
 
 	orderCmd = &cobra.Command{
 		Use:     "order",
@@ -86,20 +74,7 @@ var (
 		Short:   "List existing orders",
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			req := &sdk.ListOrderRequest{
-				Offset:    0,
-				Limit:     50,
-				OrderBy:   ordersOrderBy,
-				OrderDesc: ordersOrderDesc,
-			}
-			if limit > 0 {
-				req.Limit = limit
-			}
-			if page != "" {
-				p := GetHistory(page)
-				req.Page = &p
-			}
-
+			req := createListRequest()
 			switch outputFormat {
 			case "json", "yaml":
 				if res, err := sdk.ListOrdersRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
@@ -137,8 +112,8 @@ var (
 				}
 			default:
 				if order, err := sdk.ReadOrder(context.Background(), req, adapter, logger); err == nil {
-					selector := sdk.MetadataSelector{Entity: recordID}
-					if meta, _, err := sdk.ListMetadata(context.Background(), selector, adapter, logger); err == nil {
+					selector := sdk.AspectSelector{Entity: recordID}
+					if meta, _, err := sdk.ListAspect(context.Background(), selector, adapter, logger); err == nil {
 						printOrder(order, meta, false)
 					} else {
 						return err
@@ -300,7 +275,7 @@ func printOrdersTable(list *api.ListResponseBody, wide bool) {
 	t.Render()
 }
 
-func printOrder(order *api.ReadResponseBody, meta *meta.ListResponseBody, wide bool) {
+func printOrder(order *api.ReadResponseBody, meta *asapi.ListResponseBody, wide bool) {
 	tw2 := table.NewWriter()
 	tw2.SetStyle(table.StyleLight)
 	tw2.SetColumnConfigs([]table.ColumnConfig{{Number: 1, Align: text.AlignRight}})
@@ -345,7 +320,7 @@ func printOrder(order *api.ReadResponseBody, meta *meta.ListResponseBody, wide b
 	}
 
 	tw.AppendRows([]table.Row{
-		{"ID", *order.ID},
+		{"ID", fmt.Sprintf("%s (%s)", *order.ID, MakeHistory(order.ID))},
 		{"Name", safeString(order.Name)},
 		{"Status", safeString(order.Status)},
 		{"Ordered", safeDate(order.OrderedAt, false)},
