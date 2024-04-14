@@ -1,10 +1,10 @@
-# Make sure to check the documentation at http://goreleaser.com
-before:
-  hooks:
-    # You may remove this if you don't use go modules.
-    # - go mod tidy
-    # you may remove this if you don't need go generate
-    # - go generate ./...
+# yaml-language-server: $schema=https://goreleaser.com/static/schema.json
+# before:
+#   hooks:
+# You may remove this if you don't use go modules.
+# - go mod tidy
+# you may remove this if you don't need go generate
+# - go generate ./...
 builds:
   - binary: ivcap
     env:
@@ -30,15 +30,6 @@ brews:
     commit_author:
       name: maxott
       email: max.ott@data61.csiro.au
-
-# - name: ivcap
-#   homepage: "https://github.com/ivcap-works/ivcap-cli"
-#   tap:
-#     owner: ivcap-works
-#     name: homebrew-resci
-#   commit_author:
-#     name: maxott
-#     email: max.ott@data61.csiro.au
 
 checksum:
   name_template: "checksums.txt"
