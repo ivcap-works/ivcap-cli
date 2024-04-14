@@ -135,6 +135,13 @@ func ReplyPrinter(pld Payload, useYAML bool) (err error) {
 	if err = pld.AsType(&f); err != nil {
 		return
 	}
+	if s, err := ToString(f, useYAML); err == nil {
+		fmt.Printf("%s\n", s)
+	}
+	return
+}
+
+func ToString(f any, useYAML bool) (s string, err error) {
 	var b []byte
 	if useYAML {
 		if b, err = yaml.Marshal(f); err != nil {
@@ -145,8 +152,7 @@ func ReplyPrinter(pld Payload, useYAML bool) (err error) {
 			return
 		}
 	}
-	fmt.Printf("%s\n", b)
-	return
+	return fmt.Sprintf("%s", b), nil
 }
 
 func (p *payload) AsType(r interface{}) error {

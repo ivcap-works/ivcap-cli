@@ -22,7 +22,6 @@ import (
 	"io"
 	"net/url"
 	"strconv"
-	"strings"
 
 	api "github.com/ivcap-works/ivcap-core-api/http/artifact"
 
@@ -42,7 +41,7 @@ type ListArtifactRequest struct {
 	Page   *string
 }
 
-func ListArtifacts(ctxt context.Context, cmd *ListArtifactRequest, adpt *adapter.Adapter, logger *log.Logger) (*api.ListResponseBody, error) {
+func ListArtifacts(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter, logger *log.Logger) (*api.ListResponseBody, error) {
 	pyl, err := ListArtifactsRaw(ctxt, cmd, adpt, logger)
 	if err != nil {
 		return nil, err
@@ -55,24 +54,13 @@ func ListArtifacts(ctxt context.Context, cmd *ListArtifactRequest, adpt *adapter
 	return &list, nil
 }
 
-func ListArtifactsRaw(ctxt context.Context, cmd *ListArtifactRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	path := artifactPath(nil, adpt)
-
-	pa := []string{}
-	if cmd.Offset > 0 {
-		pa = append(pa, "offset="+url.QueryEscape(strconv.Itoa(cmd.Offset)))
-	}
-	if cmd.Limit > 0 {
-		pa = append(pa, "limit="+url.QueryEscape(strconv.Itoa(cmd.Limit)))
-	}
-	if cmd.Page != nil {
-		pa = append(pa, "page="+url.QueryEscape(*cmd.Page))
-	}
-	if len(pa) > 0 {
-		path = path + "?" + strings.Join(pa, "&")
+func ListArtifactsRaw(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	path, err := createListPath(cmd, artifactPath(nil, adpt))
+	if err != nil {
+		return nil, err
 	}
 	// fmt.Printf("PATH: %s\n", path)
-	return (*adpt).Get(ctxt, path, logger)
+	return (*adpt).Get(ctxt, path.String(), logger)
 }
 
 // /**** CREATE ****/

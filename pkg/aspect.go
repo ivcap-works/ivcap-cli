@@ -17,8 +17,8 @@ package client
 import (
 	"bytes"
 	"context"
+	"strconv"
 	"strings"
-	"time"
 
 	"fmt"
 	"net/url"
@@ -48,7 +48,25 @@ func AddUpdateAspect(ctxt context.Context, isAdd bool, entity string, schema str
 	}
 }
 
-func GetAspect(ctxt context.Context, recordID string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+func GetAspect(
+	ctxt context.Context,
+	recordID string,
+	adpt *adapter.Adapter,
+	logger *log.Logger,
+) (*api.ReadResponseBody, error) {
+	if res, err := GetAspectRaw(ctxt, recordID, adpt, logger); err == nil {
+		var response api.ReadResponseBody
+		if err := res.AsType(&response); err != nil {
+			return nil, err
+		}
+		return &response, nil
+	} else {
+		return nil, err
+	}
+
+}
+
+func GetAspectRaw(ctxt context.Context, recordID string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	id := url.PathEscape(recordID)
 	path := aspectPath(&id, adpt)
 	return (*adpt).Get(ctxt, path, logger)
@@ -61,13 +79,11 @@ func RetractAspect(ctxt context.Context, recordID string, adpt *adapter.Adapter,
 }
 
 type AspectSelector struct {
-	Entity       string
-	SchemaPrefix string
-	Page         string
-	SimpleFilter *string
-	JsonFilter   *string
-	Timestamp    *time.Time
-	Limit        int
+	ListRequest
+	Entity         string
+	SchemaPrefix   string
+	JsonFilter     *string
+	IncludeContent bool
 }
 
 func ListAspect(ctxt context.Context,
@@ -75,32 +91,25 @@ func ListAspect(ctxt context.Context,
 	adpt *adapter.Adapter,
 	logger *log.Logger,
 ) (*api.ListResponseBody, adapter.Payload, error) {
-	path := aspectPath(nil, adpt)
-	q := url.Values{}
+	u, err := createListPath(&selector.ListRequest, aspectPath(nil, adpt))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	q := u.Query()
 	if selector.Entity != "" {
 		q.Set("entity", selector.Entity)
 	}
 	if selector.SchemaPrefix != "" {
 		q.Set("schema", selector.SchemaPrefix)
 	}
-	if selector.Page != "" {
-		q.Set("page", selector.Page)
-	}
-	if selector.SimpleFilter != nil {
-		q.Set("filter", *selector.SimpleFilter)
-	}
 	if selector.JsonFilter != nil {
 		q.Set("aspect-path", *selector.JsonFilter)
 	}
-	if selector.Timestamp != nil {
-		ts := selector.Timestamp.Format(time.RFC3339)
-		q.Set("at-time", ts)
-	}
-	q.Set("limit", fmt.Sprintf("%d", selector.Limit))
-	if len(q) > 0 {
-		path = fmt.Sprintf("%s?%s", path, q.Encode())
-	}
-	if pyld, err := (*adpt).Get(ctxt, path, logger); err == nil {
+	q.Set("include-content", strconv.FormatBool(selector.IncludeContent))
+
+	u.RawQuery = q.Encode()
+	if pyld, err := (*adpt).Get(ctxt, u.String(), logger); err == nil {
 		var list api.ListResponseBody
 		if err := pyld.AsType(&list); err == nil {
 			return &list, pyld, nil

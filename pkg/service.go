@@ -19,8 +19,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/url"
-	"strconv"
 
 	api "github.com/ivcap-works/ivcap-core-api/http/service"
 
@@ -50,7 +48,7 @@ type ListServiceRequest struct {
 // 	} `json:"records"`
 // }
 
-func ListServices(ctxt context.Context, cmd *ListServiceRequest, adpt *adapter.Adapter, logger *log.Logger) (*api.ListResponseBody, error) {
+func ListServices(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter, logger *log.Logger) (*api.ListResponseBody, error) {
 	pyl, err := ListServicesRaw(ctxt, cmd, adpt, logger)
 	if err != nil {
 		return nil, err
@@ -62,26 +60,31 @@ func ListServices(ctxt context.Context, cmd *ListServiceRequest, adpt *adapter.A
 	return &list, nil
 }
 
-func ListServicesRaw(ctxt context.Context, cmd *ListServiceRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	path := servicePath(nil)
-	u, err := url.Parse(path)
+func ListServicesRaw(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	u, err := createListPath(cmd, servicePath(nil))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse path %s to url: %w", path, err)
+		return nil, err
 	}
-
-	query := u.Query()
-	if cmd.Offset > 0 {
-		query.Set("offset", strconv.FormatInt(int64(cmd.Offset), 10))
-	}
-	if cmd.Limit > 0 {
-		query.Set("limit", strconv.FormatInt(int64(cmd.Limit), 10))
-	}
-	query.Set("order-by", cmd.OrderBy)
-	query.Set("order-desc", strconv.FormatBool(cmd.OrderDesc))
-
-	u.RawQuery = query.Encode()
-
 	return (*adpt).Get(ctxt, u.String(), logger)
+	// path := servicePath(nil)
+	// u, err := url.Parse(path)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to parse path %s to url: %w", path, err)
+	// }
+
+	// query := u.Query()
+	// if cmd.Offset > 0 {
+	// 	query.Set("offset", strconv.FormatInt(int64(cmd.Offset), 10))
+	// }
+	// if cmd.Limit > 0 {
+	// 	query.Set("limit", strconv.FormatInt(int64(cmd.Limit), 10))
+	// }
+	// query.Set("order-by", cmd.OrderBy)
+	// query.Set("order-desc", strconv.FormatBool(cmd.OrderDesc))
+
+	// u.RawQuery = query.Encode()
+
+	// return (*adpt).Get(ctxt, u.String(), logger)
 }
 
 /**** CREATE ****/
