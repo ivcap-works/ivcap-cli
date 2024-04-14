@@ -35,12 +35,6 @@ import (
 
 /**** LIST ****/
 
-type ListArtifactRequest struct {
-	Offset int
-	Limit  int
-	Page   *string
-}
-
 func ListArtifacts(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter, logger *log.Logger) (*api.ListResponseBody, error) {
 	pyl, err := ListArtifactsRaw(ctxt, cmd, adpt, logger)
 	if err != nil {

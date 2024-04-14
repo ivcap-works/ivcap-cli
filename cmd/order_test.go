@@ -60,7 +60,7 @@ func testCreateOrder(t *testing.T) {
 	}
 	pyld, err := a.LoadPayloadFromBytes(createOrderReqBody, false)
 	if err != nil {
-		t.Fatalf("failed to load payload from file: %s, %v", serviceFile, err)
+		t.Fatalf("failed to load payload from 'createOrderReqBody', %v", err)
 	}
 	var req api.CreateRequestBody
 	if err = pyld.AsType(&req); err != nil {
@@ -83,7 +83,7 @@ func TestListOrder(t *testing.T) {
 	if testToken == "" {
 		t.Skip("access token not found, login to run unit test...")
 	}
-	req := &sdk.ListOrderRequest{Offset: 0, Limit: 5}
+	req := &sdk.ListRequest{Limit: 5}
 	_, err := sdk.ListOrders(context.Background(), req, adapter, tlogger)
 	if err != nil {
 		t.Fatalf("failed to list orders: %v", err)

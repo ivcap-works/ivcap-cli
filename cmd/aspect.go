@@ -61,7 +61,7 @@ var (
 	aspectCmd = &cobra.Command{
 		Use:     "aspect",
 		Aliases: []string{"as", "aspect"},
-		Short:   "Add/get/retract/query aspects",
+		Short:   "Create and manage aspects",
 	}
 
 	aspectAddCmd = &cobra.Command{

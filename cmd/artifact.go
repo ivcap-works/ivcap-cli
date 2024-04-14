@@ -23,8 +23,6 @@ import (
 
 	api "github.com/ivcap-works/ivcap-core-api/http/artifact"
 
-	// "bytes"
-	// "encoding/json"
 	"net/http"
 	"net/url"
 	"os"
@@ -104,14 +102,10 @@ type ArtifactInCollection struct {
 }
 
 var (
-	artifactID         string
 	artifactCollection string
-	// file         string
-	// file          string
-	// metaFile           string
-	contentType string
-	chunkSize   int64
-	policy      string
+	contentType        string
+	chunkSize          int64
+	policy             string
 
 	artifactCmd = &cobra.Command{
 		Use:     "artifact",

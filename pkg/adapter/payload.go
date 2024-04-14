@@ -152,7 +152,7 @@ func ToString(f any, useYAML bool) (s string, err error) {
 			return
 		}
 	}
-	return fmt.Sprintf("%s", b), nil
+	return string(b), nil
 }
 
 func (p *payload) AsType(r interface{}) error {

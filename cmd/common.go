@@ -27,8 +27,6 @@ const DEF_LIMIT = 10
 
 var (
 	// common, but not global flags
-	recordID string
-
 	limit     int
 	page      string
 	filter    string

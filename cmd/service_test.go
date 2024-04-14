@@ -180,7 +180,7 @@ func testCreateService(t *testing.T) {
 	}
 	pyld, err := a.LoadPayloadFromBytes(createReqBody, false)
 	if err != nil {
-		t.Fatalf("failed to load payload from file: %s, %v", serviceFile, err)
+		t.Fatalf("failed to load payload from 'createReqBody', %v", err)
 	}
 	var req api.CreateServiceRequestBody
 	if err = pyld.AsType(&req); err != nil {
@@ -215,7 +215,7 @@ func TestListService(t *testing.T) {
 	if testToken == "" {
 		t.Skip("access token not found, login to run unit test...")
 	}
-	req := &sdk.ListServiceRequest{Offset: 0, Limit: 5}
+	req := &sdk.ListRequest{Limit: 5}
 	_, err := sdk.ListServices(context.Background(), req, adapter, tlogger)
 	if err != nil {
 		t.Fatalf("failed to list service: %v", err)
@@ -345,7 +345,7 @@ func testUpdateService(t *testing.T) {
 
 	pyld, err := a.LoadPayloadFromBytes(updateReqBody, false)
 	if err != nil {
-		t.Fatalf("failed to load payload from file: %s, %v", serviceFile, err)
+		t.Fatalf("failed to load payload from 'updateReqBody', %v", err)
 	}
 	var req api.UpdateRequestBody
 	if err = pyld.AsType(&req); err != nil {
