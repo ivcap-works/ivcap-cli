@@ -27,5 +27,6 @@ var (
 )
 
 func main() {
-	cmd.Execute(fmt.Sprintf("%s|%s|%s", version, commit[:7], date))
+	version := fmt.Sprintf("%s|%s|%s", version, commit[:7], date)
+	cmd.Execute(version)
 }

@@ -21,14 +21,27 @@ LD_FLAGS="-X main.version=${GIT_TAG} -X main.commit=${GIT_COMMIT} -X main.date=$
 build: check
 	@echo "Building IVCAP-CLI..."
 	${GOPRIVATE_ENV_CMD} go mod tidy
-	go -C ivcap build -ldflags ${LD_FLAGS}
+	go  build -ldflags ${LD_FLAGS} ivcap.go
+
+build-dangerously:
+	@echo "Building IVCAP-CLI..."
+	${GOPRIVATE_ENV_CMD} go mod tidy
+	go build -ldflags ${LD_FLAGS} ivcap.go
+
+build-docs:
+	go -C doc build -ldflags ${LD_FLAGS} create-docs.go
+	rm -f doc/*.md doc/*.3
+	doc/create-docs
+	rm -f doc/create-docs
 
 install: addlicense check
-	go -C ivcap install -ldflags ${LD_FLAGS}
+	go install -ldflags ${LD_FLAGS} ivcap.go
 	if [[ -d $(shell brew --prefix)/share/zsh/site-functions ]]; then \
 		$(shell go env GOBIN)/ivcap completion zsh > $(shell brew --prefix)/share/zsh/site-functions/_ivcap;\
   fi
 
+clean:
+	rm ivcap
 test:
 	go test -v ./...
 
