@@ -33,15 +33,7 @@ import (
 
 /**** LIST ****/
 
-type ListOrderRequest struct {
-	Offset    int
-	Limit     int
-	Page      *string
-	OrderBy   string
-	OrderDesc bool
-}
-
-func ListOrders(ctxt context.Context, cmd *ListOrderRequest, adpt *adapter.Adapter, logger *log.Logger) (*api.ListResponseBody, error) {
+func ListOrders(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter, logger *log.Logger) (*api.ListResponseBody, error) {
 	pyl, err := ListOrdersRaw(ctxt, cmd, adpt, logger)
 	if err != nil {
 		return nil, err
@@ -53,28 +45,11 @@ func ListOrders(ctxt context.Context, cmd *ListOrderRequest, adpt *adapter.Adapt
 	return &list, nil
 }
 
-func ListOrdersRaw(ctxt context.Context, cmd *ListOrderRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	path := orderPath(nil)
-
-	u, err := url.Parse(path)
+func ListOrdersRaw(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	u, err := createListPath(cmd, orderPath(nil))
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse path %s to url: %w", path, err)
+		return nil, err
 	}
-
-	query := u.Query()
-	if cmd.Offset > 0 {
-		query.Set("offset", strconv.FormatInt(int64(cmd.Offset), 10))
-	}
-	if cmd.Limit > 0 {
-		query.Set("limit", strconv.FormatInt(int64(cmd.Limit), 10))
-	}
-	if cmd.Page != nil {
-		query.Set("page", *cmd.Page)
-	}
-	query.Set("order-by", cmd.OrderBy)
-	query.Set("order-desc", strconv.FormatBool(cmd.OrderDesc))
-
-	u.RawQuery = query.Encode()
 
 	return (*adpt).Get(ctxt, u.String(), logger)
 }

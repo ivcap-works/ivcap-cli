@@ -35,7 +35,7 @@ func TestListArtifact(t *testing.T) {
 		t.Skip("access token not found, login to run unit test...")
 	}
 
-	req := &sdk.ListArtifactRequest{Offset: 0, Limit: 5}
+	req := &sdk.ListRequest{Limit: 5}
 	_, err := sdk.ListArtifacts(context.Background(), req, adapter, tlogger)
 	if err != nil {
 		t.Fatalf("failed to list artifacts: %v", err)
@@ -53,7 +53,7 @@ func testAddArtifact(t *testing.T) {
 
 	reader, contentType, size := getReader(testArtifactFileName, contentType)
 	req := &sdk.CreateArtifactRequest{
-		Name:       artifactName,
+		Name:       name,
 		Size:       size,
 		Collection: artifactCollection,
 		Policy:     policy,
@@ -95,8 +95,8 @@ func testGetArtifact(t *testing.T) {
 	if artifact.ID == nil || *artifact.ID != testArtifactID {
 		t.Fatalf("artifact id does not match, expected: %s, got: %s", testArtifactID, *artifact.ID)
 	}
-	selector := sdk.MetadataSelector{Entity: testArtifactID}
-	if _, _, err := sdk.ListMetadata(context.Background(), selector, adapter, logger); err != nil {
+	selector := sdk.AspectSelector{Entity: testArtifactID}
+	if _, _, err := sdk.ListAspect(context.Background(), selector, adapter, logger); err != nil {
 		t.Fatalf("error while list artifact metadata: %v", err)
 	}
 

@@ -15,17 +15,9 @@
 package main
 
 import (
-	"fmt"
-
 	"github.com/ivcap-works/ivcap-cli/cmd"
 )
 
-var (
-	version = "dev"
-	commit  = "unknown"
-	date    = "unknown"
-)
-
 func main() {
-	cmd.Execute(fmt.Sprintf("%s|%s|%s", version, commit[:7], date))
+	cmd.CreateDoc()
 }

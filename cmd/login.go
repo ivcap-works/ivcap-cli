@@ -33,19 +33,19 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(loginCmd)
-	rootCmd.AddCommand(logoutCmd)
+	contextCmd.AddCommand(loginCmd)
+	contextCmd.AddCommand(logoutCmd)
 }
 
 var loginCmd = &cobra.Command{
 	Use:   "login",
-	Short: "Authenticate with a specific deployment/context",
+	Short: "Authenticate with a current deployment/context",
 	Run:   login,
 }
 
 var logoutCmd = &cobra.Command{
 	Use:   "logout",
-	Short: "Remove authentication tokens from specific deployment/context",
+	Short: "Remove authentication tokens from the current deployment/context",
 	RunE: func(cmd *cobra.Command, args []string) (err error) {
 		ctxt := GetActiveContext()
 		ctxt.AccessToken = ""

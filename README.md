@@ -10,7 +10,7 @@ __IVCAP__ has an extensive REST API which is usually called directly from applic
 
 You will need the following installed:
 
-- go version >= 1.21.1 (e.g. `snap install go --classic`)
+- go version >= 1.22.2 (e.g. `snap install go --classic`)
 - golangci-lint (e.g. `snap install golangci-lint`)
 - gocritic (e.g. `go install -v github.com/go-critic/go-critic/cmd/gocritic@latest`; you may also need to add `~/go/bin` to your `PATH`)
 - staticcheck (`go install honnef.co/go/tools/cmd/staticcheck@latest`)
@@ -49,24 +49,24 @@ Usage:
   ivcap [command]
 
 Available Commands:
-  artifact    Create and manage artifacts 
+  artifact    Create and manage artifacts
+  aspect      Create and manage aspects
+  collection  Create and manage collections
   completion  Generate the autocompletion script for the specified shell
   context     Manage and set access to various IVCAP deployments
   help        Help about any command
-  login       Authenticate with a specific deployment/context
-  logout      Remove authentication tokens from specific deployment/context
-  metadata    Add/get/revoke metadata
-  order       Create and manage orders 
-  service     Create and manage services 
+  order       Create and manage orders
+  service     Create and manage services
 
 Flags:
       --access-token string   Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]
       --context string        Context (deployment) to use
       --debug                 Set logging level to DEBUG
   -h, --help                  help for ivcap
+      --no-history            Do not store history
   -o, --output string         Set format for displaying output [json, yaml]
       --silent                Do not show any progress information
-      --timeout int           Max. number of seconds to wait for completion (default 10)
+      --timeout int           Max. number of seconds to wait for completion (default 30)
   -v, --version               version for ivcap
 
 Use "ivcap [command] --help" for more information about a command.
@@ -103,20 +103,22 @@ The following command lists all the configured contexts:
 To obtain an authorisation token, some deployments provide a username/password based identity provider.
 
 ```
-% ivcap login
-                                         
-                                         
-    █▀▀▀▀▀█    ▀█  ▄▀▄▀▀ ▄▄▀▄ █▀▀▀▀▀█    
-    █ ███ █ █  █▀ ▀█▀ █  ▀▀█  █ ███ █    
-    █ ▀▀▀ █ █ ▀▀▄▀▀▀▀█▀ ▀█ ▀▀ █ ▀▀▀ █    
-    ▀▀▀▀▀▀▀ █▄█ █ █ █ █ █▄█ ▀ ▀▀▀▀▀▀▀    
-    █ ██▀▀▀▄▄▄ ▄ ██ ██▄█▀▄█▄█ ██▀██ ▄    
-    █▀▄▄ ▀▀  █ █▀█▀▀▀█▄  █  █ ▄ █▄█▀     
+% ivcap context login
+
+
+    █▀▀▀▀▀█    ▀█  ▄▀▄▀▀ ▄▄▀▄ █▀▀▀▀▀█
+    █ ███ █ █  █▀ ▀█▀ █  ▀▀█  █ ███ █
+    █ ▀▀▀ █ █ ▀▀▄▀▀▀▀█▀ ▀█ ▀▀ █ ▀▀▀ █
+    ▀▀▀▀▀▀▀ █▄█ █ █ █ █ █▄█ ▀ ▀▀▀▀▀▀▀
+    █ ██▀▀▀▄▄▄ ▄ ██ ██▄█▀▄█▄█ ██▀██ ▄
+    █▀▄▄ ▀▀  █ █▀█▀▀▀█▄  █  █ ▄ █▄█▀
 ...
 To login to the IVCAP Service, please go to:  https://id-provider.com/activate?user_code=....
 or scan the QR Code to be taken to the login page
 Waiting for authorisation...
 ```
+
+Follow this [link](./doc/ivcap_context.md) for more details about the `context` command.
 
 ### Services
 
@@ -125,61 +127,38 @@ To list all available services:
 ```
 
 % ivcap services list --limit 2
-+--------------------------------------------------------+---------------------+------------------------------+
-| ID                                                     | NAME                | PROVIDER                     |
-+--------------------------------------------------------+---------------------+------------------------------+
-| urn:ivcap:service:d939b74d-0070-59a4-a832-36c5c07e657d | Gradient Text Image | urn:ivcap:provider:1a18fe... |
-| urn:ivcap:service:74856672-26f1-5df8-9de0-787f6a1fed25 | Windy days.         | urn:ivcap:provider:48609f... |
-+--------------------------------------------------------+---------------------+------------------------------+
-
++--------+------------------------+-------------------------------+
+| ID     | NAME                   | ACCOUNT                       |
++--------+------------------------+-------------------------------+
+| @1     | image-analysis-example | urn:ivcap:account:45a06508... |
+| @2     | cv-pipeline-v0-ps1-gpu | urn:ivcap:account:29df453d... |
+| ... @3 |                        |                               |
++--------+------------------------+-------------------------------+
 ```
 
 To get more details about a specific service
 
 ```
 
-% ivcap service get urn:ivcap:74856672-26f1-5df8-9de0-787f6a1fed25
+% ivcap service get @1
 
-          ID  urn:ivcap:service:74856672-26f1-5df8-9de0-787f6a1fed25                        
-        Name  Windy days.                                                              
- Description  The number of days with average near-surface wind speed above threshold.
-
-              Let $WS_{ij}$ be the windspeed at day $i$ of period $j$. Then            
-              counted is the number of days where:                                     
-                                                                                       
-              $$                                                                       
-                  WS_{ij} >= Threshold [m s-1]                                         
-              $$                                                                       
-
- Provider ID  urn:ivcap:provider:48609f7d-5a64-5bf6-9c47-1a3ad40bf28a:cre.csiro.au
-  Account ID  urn:ivcap:account:6b1d01e0-c2c9-5448-b8a2-9fc14ac18b55:cre.csiro.au
-  Parameters  ┌───────────────┬────────────────────────────────┬────────┬────────────┐
-              │ NAME          │ DESCRIPTION                    │ TYPE   │ DEFAULT    │
-              ├───────────────┼────────────────────────────────┼────────┼────────────┤
-              │        thresh │ Threshold average near-surface │ string │ 10.8       │
-              │               │  wind speed on which to base e │        │            │
-              │               │ valuation.                     │        │            │
-              ├───────────────┼────────────────────────────────┼────────┼────────────┤
-              │          freq │ Resampling frequency.          │ option │ MS         │
-              ├───────────────┼────────────────────────────────┼────────┼────────────┤
-              │ degrees_north │ Latitude: Degrees North        │ number │ -10.3      │
-              ├───────────────┼────────────────────────────────┼────────┼────────────┤
-              │ degrees_south │ Latitude: Degrees South        │ number │ -45        │
-              ├───────────────┼────────────────────────────────┼────────┼────────────┤
-              │  degrees_east │ Longitude: Degrees East        │ number │ 115        │
-              ├───────────────┼────────────────────────────────┼────────┼────────────┤
-              │  degrees_west │ Longitude: Degrees West        │ number │ 110        │
-              ├───────────────┼────────────────────────────────┼────────┼────────────┤
-              │         model │ Climate Model                  │ option │ ACCESS1.3  │
-              ├───────────────┼────────────────────────────────┼────────┼────────────┤
-              │    experiment │ Emissions Pathway              │ option │ historical │
-              ├───────────────┼────────────────────────────────┼────────┼────────────┤
-              │    start_date │ Start date (YYYY-MM-DD)        │ string │ 1975-01-01 │
-              ├───────────────┼────────────────────────────────┼────────┼────────────┤
-              │      end_date │ Start date (YYYY-MM-DD)        │ string │ 2005-12-31 │
-              └───────────────┴────────────────────────────────┴────────┴────────────┘
-
+          ID  urn:ivcap:service:19f9c31e...
+        Name  image-analysis-example
+ Description  A simple IVCAP service creating a thumbnail and reporting stats on a collection of images
+      Status
+  Account ID  urn:ivcap:account:45a06508...
+  Parameters  ┌────────┬────────────────────────────────┬────────────┬─────────┬──────────┐
+              │ NAME   │ DESCRIPTION                    │ TYPE       │ DEFAULT │ OPTIONAL │
+              ├────────┼────────────────────────────────┼────────────┼─────────┼──────────┤
+              │ images │ Collection of image artifacts. │ collection │         │ true     │
+              ├────────┼────────────────────────────────┼────────────┼─────────┼──────────┤
+              │  width │ Thumbnail width.               │ int        │ 100     │ false    │
+              ├────────┼────────────────────────────────┼────────────┼─────────┼──────────┤
+              │ height │ Thumbnail height.              │ int        │ 100     │ false    │
+              └────────┴────────────────────────────────┴────────────┴─────────┴──────────┘
 ```
+
+Follow this [link](./doc/ivcap_service.md) for more details about the `service` command.
 
 ### Orders
 
@@ -188,31 +167,42 @@ To place an order:
 ```
 
 % ivcap orders create \
-     urn:ivcap:service:d939b74d-0070-59a4-a832-36c5c07e657d \
+     urn:ivcap:service:d939b74d... \
      --name "Order for max" \
      msg="Hi, how are you"
-Order 'urn:ivcap:order:81b204e8-c404-499e-bc19-d78518a5a3dc' with status 'Pending' submitted.
+Order 'urn:ivcap:order:81b204e8...' with status 'Pending' submitted.
 
 ```
 
 To check on the status of an order:
 
 ```
-% ivcap orders get urn:ivcap:order:81b204e8-c404-499e-bc19-d78518a5a3dc
+% ivcap orders get urn:ivcap:order:81b204e8...
 
-         ID  urn:ivcap:order:81b204e8-c404-499e-bc19-d78518a5a3dc                        
-       Name  Order for max                                                          
-     Status  Succeeded                                                              
- Ordered at  02 Jun 22 16:10 AEST
- Service ID  urn:ivcap:service:d939b74d-0070-59a4-a832-36c5c07e657d
- Account ID  urn:ivcap:account:58d8e161-9a2b-513a-bd32-28d7e8af1658:testing.com
- Parameters  ┌────────────────────────┐
-             │ msg =  Hi, how are you │
-             └────────────────────────┘
-   Products  ┌────────────────────────────────────────────────-----────┬─────────┬───────┐
-             │ urn:ivcap:artifact:017ecae8-3d39-4297-a94f-00ddf9b26611 │ out.png │ 50855 │
-             └───────────────────────────────────────────-----─────────┴─────────┴───────┘
+         ID  urn:ivcap:order:f169f54d-ec8d-4d6a-af17-0c1c33625379
+       Name  urn:ibenthos:collection:indo_flores_0922:LB4 UQ PhotoTransect@256028
+     Status  succeeded
+    Ordered  6 months ago (01 Oct 23 17:26 AEDT)
+    Service  image-analysis-example (@15)
+ Account ID  urn:ivcap:account:45a06508-5c3a-4678-8e6d-e6399bf27538
+ Parameters  ┌─────────────────────────────────────────────────┐
+             │ images =  @1 (urn:ivcap:collection:508a2aba...) │
+             │  width =  100                                   │
+             │ height =  100                                   │
+             └─────────────────────────────────────────────────┘
+   Products  ┌────┬───────────────┬──────────────────┐
+             │ @2 │ result.png    │ image/png        │
+             │ @3 │ stats.json    │ application/json │
+             │ @4 │ thumbnail.png │ image/png        │
+             └────┴───────────────┴──────────────────┘
+   Metadata  ┌─────┬────────────────────────────────────────┐
+             │ @6  │ urn:ivcap:schema:order-uses-workflow.  │
+             │ @7  │ urn:ivcap:schema:order-uses-artifact.1 │
+             │ ...                                          │
+             └─────┴────────────────────────────────────────┘
 ```
+
+Follow this [link](./doc/ivcap_order.md) for more details about the `order` command.
 
 ### Artifacts
 
@@ -222,13 +212,17 @@ To check the details of the artifact created by the previously placed order:
 
 % ivcap artifact get urn:ivcap:artifact:017ecae8-3d39-4297-a94f-00ddf9b26611
 
-         ID  urn:ivcap:artifact:017ecae8-3d39-4297-a94f-00ddf9b26611            
-       Name  out.png                                                       
-     Status  available                                                     
-       Size  50855                                                         
+         ID  urn:ivcap:artifact:017ecae8-3d39-4297-a94f-00ddf9b26611
+       Name  out.png
+     Status  available
+       Size  50855
   Mime-type  image/png
- Account ID  urn:ivcap:account:58d8e161-9a2b-513a-bd32-28d7e8af1658:testing.com
-
+ Account ID  urn:ivcap:account:58d8e161...
+   Metadata  ┌────┬─────────────────────────────────────────────┐
+             │ @1 │ urn:ivcap:schema:artifact.1                 │
+             │ @2 │ urn:ivcap:schema:artifact-usedBy-order.1    │
+             │ @3 │ urn:example:schema:image-analysis:thumbnail │
+             └────┴─────────────────────────────────────────────┘
 ```
 
 To download the content associated with the artifact.
@@ -238,3 +232,5 @@ To download the content associated with the artifact.
 % ivcap artifact download urn:ivcap:artifact:017ecae8-3d39-4297-a94f-00ddf9b26611 -f /tmp/out.png
 Successfully wrote 50855 bytes to /tmp/out.png
 ```
+
+Follow this [link](./doc/ivcap_artifact.md) for more details about the `artifact` command.

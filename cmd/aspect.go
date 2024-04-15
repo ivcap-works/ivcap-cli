@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/araddon/dateparse"
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 	api "github.com/ivcap-works/ivcap-core-api/http/aspect"
@@ -33,27 +32,20 @@ func init() {
 	rootCmd.AddCommand(aspectCmd)
 
 	aspectCmd.AddCommand(aspectAddCmd)
-	aspectAddCmd.Flags().StringVarP(&schemaURN, "schema", "s", "", "URN/UUID of schema")
-	aspectAddCmd.Flags().StringVarP(&aspectFile, "file", "f", "", "Path to file containing metdata")
-	aspectAddCmd.Flags().StringVarP(&inputFormat, "format", "", "json", "Format of service description file [json, yaml]")
-	aspectAddCmd.Flags().StringVarP(&policy, "policy", "p", "", "Policy controlling access")
+	addFlags(aspectAddCmd, []Flag{Schema, InputFormat, Policy})
+	aspectAddCmd.Flags().StringVarP(&aspectFile, "file", "f", "", "Path to file containing aspect content")
 
 	aspectCmd.AddCommand(aspectUpdateCmd)
-	aspectUpdateCmd.Flags().StringVarP(&schemaURN, "schema", "s", "", "URN/UUID of schema")
+	addFlags(aspectUpdateCmd, []Flag{Schema, InputFormat, Policy})
 	aspectUpdateCmd.Flags().StringVarP(&aspectFile, "file", "f", "", "Path to file containing metdata")
-	aspectUpdateCmd.Flags().StringVarP(&inputFormat, "format", "", "json", "Format of service description file [json, yaml]")
-	aspectUpdateCmd.Flags().StringVarP(&policy, "policy", "p", "", "Policy controlling access")
 
 	aspectCmd.AddCommand(aspectGetCmd)
 
 	aspectCmd.AddCommand(aspectQueryCmd)
-	aspectQueryCmd.Flags().StringVarP(&schemaPrefix, "schema", "s", "", "URN/UUID prefix of schema")
-	aspectQueryCmd.Flags().StringVarP(&entityURN, "entity", "e", "", "URN/UUID of entity")
-	aspectQueryCmd.Flags().StringVarP(&aspectJsonFilter, "json-path", "j", "", "json path filter on aspect ('$.images[*] ? (@.size > 10000)')")
-	aspectQueryCmd.Flags().StringVarP(&aspectFilter, "filter", "f", "", "simple filter on aspect ('FirstName ~= 'Scott'')")
-	aspectQueryCmd.Flags().StringVarP(&atTime, "time-at", "t", "", "Timestamp for which to request information [now]")
-	aspectQueryCmd.Flags().IntVar(&limit, "limit", DEF_LIMIT, "max number of records to be returned")
-	aspectQueryCmd.Flags().StringVarP(&page, "page", "p", "", "query page token, for example to get next page")
+	addFlags(aspectQueryCmd, []Flag{Schema, Entity})
+	aspectQueryCmd.Flags().StringVarP(&aspectJsonFilter, "content-path", "c", "", "json path filter on aspect's content ('$.images[*] ? (@.size > 10000)')")
+	aspectQueryCmd.Flags().BoolVar(&aspectIncludeContent, "include-content", false, "if set, also include aspect's content in list")
+	addListFlags(aspectQueryCmd)
 
 	aspectCmd.AddCommand(aspectRetractCmd)
 }
@@ -61,24 +53,19 @@ func init() {
 var (
 	aspectFile string
 
-// schemaURN        string
-// schemaPrefix     string
-// entityURN        string
-// aspectJsonFilter string
-// aspectFilter     string
-// atTime           string
-// page             string
+	aspectJsonFilter     string
+	aspectIncludeContent bool
 )
 
 var (
 	aspectCmd = &cobra.Command{
 		Use:     "aspect",
 		Aliases: []string{"as", "aspect"},
-		Short:   "Add/get/retract/query aspects",
+		Short:   "Create and manage aspects",
 	}
 
 	aspectAddCmd = &cobra.Command{
-		Use:     "add [flags] entity [-s schemaName] -f -|aspect --format json|yaml",
+		Use:     "add entityURN [-s schemaName] -f -|aspect --format json|yaml [flags]",
 		Short:   "Add aspect of a specific schema to an entity",
 		Aliases: []string{"a", "+"},
 		Long:    `.....`,
@@ -89,7 +76,7 @@ var (
 	}
 
 	aspectUpdateCmd = &cobra.Command{
-		Use:     "update entity [-s schemaName] -f -|aspect --format json|yaml",
+		Use:     "update entityURN [-s schemaName] -f -|aspect --format json|yaml",
 		Short:   "Update an aspect record for an entity and a specific schema",
 		Aliases: []string{"a", "+"},
 		Long:    `This command will only succeed if there is only one active record for the entity/schema pair`,
@@ -100,28 +87,38 @@ var (
 	}
 
 	aspectGetCmd = &cobra.Command{
-		Use:     "get aspect-id",
-		Short:   "Get a specifric aspect record",
+		Use:     "get aspectURN",
+		Short:   "Get a specific aspect record",
 		Aliases: []string{"g"},
-		Long:    `.....`,
-		Args:    cobra.ExactArgs(1),
+		// Long:    `.....`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			aspectID := GetHistory(args[0])
 			ctxt := context.Background()
-			res, err := sdk.GetAspect(ctxt, aspectID, CreateAdapter(true), logger)
-			if err != nil {
-				return err
+			switch outputFormat {
+			case "json", "yaml":
+				if res, err := sdk.GetAspectRaw(ctxt, aspectID, CreateAdapter(true), logger); err == nil {
+					return a.ReplyPrinter(res, outputFormat == "yaml")
+				} else {
+					return err
+				}
+			default:
+				if res, err := sdk.GetAspect(ctxt, aspectID, CreateAdapter(true), logger); err == nil {
+					printAspectDetail(res)
+					return nil
+				} else {
+					return err
+				}
 			}
-			return a.ReplyPrinter(res, outputFormat == "yaml")
 		},
 	}
 
 	aspectRetractCmd = &cobra.Command{
-		Use:     "retract [flags] aspect-id",
+		Use:     "retract aspectURN [flags]",
 		Short:   "Retract a specific aspect record",
 		Aliases: []string{"r"},
-		Long:    `.....`,
-		Args:    cobra.ExactArgs(1),
+		// Long:    `.....`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			aspectID := GetHistory(args[0])
 			ctxt := context.Background()
@@ -131,10 +128,10 @@ var (
 	}
 
 	aspectQueryCmd = &cobra.Command{
-		Use:     "query [-e entity] [-s schemaPrefix] [-t time-at]",
+		Use:     "query [-e entity] [-s schemaPrefix] [flags]",
 		Short:   "Query the aspect store for any combination of entity, schema and time.",
 		Aliases: []string{"q", "search", "s", "list", "l"},
-		Long:    `.....`,
+		// Long:    `.....`,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			if entityURN == "" && schemaPrefix == "" && page == "" {
 				cobra.CheckErr("Need at least one of '--schema', '--entity' or '--page'")
@@ -143,24 +140,14 @@ var (
 				entityURN = GetHistory(entityURN)
 			}
 			selector := sdk.AspectSelector{
-				Entity:       entityURN,
-				SchemaPrefix: schemaPrefix,
-				Page:         GetHistory(page),
-				Limit:        limit,
+				Entity:         entityURN,
+				SchemaPrefix:   schemaPrefix,
+				ListRequest:    *createListRequest(),
+				IncludeContent: aspectIncludeContent,
 			}
 
-			if aspectFilter != "" {
-				selector.SimpleFilter = &aspectFilter
-			}
 			if aspectJsonFilter != "" {
 				selector.JsonFilter = &aspectJsonFilter
-			}
-			if atTime != "" {
-				t, err := dateparse.ParseLocal(atTime)
-				if err != nil {
-					cobra.CheckErr(fmt.Sprintf("Can't parse '%s' into a date - %s", atTime, err))
-				}
-				selector.Timestamp = &t
 			}
 
 			ctxt := context.Background()
@@ -217,6 +204,57 @@ func addAspectUpdateCmd(isAdd bool, cmd *cobra.Command, args []string) (err erro
 		return a.ReplyPrinter(res, outputFormat == "yaml")
 	}
 	return nil
+}
+
+func printAspectDetail(res *api.ReadResponseBody) {
+	// ID *string `form:"id,omitempty" json:"id,omitempty" xml:"id,omitempty"`
+	// Entity *string `form:"entity,omitempty" json:"entity,omitempty" xml:"entity,omitempty"`
+	// Schema *string `form:"schema,omitempty" json:"schema,omitempty" xml:"schema,omitempty"`
+	// Content any `form:"content,omitempty" json:"content,omitempty" xml:"content,omitempty"`
+	// ContentType *string `json:"content-type,omitempty"`
+	// ValidFrom *string `form:"valid-from,omitempty" json:"valid-from,omitempty" xml:"valid-from,omitempty"`
+	// ValidTo *string `form:"valid-to,omitempty" json:"valid-to,omitempty" xml:"valid-to,omitempty"`
+	// Asserter *string `form:"asserter,omitempty" json:"asserter,omitempty" xml:"asserter,omitempty"`
+	// Retracter *string              `form:"retracter,omitempty"
+
+	rows := []table.Row{
+		{"ID", fmt.Sprintf("%s (%s)", *res.ID, MakeHistory(res.ID))},
+		{"Entity", safeString(res.Entity)},
+		{"Schema", safeString(res.Schema)},
+		{"Asserter", safeString(res.Asserter)},
+		{"ValidFrom", safeDate(res.ValidFrom, true)},
+	}
+	if res.ValidTo != nil {
+		rows = append(rows,
+			table.Row{"Retracter", safeString(res.Retracter)},
+			table.Row{"ValidTo", safeDate(res.ValidTo, true)},
+		)
+	}
+	if res.ContentType != nil && *res.ContentType == "application/json" {
+		content, err := a.ToString(res.Content, false)
+		if err != nil {
+			fmt.Printf("ERROR: cannot print aspect content - %v\n", err)
+			return
+		}
+		rows = append(rows, table.Row{"Content", content})
+	} else {
+		rows = append(rows,
+			table.Row{"Content-Type", safeString(res.ContentType)},
+			table.Row{"Content", ".... cannot print"},
+		)
+	}
+
+	tw := table.NewWriter()
+	tw.SetStyle(table.StyleLight)
+	tw.Style().Options.SeparateColumns = false
+	tw.Style().Options.SeparateRows = false
+	tw.Style().Options.DrawBorder = false
+	tw.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, Align: text.AlignRight},
+		// {Number: 2, WidthMax: 80},
+	})
+	tw.AppendRows(rows)
+	fmt.Printf("\n%s\n\n", tw.Render())
 }
 
 func printAspectTable(list *api.ListResponseBody, wide bool) {
