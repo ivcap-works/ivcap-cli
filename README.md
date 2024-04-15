@@ -103,7 +103,7 @@ The following command lists all the configured contexts:
 To obtain an authorisation token, some deployments provide a username/password based identity provider.
 
 ```
-% ivcap login
+% ivcap context login
 
 
     █▀▀▀▀▀█    ▀█  ▄▀▄▀▀ ▄▄▀▄ █▀▀▀▀▀█
