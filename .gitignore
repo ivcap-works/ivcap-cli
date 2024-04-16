@@ -3,3 +3,4 @@ dist
 .github-release-token
 .vscode/
 __debug_bin
+data/
