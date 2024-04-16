@@ -60,6 +60,7 @@ func init() {
 	createArtifactCmd.Flags().StringVarP(&fileName, "file", "f", "", "Path to file containing artifact content")
 	createArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact")
 	createArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
+	createArtifactCmd.Flags().BoolVar(&force, "force", false, "Force creation of new artifact, even if already uploaded")
 
 	// UPLOAD
 	artifactCmd.AddCommand(uploadArtifactCmd)
@@ -105,7 +106,7 @@ var (
 	artifactCollection string
 	contentType        string
 	chunkSize          int64
-	policy             string
+	force              bool
 
 	artifactCmd = &cobra.Command{
 		Use:     "artifact",
@@ -186,39 +187,7 @@ var (
 		Short: "Create a new artifact",
 
 		Run: func(cmd *cobra.Command, args []string) {
-			var reader io.Reader
-			var size int64
-			reader, contentType, size = getReader(fileName, contentType)
-			logger.Debug("create artifact", log.String("content-type", contentType), log.String("file", fileName))
-			adapter := CreateAdapterWithTimeout(true, timeout)
-			req := &sdk.CreateArtifactRequest{
-				Name:       name,
-				Size:       size,
-				Collection: artifactCollection,
-				Policy:     policy,
-			}
-			ctxt := context.Background()
-			resp, err := sdk.CreateArtifact(ctxt, req, contentType, size, nil, adapter, logger)
-			if err != nil {
-				cobra.CompErrorln(fmt.Sprintf("while creating record for '%s'- %v", fileName, err))
-				return
-			}
-			artifactID := *resp.ID
-			if !silent {
-				fmt.Printf("Created artifact '%s'\n", artifactID)
-			}
-			path, err := (*adapter).GetPath(*resp.DataHref)
-			if err != nil {
-				cobra.CompErrorln(fmt.Sprintf("while parsing API reply - %v", err))
-				return
-			}
-			if err = upload(ctxt, reader, artifactID, path, size, 0, adapter); err != nil {
-				cobra.CompErrorln(fmt.Sprintf("while upload - %v", err))
-				return
-			}
-			if silent {
-				fmt.Printf("%s\n", artifactID)
-			}
+			uploadArtifact(fileName, force, artifactCollection)
 		},
 	}
 
@@ -378,6 +347,64 @@ var (
 //		},
 //	}
 )
+
+func uploadArtifact(
+	fileName string,
+	force bool,
+	artifactCollection string,
+) (artifactID string) {
+	var reader io.Reader
+	var size int64
+	metaFile, metaExists := getArtifactMetaFileFor(fileName)
+	if !force && metaFile != nil && metaExists {
+		artifactID = getArtifactIdFromMeta(*metaFile)
+		msg := fmt.Sprintf("File '%s' already uploaded as '%s (%s)'. Use '--force' to create a new artifact",
+			fileName, artifactID, MakeHistory(&artifactID))
+		cobra.CheckErr(msg)
+		return
+	}
+	reader, contentType, size = getReader(fileName, contentType)
+	logger.Debug("create artifact", log.String("content-type", contentType), log.String("file", fileName))
+	if name == "" && fileName != "-" {
+		name = filepath.Base(fileName)
+	}
+	adapter := CreateAdapterWithTimeout(true, timeout)
+	req := &sdk.CreateArtifactRequest{
+		Name:       name,
+		Size:       size,
+		Collection: artifactCollection,
+		Policy:     policy,
+	}
+	ctxt := context.Background()
+	resp, err := sdk.CreateArtifact(ctxt, req, contentType, size, nil, adapter, logger)
+	if err != nil {
+		cobra.CheckErr(fmt.Sprintf("while creating record for '%s'- %v", fileName, err))
+		return
+	}
+	artifactID = *resp.ID
+	if !silent {
+		fmt.Printf("Created artifact '%s'\n", artifactID)
+	}
+	path, err := (*adapter).GetPath(*resp.DataHref)
+	if err != nil {
+		cobra.CheckErr(fmt.Sprintf("while parsing API reply - %v", err))
+		return
+	}
+	if err = upload(ctxt, reader, artifactID, path, size, 0, adapter); err != nil {
+		cobra.CheckErr(fmt.Sprintf("while upload - %v", err))
+		return
+	}
+	if silent {
+		// print artifact ID anyway
+		fmt.Printf("%s\n", artifactID)
+	}
+	if metaFile != nil {
+		if err = os.WriteFile(*metaFile, []byte(artifactID), 0644); err != nil {
+			cobra.CheckErr(fmt.Sprintf("saving information to metafile '%s' failed - %v", *metaFile, err))
+		}
+	}
+	return
+}
 
 func upload(
 	ctxt context.Context,
@@ -572,4 +599,31 @@ func findNextArtifactPage(links []*api.LinkTResponseBody) *string {
 		}
 	}
 	return nil
+}
+
+func getArtifactMetaFileFor(fileName string) (fnp *string, fileExists bool) {
+	if fileName == "-" {
+		// from pipe, so don't know source
+		return nil, false
+	}
+	var afn string
+	var err error
+	if afn, err = filepath.Abs(fileName); err != nil {
+		cobra.CheckErr(fmt.Sprintf("Can't obtain absolute path of '%s' - %v", fileName, err))
+	}
+	fdir := filepath.Dir(afn)
+	fn := filepath.Join(fdir, fmt.Sprintf(".%s", filepath.Base(afn)))
+	if _, err = os.Stat(fn); err == nil {
+		fileExists = true
+	}
+	return &fn, fileExists
+}
+
+func getArtifactIdFromMeta(fileName string) string {
+	b, err := os.ReadFile(fileName)
+	if err == nil {
+		return string(b)
+	} else {
+		return ""
+	}
 }
