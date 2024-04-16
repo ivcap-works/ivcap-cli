@@ -18,15 +18,17 @@ MOVIE_NAME=ivcap-cli.mp4
 
 LD_FLAGS="-X main.version=${GIT_TAG} -X main.commit=${GIT_COMMIT} -X main.date=${BUILD_DATE}"
 
-build: addlicense check build-docs
-	@echo "Building IVCAP-CLI..."
-	${GOPRIVATE_ENV_CMD} go mod tidy
-	go  build -ldflags ${LD_FLAGS} ivcap.go
+build: addlicense check build-docs build-dangerously
+
+install: addlicense check install-dangerously
 
 build-dangerously:
 	@echo "Building IVCAP-CLI..."
 	${GOPRIVATE_ENV_CMD} go mod tidy
 	go build -ldflags ${LD_FLAGS} ivcap.go
+
+install-dangerously:
+	go install -ldflags ${LD_FLAGS} ivcap.go
 
 build-docs:
 	go -C doc build -ldflags ${LD_FLAGS} create-docs.go
@@ -34,11 +36,6 @@ build-docs:
 	doc/create-docs
 	rm -f doc/create-docs
 
-install: addlicense check
-	go install -ldflags ${LD_FLAGS} ivcap.go
-	if [[ -d $(shell brew --prefix)/share/zsh/site-functions ]]; then \
-		$(shell go env GOBIN)/ivcap completion zsh > $(shell brew --prefix)/share/zsh/site-functions/_ivcap;\
-  fi
 
 clean:
 	rm ivcap
