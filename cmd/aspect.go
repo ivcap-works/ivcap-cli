@@ -43,6 +43,7 @@ func init() {
 
 	aspectCmd.AddCommand(aspectQueryCmd)
 	addFlags(aspectQueryCmd, []Flag{Schema, Entity})
+	aspectQueryCmd.Flags().BoolVarP(&aspectGetIfOne, "get-if-one", "g", false, "if only one found, get it immediately")
 	aspectQueryCmd.Flags().StringVarP(&aspectJsonFilter, "content-path", "c", "", "json path filter on aspect's content ('$.images[*] ? (@.size > 10000)')")
 	aspectQueryCmd.Flags().BoolVar(&aspectIncludeContent, "include-content", false, "if set, also include aspect's content in list")
 	addListFlags(aspectQueryCmd)
@@ -55,6 +56,7 @@ var (
 
 	aspectJsonFilter     string
 	aspectIncludeContent bool
+	aspectGetIfOne       bool
 )
 
 var (
@@ -93,23 +95,7 @@ var (
 		// Long:    `.....`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			aspectID := GetHistory(args[0])
-			ctxt := context.Background()
-			switch outputFormat {
-			case "json", "yaml":
-				if res, err := sdk.GetAspectRaw(ctxt, aspectID, CreateAdapter(true), logger); err == nil {
-					return a.ReplyPrinter(res, outputFormat == "yaml")
-				} else {
-					return err
-				}
-			default:
-				if res, err := sdk.GetAspect(ctxt, aspectID, CreateAdapter(true), logger); err == nil {
-					printAspectDetail(res)
-					return nil
-				} else {
-					return err
-				}
-			}
+			return getAspect(GetHistory(args[0]))
 		},
 	}
 
@@ -152,6 +138,9 @@ var (
 
 			ctxt := context.Background()
 			if list, res, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger); err == nil {
+				if aspectGetIfOne && len(list.Items) == 1 {
+					return getAspect(*list.Items[0].ID)
+				}
 				switch outputFormat {
 				case "json":
 					return a.ReplyPrinter(res, false)
@@ -167,6 +156,25 @@ var (
 		},
 	}
 )
+
+func getAspect(aspectID string) error {
+	ctxt := context.Background()
+	switch outputFormat {
+	case "json", "yaml":
+		if res, err := sdk.GetAspectRaw(ctxt, aspectID, CreateAdapter(true), logger); err == nil {
+			return a.ReplyPrinter(res, outputFormat == "yaml")
+		} else {
+			return err
+		}
+	default:
+		if res, err := sdk.GetAspect(ctxt, aspectID, CreateAdapter(true), logger); err == nil {
+			printAspectDetail(res)
+			return nil
+		} else {
+			return err
+		}
+	}
+}
 
 func addAspectUpdateCmd(isAdd bool, cmd *cobra.Command, args []string) (err error) {
 	entity := args[0]

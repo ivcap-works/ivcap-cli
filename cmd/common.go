@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -23,6 +24,8 @@ const HISTORY_FILE_NAME = "history.yaml"
 const VERSION_CHECK_FILE_NAME = "vcheck.txt"
 const CHECK_VERSION_INTERVAL = time.Duration(24 * time.Hour)
 
+var URN_CHECK = regexp.MustCompile(`urn:[A-Za-z0-9][A-Za-z0-9-]{2,}:[A-Za-z0-9()+,\-.:=@;$_!*']+`)
+
 const DEF_LIMIT = 10
 
 var (
@@ -36,6 +39,7 @@ var (
 
 	fileName     string
 	outputFormat string
+	policy       string
 	silent       bool
 	noHistory    bool
 
