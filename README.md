@@ -4,31 +4,12 @@ __IVCAP__ is helping researchers better investigate their domains and derive new
 
 __IVCAP__ has an extensive REST API which is usually called directly from applications or scientific notebooks. However, to support simple data operation from the command line, we developed this simple command-line tool. It only covers the subset of the IVCAP API, but we would be very excited to receive pull requests to extend it's functionality or fix bugs.
 
-## Developing
-
-### Prerequisites
-
-You will need the following installed:
-
-- go version >= 1.22.2 (e.g. `snap install go --classic`)
-- golangci-lint (e.g. `snap install golangci-lint`)
-- gocritic (e.g. `go install -v github.com/go-critic/go-critic/cmd/gocritic@latest`; you may also need to add `~/go/bin` to your `PATH`)
-- staticcheck (`go install honnef.co/go/tools/cmd/staticcheck@latest`)
-- gosec (`go install github.com/securego/gosec/v2/cmd/gosec@latest`)
-- govulncheck (`go install golang.org/x/vuln/cmd/govulncheck@latest`)
-- addlicense (`go install github.com/nokia/addlicense@latest`)
-
-### Build
-
-To build, ensure you have the prerequisites and then run `make`.
-
-### Install
-
-To install from the local development code, run `make install`. You should now have the `ivcap-cli` command available in your shell.
-
 ## Install
 
-There are [ready to use binaries](https://github.com/ivcap-works/ivcap-cli/releases/latest) for some architectures available at the repo's [release](https://github.com/ivcap-works/ivcap-cli/releases) tab.
+There are [ready to use
+binaries](https://github.com/ivcap-works/ivcap-cli/releases/latest) for some
+architectures available at the repo's
+[release](https://github.com/ivcap-works/ivcap-cli/releases) tab.
 
 If you use [homebrew](https://brew.sh/), you can install it by:
 
@@ -234,3 +215,40 @@ Successfully wrote 50855 bytes to /tmp/out.png
 ```
 
 Follow this [link](./doc/ivcap_artifact.md) for more details about the `artifact` command.
+
+
+## Development
+
+### Prerequisites
+
+You will need the following installed:
+
+- go version >= 1.22.2 (e.g. `snap install go --classic`)
+- golangci-lint (e.g. `snap install golangci-lint`)
+- gocritic (e.g. `go install -v github.com/go-critic/go-critic/cmd/gocritic@latest`; you may also need to add `~/go/bin` to your `PATH`)
+- staticcheck (`go install honnef.co/go/tools/cmd/staticcheck@latest`)
+- gosec (`go install github.com/securego/gosec/v2/cmd/gosec@latest`)
+- govulncheck (`go install golang.org/x/vuln/cmd/govulncheck@latest`)
+- addlicense (`go install github.com/nokia/addlicense@latest`)
+
+### Build & Install
+
+To build and install from local source code, ensure you have the prerequisites
+and run:
+
+```shell
+make build
+make install
+```
+
+If your Go paths are configured correctly, you should now have the `ivcap`
+command available in your shell.
+
+To build and install without performing any code checks (implicitly done via `make
+check`) run:
+
+
+```shell
+make build-dangerously
+make install-dangerously
+```
