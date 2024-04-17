@@ -3,23 +3,31 @@
 
 .SH NAME
 .PP
-ivcap-context - Manage and set access to various IVCAP deployments
+ivcap-collection-get - Get a specific collection record
 
 
 .SH SYNOPSIS
 .PP
-\fBivcap context [flags]\fP
+\fBivcap collection get collectionURN [flags]\fP
 
 
 .SH DESCRIPTION
 .PP
-Manage and set access to various IVCAP deployments
+Get a specific collection record
 
 
 .SH OPTIONS
 .PP
+\fB-t\fP, \fB--at-time\fP=""
+	query state at this time in the past
+
+.PP
 \fB-h\fP, \fB--help\fP[=false]
-	help for context
+	help for get
+
+.PP
+\fB-l\fP, \fB--max-items\fP=10
+	max number of items shown
 
 
 .SH OPTIONS INHERITED FROM PARENT COMMANDS
@@ -54,7 +62,7 @@ Manage and set access to various IVCAP deployments
 
 .SH SEE ALSO
 .PP
-\fBivcap(3)\fP, \fBivcap-context-create(3)\fP, \fBivcap-context-get(3)\fP, \fBivcap-context-list(3)\fP, \fBivcap-context-login(3)\fP, \fBivcap-context-logout(3)\fP, \fBivcap-context-set(3)\fP
+\fBivcap-collection(3)\fP
 
 
 .SH HISTORY
