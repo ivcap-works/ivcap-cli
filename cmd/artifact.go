@@ -399,8 +399,8 @@ func uploadArtifact(
 		fmt.Printf("%s\n", artifactID)
 	}
 	if metaFile != nil {
-		//#nosec G306 -- only includes the artifact ID
-		if err = os.WriteFile(*metaFile, []byte(artifactID), 0644); err != nil {
+		err = os.WriteFile(*metaFile, []byte(artifactID), 0644) // #nosec G306 -- only includes the artifact ID
+		if err != nil {
 			cobra.CheckErr(fmt.Sprintf("saving information to metafile '%s' failed - %v", *metaFile, err))
 		}
 	}
