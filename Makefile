@@ -18,7 +18,7 @@ MOVIE_NAME=ivcap-cli.mp4
 
 LD_FLAGS="-X main.version=${GIT_TAG} -X main.commit=${GIT_COMMIT} -X main.date=${BUILD_DATE}"
 
-build: check
+build: check build-docs
 	@echo "Building IVCAP-CLI..."
 	${GOPRIVATE_ENV_CMD} go mod tidy
 	go  build -ldflags ${LD_FLAGS} ivcap.go
