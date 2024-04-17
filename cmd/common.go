@@ -65,7 +65,7 @@ const (
 
 func addListFlags(cmd *cobra.Command) {
 	fs := cmd.Flags()
-	fs.IntVar(&limit, "limit", DEF_LIMIT, "max number of records to be returned")
+	fs.IntVarP(&limit, "limit", "l", DEF_LIMIT, "max number of records to be returned")
 	fs.StringVarP(&page, "page", "p", "", "page cursor")
 	fs.StringVar(&filter, "filter", "", "filter list (e.g. \"name~=Fred\")")
 	fs.StringVar(&orderBy, "order-by", "", "feature to order list by (e.g. \"created-at,status\")")
@@ -139,7 +139,7 @@ func addEntityFlag(cmd *cobra.Command) {
 
 func addAtTimeFlag(cmd *cobra.Command) {
 	fs := cmd.Flags()
-	fs.StringVar(&atTime, "at-time", "", "query state at this time in the past")
+	fs.StringVarP(&atTime, "at-time", "t", "", "query state at this time in the past")
 }
 
 func createListRequest() (req *sdk.ListRequest) {
