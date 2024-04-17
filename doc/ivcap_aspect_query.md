@@ -16,7 +16,7 @@ ivcap aspect query [-e entity] [-s schemaPrefix] [flags]
   -g, --get-if-one            if only one found, get it immediately
   -h, --help                  help for query
       --include-content       if set, also include aspect's content in list
-      --limit int             max number of records to be returned (default 10)
+  -l, --limit int             max number of records to be returned (default 10)
       --order-by string       feature to order list by (e.g. "created-at,status")
       --order-desc            if set, order in descending order
   -p, --page string           page cursor

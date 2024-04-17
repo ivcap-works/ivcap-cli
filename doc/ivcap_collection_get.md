@@ -9,7 +9,7 @@ ivcap collection get collectionURN [flags]
 ### Options
 
 ```
-      --at-time string   query state at this time in the past
+  -t, --at-time string   query state at this time in the past
   -h, --help             help for get
   -l, --max-items int    max number of items shown (default 10)
 ```

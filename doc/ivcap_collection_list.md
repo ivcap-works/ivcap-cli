@@ -12,7 +12,7 @@ ivcap collection list [flags]
       --at-time string    query state at this time in the past
       --filter string     filter list (e.g. "name~=Fred")
   -h, --help              help for list
-      --limit int         max number of records to be returned (default 10)
+  -l, --limit int         max number of records to be returned (default 10)
       --order-by string   feature to order list by (e.g. "created-at,status")
       --order-desc        if set, order in descending order
   -p, --page string       page cursor
