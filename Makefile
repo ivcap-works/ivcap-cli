@@ -4,7 +4,7 @@ GIT_COMMIT := $(shell git rev-list --abbrev-commit --tags --max-count=1)
 ifeq ($(OS),Windows_NT)
 	space := $(subst ,, )
 	BUILD_DATE := $(subst $(space),,$(strip $(shell date /T))-$(shell time /T))
-	GIT_TAG := $(shell git describe --abbrev=0 --tags 2> nul)
+	GIT_TAG := $(shell git describe --abbrev=0 --tags 2>/dev/null)
 	GOPRIVATE_OS_ENV_CMD := set GOPRIVATE="github.com/ivcap-works/ivcap-core-api" &&
 	EXTENSION := .exe
 else
@@ -53,7 +53,7 @@ check:
 	gosec ./...
 	govulncheck ./...
 
-release: addlicense
+release: addlicense check build-docs
   # git tag -a v0.4.0 -m "..."
 	# export GITHUB_TOKEN=$(cat .github-release-token)
 	# or eval $(cat .github-release-token)
