@@ -6,10 +6,10 @@ __IVCAP__ has an extensive REST API which is usually called directly from applic
 
 ## Install
 
-There are [ready to use
-binaries](https://github.com/ivcap-works/ivcap-cli/releases/latest) for some
-architectures available at the repo's
-[release](https://github.com/ivcap-works/ivcap-cli/releases) tab.
+[binary-releases]: https://github.com/ivcap-works/ivcap-cli/releases/latest
+[release-page]:    https://github.com/ivcap-works/ivcap-cli/releases
+
+There are [ready to use binaries][binary-releases] for some architectures available at the repo's [release][release-page] tab.
 
 If you use [homebrew](https://brew.sh/), you can install it by:
 
@@ -223,13 +223,20 @@ Follow this [link](./doc/ivcap_artifact.md) for more details about the `artifact
 
 You will need the following installed:
 
+[golangci-lint]: https://golangci-lint.run/welcome/install/#local-installation
+[gocritic]:      https://github.com/go-critic/go-critic?tab=readme-ov-file#installation
+[staticcheck]:   https://staticcheck.dev/docs/getting-started/#installation
+[gosec]:         https://github.com/securego/gosec?tab=readme-ov-file#install
+[govulncheck]:   https://go.googlesource.com/vuln
+[addlicense]:    https://github.com/nokia/addlicense?tab=readme-ov-file#install-as-a-go-program
+
 - go version >= 1.22.2 (e.g. `snap install go --classic`)
-- golangci-lint (e.g. `snap install golangci-lint`)
-- gocritic (e.g. `go install -v github.com/go-critic/go-critic/cmd/gocritic@latest`; you may also need to add `~/go/bin` to your `PATH`)
-- staticcheck (`go install honnef.co/go/tools/cmd/staticcheck@latest`)
-- gosec (`go install github.com/securego/gosec/v2/cmd/gosec@latest`)
-- govulncheck (`go install golang.org/x/vuln/cmd/govulncheck@latest`)
-- addlicense (`go install github.com/nokia/addlicense@latest`)
+- [golangci-lint] (e.g. `curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.57.2`)
+- [gocritic] (e.g. `go install -v github.com/go-critic/go-critic/cmd/gocritic@latest`; you may also need to add `~/go/bin` to your `PATH`)
+- [staticcheck] (e.g. `go install honnef.co/go/tools/cmd/staticcheck@latest`)
+- [gosec] (e.g. `go install github.com/securego/gosec/v2/cmd/gosec@latest`)
+- [govulncheck] (e.g. `go install golang.org/x/vuln/cmd/govulncheck@latest`)
+- [addlicense] (e.g. `go install github.com/nokia/addlicense@latest`)
 
 ### Build & Install
 
