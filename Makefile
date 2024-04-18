@@ -7,14 +7,13 @@ ifeq ($(OS),Windows_NT)
 	GIT_TAG := $(shell git describe --abbrev=0 --tags 2>/dev/null)
 	GOPRIVATE_OS_ENV_CMD := set GOPRIVATE="github.com/ivcap-works/ivcap-core-api" &&
 	EXTENSION := .exe
+	USER_SHELL := powershell
 else
 	BUILD_DATE := $(shell date "+%Y-%m-%dT%H:%M")
 	GIT_TAG := $(shell git describe --abbrev=0 --tags 2>/dev/null || true)
 	GOPRIVATE_OS_ENV_CMD := export GOPRIVATE="github.com/ivcap-works/ivcap-core-api" &&
+	USER_SHELL := $(shell echo $$(basename $$SHELL))
 endif
-
-UNAME := $(shell sh -c 'uname 2>/dev/null || echo Unknown')
-USER_SHELL := $(shell echo $$SHELL)
 
 MOVIE_SIZE=1280x720 # 640x360
 MOVIE_NAME=ivcap-cli.mp4
@@ -39,33 +38,13 @@ build-docs:
 	doc/create-docs
 	rm -f doc/create-docs
 
-ifeq ($(UNAME), Linux)
-completion: completion-linux
-else ifeq ($(UNAME), Darwin)
-completion: completion-mac
-else
 completion:
-	@echo "Unsupported operating system. Cannot add IVCAP completion."
-endif
-
-completion-mac:
-	@if [[ -d $(shell brew --prefix)/share/zsh/site-functions ]]; then \
-		echo "Adding completion for ZSH." ;\
-		$(shell go env GOBIN)/ivcap completion zsh > $(shell brew --prefix)/share/zsh/site-functions/_ivcap ;\
-	else \
-		echo "Unsupported macOS shell. Cannot add IVCAP completion." ;\
-	fi
-
-completion-linux:
-	@if [ "${USER_SHELL}" = "/usr/bin/zsh" ] && [[ -d "${HOME}/.zsh/" ]] ; then \
-		echo -e '\nAdding ZSH completions to "${HOME}/.zsh/site-functions".' ;\
-		mkdir -p "${HOME}/.zsh/site-functions/" ;\
-		$(shell go env GOPATH)/bin/ivcap completion zsh > "${HOME}/.zsh/site-functions/_ivcap" ;\
-		echo -e 'Please add "${HOME}/.zsh/site-functions" to your .zshrc config:\n' ;\
-		echo -e '    fpath=("$${HOME}/.zsh/site-functions" $$fpath).\n' ;\
-	else \
-		echo "Unsupported Linux shell. Cannot add IVCAP completion." ;\
-	fi
+	@case ${USER_SHELL} in \
+		bash) ivcap completion bash -h ;; \
+		zsh)  ivcap completion zsh  -h ;; \
+		fish) ivcap completion fish -h ;; \
+		powershell) ivcap completion powershell -h ;; \
+	esac
 
 clean:
 	rm ivcap
