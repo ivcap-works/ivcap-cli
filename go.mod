@@ -7,7 +7,7 @@ require (
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/ivcap-works/ivcap-core-api v0.35.2
+	github.com/ivcap-works/ivcap-core-api v0.35.3
 	github.com/jedib0t/go-pretty/v6 v6.5.8
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/schollz/progressbar/v3 v3.14.2
