@@ -3,21 +3,30 @@
 
 .SH NAME
 .PP
-ivcap - A command line tool to interact with a IVCAP deployment
+ivcap-queue-delete - Delete a queue
 
 
 .SH SYNOPSIS
 .PP
-\fBivcap [flags]\fP
+\fBivcap queue delete [flags] queue_id\fP
 
 
 .SH DESCRIPTION
 .PP
-A command line tool to to more conveniently interact with the
-API exposed by a specific IVCAP deployment.
+Delete a queue with the specified ID. This action is irreversible. All messages in the queue will be lost.
+An example of deleting a queue:
+
+.PP
+ivcap queue delete test_queue
 
 
 .SH OPTIONS
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for delete
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
 .PP
 \fB--access-token\fP=""
 	Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]
@@ -29,10 +38,6 @@ API exposed by a specific IVCAP deployment.
 .PP
 \fB--debug\fP[=false]
 	Set logging level to DEBUG
-
-.PP
-\fB-h\fP, \fB--help\fP[=false]
-	help for ivcap
 
 .PP
 \fB--no-history\fP[=false]
@@ -53,7 +58,7 @@ API exposed by a specific IVCAP deployment.
 
 .SH SEE ALSO
 .PP
-\fBivcap-artifact(3)\fP, \fBivcap-aspect(3)\fP, \fBivcap-collection(3)\fP, \fBivcap-context(3)\fP, \fBivcap-order(3)\fP, \fBivcap-queue(3)\fP, \fBivcap-service(3)\fP
+\fBivcap-queue(3)\fP
 
 
 .SH HISTORY

@@ -3,21 +3,32 @@
 
 .SH NAME
 .PP
-ivcap - A command line tool to interact with a IVCAP deployment
+ivcap-queue-enqueue - Enqueue a message to a queue
 
 
 .SH SYNOPSIS
 .PP
-\fBivcap [flags]\fP
+\fBivcap queue enqueue [flags] schema queue_id message\fP
 
 
 .SH DESCRIPTION
 .PP
-A command line tool to to more conveniently interact with the
-API exposed by a specific IVCAP deployment.
+Enqueue a message to the specified queue. The message content must be in JSON format. You must also provide the schema of the message content.
+
+.PP
+An example of enqueuing a message to a queue:
+
+.PP
+ivcap queue enqueue urn:ivcap:schema:queue:message.1 urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167 "{\\"temperature\\": \\"21\\", \\"location\\": \\"Buoy101\\", \\"timestamp\\": \\"2024-05-20T14:30:00Z\\"}"
 
 
 .SH OPTIONS
+.PP
+\fB-h\fP, \fB--help\fP[=false]
+	help for enqueue
+
+
+.SH OPTIONS INHERITED FROM PARENT COMMANDS
 .PP
 \fB--access-token\fP=""
 	Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]
@@ -29,10 +40,6 @@ API exposed by a specific IVCAP deployment.
 .PP
 \fB--debug\fP[=false]
 	Set logging level to DEBUG
-
-.PP
-\fB-h\fP, \fB--help\fP[=false]
-	help for ivcap
 
 .PP
 \fB--no-history\fP[=false]
@@ -53,7 +60,7 @@ API exposed by a specific IVCAP deployment.
 
 .SH SEE ALSO
 .PP
-\fBivcap-artifact(3)\fP, \fBivcap-aspect(3)\fP, \fBivcap-collection(3)\fP, \fBivcap-context(3)\fP, \fBivcap-order(3)\fP, \fBivcap-queue(3)\fP, \fBivcap-service(3)\fP
+\fBivcap-queue(3)\fP
 
 
 .SH HISTORY
