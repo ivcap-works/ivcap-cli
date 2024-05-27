@@ -56,6 +56,7 @@ Available Commands:
   context     Manage and set access to various IVCAP deployments
   help        Help about any command
   order       Create and manage orders
+  queue       Create and manage queues
   service     Create and manage services
 
 Flags:
