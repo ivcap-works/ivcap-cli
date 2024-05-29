@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -64,10 +65,10 @@ var createContextCmd = &cobra.Command{
 	Use:   "create ctxtName https://ivcap.net",
 	Short: "Create a new context",
 	Args:  cobra.ExactArgs(2),
-	//Aliases: []string{"create"},
+	// Aliases: []string{"create"},
 	Run: func(_ *cobra.Command, args []string) {
 		ctxtName = args[0]
-		ctxtUrl := args[1]
+		ctxtUrl := strings.TrimRight(args[1], "/")
 		url, err := url.ParseRequestURI(ctxtUrl)
 		if err != nil || url.Host == "" {
 			cobra.CheckErr(fmt.Sprintf("url '%s' is not a valid URL", ctxtUrl))
@@ -87,7 +88,7 @@ var createContextCmd = &cobra.Command{
 var listContextCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List all context",
-	//Aliases: []string{"get-context", "list"},
+	// Aliases: []string{"get-context", "list"},
 	Run: func(_ *cobra.Command, _ []string) {
 		config, _ := ReadConfigFile(true)
 		if config != nil {
