@@ -22,7 +22,7 @@ func parseURL(endpoint string, connCtxt *ConnectionCtxt) (*neturl.URL, error) {
 	}
 
 	// Check if the scheme is http
-	if parsedURL.Scheme != "http" {
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
 		return nil, fmt.Errorf("invalid scheme: %s", parsedURL.Scheme)
 	}
 
