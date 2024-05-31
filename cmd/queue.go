@@ -15,10 +15,13 @@
 package cmd
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -120,36 +123,53 @@ An example of deleting a queue:
 }
 
 func enqueueCommand() {
-	enqueueCmd := &cobra.Command{
-		Use:   "enqueue [flags] schema queue_id message",
-		Short: "Enqueue a message to a queue",
-		Long: `Enqueue a message to the specified queue. The message content must be in JSON format. You must also provide the schema of the message content.
+	longDesc := `Enqueue a message from a file to the specified queue. The message must be in JSON format.
 
 An example of enqueuing a message to a queue:
 
-  ivcap queue enqueue urn:ivcap:schema:queue:message.1 urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167 "{\"temperature\": \"21\", \"location\": \"Buoy101\", \"timestamp\": \"2024-05-20T14:30:00Z\"}"`,
-		Args: validateEnqueueArgs,
-		RunE: runEnqueueCmd,
+  ivcap queue enqueue urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167 urn:ivcap:schema:queue:message.1 message.json`
+
+	args := map[string]string{
+		"queue_id": "The unique identifier of the queue from which to dequeue messages.",
+		"schema":   "The schema of the message to enqueue.",
+		"file":     "The file containing the message to enqueue. If the message is provided through 'stdin' use '-' as the file name.",
 	}
 
+	enqueueCmd := &cobra.Command{
+		Use:   "enqueue [flags] queue_id schema file",
+		Short: "Enqueue a message to a queue",
+		Long:  longDesc,
+		Args:  validateEnqueueArgs,
+		RunE:  runEnqueueCmd,
+	}
+
+	enqueueCmd.SetHelpTemplate(helpTemplate(args))
 	queueCmd.AddCommand(enqueueCmd)
 }
 
 func dequeueCommand() {
-	dequeueCmd := &cobra.Command{
-		Use:   "dequeue [flags] queue_id",
-		Short: "Dequeue messages from a queue",
-		Long: `Dequeue messages from the specified queue. By default, only one message is dequeued. You can specify the number of messages to dequeue using the --limit flag. 
+	longDesc := `Dequeue messages from the specified queue. The messages will be written to the specified file in JSON format.
 
-An example of dequeuing a message from a queue:
+An example of dequeuing messages from a queue:
 
-  ivcap queue dequeue --limit 5 urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167`,
-		Args: validateDequeueArgs,
-		RunE: runDequeueCmd,
+    ivcap queue dequeue urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167 messages.json`
+
+	args := map[string]string{
+		"queue_id": "The unique identifier of the queue from which to dequeue messages.",
+		"file":     "The file to write the dequeued messages to.",
 	}
 
-	queueCmd.AddCommand(dequeueCmd)
+	dequeueCmd := &cobra.Command{
+		Use:   "dequeue [flags] queue_id file",
+		Short: "Dequeue messages from a queue",
+		Long:  longDesc,
+		Args:  validateDequeueArgs,
+		RunE:  runDequeueCmd,
+	}
+
 	dequeueCmd.Flags().IntP("limit", "l", 1, "Maximum number of messages to dequeue")
+	dequeueCmd.SetHelpTemplate(helpTemplate(args))
+	queueCmd.AddCommand(dequeueCmd)
 }
 
 func runListQueueCmd(cmd *cobra.Command, args []string) error {
@@ -244,17 +264,49 @@ func runCreateQueueCmd(cmd *cobra.Command, args []string) error {
 }
 
 func validateEnqueueArgs(cmd *cobra.Command, args []string) error {
-	if len(args) < 3 {
-		return fmt.Errorf("please provide the schema, queue ID, and message content to enqueue a message. Example: ivcap queue %s urn:ivcap:schema:queue:message.1 urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167 '{\"temperature\": \"21\", \"location\": \"Buoy101\", \"timestamp\": \"2024-05-20T14:30:00Z\"}'", cmd.Name())
+	errMsg := "please provide the ID of the queue, the schema, and the file containing the message to enqueue."
+	exampleUsage := fmt.Sprintf("Example: ivcap queue %s urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167 urn:ivcap:schema:queue:message.1 message.json", cmd.Name())
+
+	switch len(args) {
+	case 1:
+		switch {
+		case strings.Contains(args[0], "urn:ivcap:queue:"):
+			errMsg = "You have provided the queue ID. Please also provide the schema and the file containing the message to enqueue."
+		case strings.Contains(args[0], "urn:ivcap:schema:"):
+			errMsg = "You have provided the schema. Please also provide the queue ID and the file containing the message to enqueue."
+		default:
+			errMsg = "You have provided the file name. Please also provide the queue ID and the schema."
+		}
+	case 2:
+		switch {
+		case strings.Contains(args[0], "urn:ivcap:queue:") && strings.Contains(args[1], "urn:ivcap:schema:"):
+			errMsg = "You have provided the queue ID and the schema. Please also provide the file containing the message to enqueue."
+		case strings.Contains(args[0], "urn:ivcap:queue:"):
+			errMsg = "You have provided the queue ID and the file name. Please also provide the schema."
+		default:
+			errMsg = "You have provided the schema and the file name. Please also provide the queue ID."
+		}
 	}
+
+	if len(args) < 3 {
+		return fmt.Errorf("%s\n\n%s", errMsg, exampleUsage)
+	}
+
 	return cobra.ExactArgs(3)(cmd, args)
 }
 
 func runEnqueueCmd(cmd *cobra.Command, args []string) error {
-	schema, queueID, message := args[0], GetHistory(args[1]), args[2]
+	queueID, schema, filepath := GetHistory(args[0]), args[1], args[2]
 	req := &sdk.ReadQueueRequest{Id: GetHistory(queueID)}
 
-	err := printResponseBody(
+	payload, err := payloadFromFile(filepath, "json")
+	if err != nil {
+		cobra.CheckErr(fmt.Sprintf("While reading service file '%s' - %s", fileName, err))
+	}
+
+	message := string(payload.AsBytes())
+
+	err = printResponseBody(
 		func() (a.Payload, error) {
 			return sdk.EnqueueRaw(context.Background(), req, schema, message, CreateAdapter(true), logger)
 		},
@@ -273,34 +325,42 @@ func runEnqueueCmd(cmd *cobra.Command, args []string) error {
 }
 
 func validateDequeueArgs(cmd *cobra.Command, args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("please provide the ID of the queue to dequeue messages. Example: ivcap queue %s urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167", cmd.Name())
+	if len(args) < 2 {
+		errMsg := "please provide the ID of the queue to dequeue messages from and the file to write the messages to."
+		exampleUsage := fmt.Sprintf("Example: ivcap queue %s urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167 messages.json", cmd.Name())
+
+		if len(args) == 1 {
+			if strings.Contains(args[0], "urn:ivcap:queue:") {
+				errMsg = "You have provided the queue ID. Please also provide the file to write the messages to."
+			} else {
+				errMsg = "You have provided the file name. Please also provide the ID of the queue to dequeue messages from."
+			}
+		}
+
+		return fmt.Errorf("%s\n\n%s", errMsg, exampleUsage)
 	}
-	return cobra.ExactArgs(1)(cmd, args)
+	return cobra.ExactArgs(2)(cmd, args)
 }
 
 func runDequeueCmd(cmd *cobra.Command, args []string) error {
 	recordID := GetHistory(args[0])
 	req := &sdk.ReadQueueRequest{Id: GetHistory(recordID)}
 
+	filePath := args[1]
+
 	limit, err := cmd.Flags().GetInt("limit")
 	if err != nil {
 		limit = 1 // Default value if the flag is not set or invalid
 	}
 
-	err = printResponseBody(
-		func() (a.Payload, error) {
-			return sdk.DequeueRaw(context.Background(), req, limit, CreateAdapter(true), logger)
-		},
-		func() (*api.DequeueResponseBody, error) {
-			return sdk.Dequeue(context.Background(), req, limit, CreateAdapter(true), logger)
-		},
-		func(res *api.DequeueResponseBody) {
-			printDequeueResponse(res)
-		},
-	)
+	payload, err := sdk.DequeueRaw(context.Background(), req, limit, CreateAdapter(true), logger)
 	if err != nil {
 		return fmt.Errorf("failed to dequeue messages: %w", err)
+	}
+
+	err = printDequeueResponse(payload, filePath)
+	if err != nil {
+		return fmt.Errorf("failed to write to file: %w", err)
 	}
 
 	return nil
@@ -341,39 +401,54 @@ func printResponseBody[ResponseType any](
 		if res, err := rawRequestFunc(); err == nil {
 			return a.ReplyPrinter(res, outputFormat == "yaml")
 		} else {
-			return fmt.Errorf("failed to list queues: %w", err)
+			return fmt.Errorf("failed to print response: %w", err)
 		}
 	default:
 		if res, err := requestFunc(); err == nil {
 			printFunc(res)
 		} else {
-			return fmt.Errorf("failed to list queues: %w", err)
+			return fmt.Errorf("failed to print response: %w", err)
 		}
 	}
 	return nil
 }
 
-func printDequeueResponse(response *api.DequeueResponseBody) {
-	t := table.NewWriter()
-	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"ID", "Content Type", "Schema", "Content"})
-
-	rows := make([]table.Row, len(response.Messages))
-	for i, msg := range response.Messages {
-		content := marshalContent(msg.Content)
-		rows[i] = table.Row{safeString(msg.ID), safeString(msg.ContentType), safeString(msg.Schema), safeTruncString(&content)}
+func printDequeueResponse(response a.Payload, filePath string) error {
+	var prettyJSON bytes.Buffer
+	err := json.Indent(&prettyJSON, response.AsBytes(), "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to format JSON: %w", err)
 	}
 
-	t.AppendRows(rows)
-	t.Render()
+	file, err := safeOpen(filePath)
+	if err != nil {
+		return fmt.Errorf("failed to create file %s: %w", filePath, err)
+	}
+	defer file.Close()
+
+	_, err = file.Write(prettyJSON.Bytes())
+	if err != nil {
+		return fmt.Errorf("failed to write to file: %w", err)
+	}
+
+	return nil
 }
 
-func marshalContent(content any) string {
-	jsonBytes, err := json.Marshal(content)
-	if err != nil {
-		return fmt.Sprintf("%v", content)
+func safeOpen(filePath string) (*os.File, error) {
+	// Clean the filePath to prevent path traversal
+	cleanPath := filepath.Clean(filePath)
+
+	// If the path is not absolute, make it relative to the current directory
+	if !filepath.IsAbs(cleanPath) {
+		currentDir, err := os.Getwd()
+		if err != nil {
+			return nil, fmt.Errorf("unable to get current directory: %v", err)
+		}
+		cleanPath = filepath.Join(currentDir, cleanPath)
 	}
-	return string(jsonBytes)
+
+	// Create the file
+	return os.Create(cleanPath)
 }
 
 func printListResponse(list *api.ListResponseBody) {
@@ -446,4 +521,38 @@ func printReadResponse(queue *api.ReadResponseBody) {
 
 func printCreateResponse(queue *api.CreateResponseBody) {
 	fmt.Printf("Queue %s created\n", *queue.ID)
+}
+
+func getMaxLen(args map[string]string) int {
+	maxArgLen := 0
+	for arg := range args {
+		if len(arg) > maxArgLen {
+			maxArgLen = len(arg)
+		}
+	}
+	return maxArgLen
+}
+
+func helpTemplate(args map[string]string) string {
+	var argsStr strings.Builder
+
+	// Write the arguments and descriptions to the string builder
+	maxArgLen := getMaxLen(args)
+	for arg, desc := range args {
+		padding := strings.Repeat(" ", maxArgLen-len(arg))
+		argsStr.WriteString(fmt.Sprintf("  %s%s  %s\n", arg, padding, desc))
+	}
+
+	return fmt.Sprintf(`{{with .Long}}{{. | trimTrailingWhitespaces}}{{end}}
+
+Usage:
+  {{.UseLine}}
+
+Arguments:
+%s
+{{if .HasAvailableLocalFlags}}Flags:
+{{.LocalFlags.FlagUsages | trimTrailingWhitespaces}}
+{{end}}{{if .HasAvailableInheritedFlags}}Global Flags:
+{{.InheritedFlags.FlagUsages | trimTrailingWhitespaces}}
+{{end}}`, argsStr.String())
 }
