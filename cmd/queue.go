@@ -80,8 +80,8 @@ func readCommand() {
 		Long: `Fetch details about a single queue. You must provide the ID of the queue you want to read.
 
 An example of reading a queue:
-
   ivcap queue get urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167`,
+
 		Args: validateReadCommandArgs,
 		RunE: runReadQueueCmd,
 	}
@@ -95,9 +95,13 @@ func createCommand() {
 		Short: "Create a new queue",
 		Long: `Create a new queue with the specified name. Optionally, you can also provide a description and a policy for the queue.
 
-An example of creating a queue with a description:
+Examples:
+  1. Create a queue with name 'test_queue':
+     ivcap queue create test_queue
 
-  ivcap queue create --description "This is a test queue" test_queue`,
+  2. Create a queue with a description:
+     ivcap queue create --description "This is a test queue" test_queue
+`,
 		Args: validateCreateQueueArgs,
 		RunE: runCreateQueueCmd,
 	}
@@ -113,9 +117,10 @@ func deleteCommand() {
 		Aliases: []string{"remove"},
 		Short:   "Delete a queue",
 		Long: `Delete a queue with the specified ID. This action is irreversible. All messages in the queue will be lost.
-An example of deleting a queue:
 
-  ivcap queue delete test_queue`,
+An example of deleting a queue:
+  ivcap queue delete urn:ivcap:queue:470f97c4-fd81-5bcd-a8eb-2d200c62b052`,
+
 		Args: validateDeleteCommandArgs,
 		RunE: runDeleteQueueCmd,
 	}
@@ -125,9 +130,13 @@ An example of deleting a queue:
 func enqueueCommand() {
 	longDesc := `Enqueue a message from a file to the specified queue. The message must be in JSON format.
 
-An example of enqueuing a message to a queue:
+Examples:
+  1. Enqueue a message from a file:
+     ivcap queue enqueue urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167 urn:ivcap:schema:queue:message.1 message.json
 
-  ivcap queue enqueue urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167 urn:ivcap:schema:queue:message.1 message.json`
+  2. Enqueue a message from stdin:
+     echo '{"key": "value"}' | ivcap queue enqueue urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167 urn:ivcap:schema:queue:message.1 -
+`
 
 	args := map[string]string{
 		"queue_id": "The unique identifier of the queue from which to dequeue messages.",
@@ -150,9 +159,13 @@ An example of enqueuing a message to a queue:
 func dequeueCommand() {
 	longDesc := `Dequeue messages from the specified queue. The messages will be written to the specified file in JSON format.
 
-An example of dequeuing messages from a queue:
+Examples:
+  1. Dequeue a message from a queue and save it to a file:
+     ivcap queue dequeue urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167 messages.json
 
-    ivcap queue dequeue urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167 messages.json`
+  2. Dequeue 5 messages from a queue and save them to a file:
+     ivcap queue dequeue --limit 5 urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167 messages.json
+`
 
 	args := map[string]string{
 		"queue_id": "The unique identifier of the queue from which to dequeue messages.",
