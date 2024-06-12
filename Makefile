@@ -7,10 +7,12 @@ ifeq ($(OS),Windows_NT)
 	GIT_TAG := $(shell git describe --abbrev=0 --tags 2>/dev/null)
 	GOPRIVATE_OS_ENV_CMD := set GOPRIVATE="github.com/ivcap-works/ivcap-core-api" &&
 	EXTENSION := .exe
+	USER_SHELL := powershell
 else
 	BUILD_DATE := $(shell date "+%Y-%m-%dT%H:%M")
 	GIT_TAG := $(shell git describe --abbrev=0 --tags 2>/dev/null || true)
 	GOPRIVATE_OS_ENV_CMD := export GOPRIVATE="github.com/ivcap-works/ivcap-core-api" &&
+	USER_SHELL := $(shell echo $$(basename $$SHELL))
 endif
 
 MOVIE_SIZE=1280x720 # 640x360
@@ -18,15 +20,17 @@ MOVIE_NAME=ivcap-cli.mp4
 
 LD_FLAGS="-X main.version=${GIT_TAG} -X main.commit=${GIT_COMMIT} -X main.date=${BUILD_DATE}"
 
-build: addlicense check build-docs
-	@echo "Building IVCAP-CLI..."
-	${GOPRIVATE_ENV_CMD} go mod tidy
-	go  build -ldflags ${LD_FLAGS} ivcap.go
+build: addlicense check build-docs build-dangerously
+
+install: addlicense check install-dangerously completion
 
 build-dangerously:
 	@echo "Building IVCAP-CLI..."
 	${GOPRIVATE_ENV_CMD} go mod tidy
 	go build -ldflags ${LD_FLAGS} ivcap.go
+
+install-dangerously:
+	go install -ldflags ${LD_FLAGS} ivcap.go
 
 build-docs:
 	go -C doc build -ldflags ${LD_FLAGS} create-docs.go
@@ -34,11 +38,13 @@ build-docs:
 	doc/create-docs
 	rm -f doc/create-docs
 
-install: addlicense check
-	go install -ldflags ${LD_FLAGS} ivcap.go
-	if [[ -d $(shell brew --prefix)/share/zsh/site-functions ]]; then \
-		$(shell go env GOBIN)/ivcap completion zsh > $(shell brew --prefix)/share/zsh/site-functions/_ivcap;\
-  fi
+completion:
+	@case ${USER_SHELL} in \
+		bash) ivcap completion bash -h ;; \
+		zsh)  ivcap completion zsh  -h ;; \
+		fish) ivcap completion fish -h ;; \
+		powershell) ivcap completion powershell -h ;; \
+	esac
 
 clean:
 	rm ivcap

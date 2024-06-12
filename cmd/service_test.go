@@ -105,8 +105,9 @@ var (
         "memory": {
           "limit": "100Mi",
           "request": "10Mi"
-        }
-      },
+        },
+        "shared-memory": "1Gi"
+       },
       "opts": "Sed porro.",
       "type": "basic"
     }
@@ -325,7 +326,8 @@ var (
 			"memory": {
 			  "limit": "100Mi",
 			  "request": "10Mi"
-			}
+			},
+			"shared-memory": "256Mi"
 		  },
 		  "opts": "Sed porro.",
 		  "type": "basic"
@@ -347,6 +349,7 @@ func testUpdateService(t *testing.T) {
 	if err != nil {
 		t.Fatalf("failed to load payload from 'updateReqBody', %v", err)
 	}
+
 	var req api.UpdateRequestBody
 	if err = pyld.AsType(&req); err != nil {
 		t.Fatalf("failed to unmarshal update request body: %v", err)

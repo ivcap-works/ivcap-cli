@@ -155,7 +155,7 @@ func (a *restAdapter) GetPath(url string) (path string, err error) {
 func Connect(
 	ctxt context.Context,
 	method string,
-	path string,
+	endpoint string,
 	body io.Reader,
 	length int64,
 	headers *map[string]string,
@@ -163,25 +163,17 @@ func Connect(
 	respHandler ResponseHandler,
 	logger *log.Logger,
 ) (Payload, error) {
-	logger = logger.With(log.String("method", method), log.String("path", path))
-	var url string
-	if strings.HasPrefix(path, "http") {
-		// could be absolute url
-		if _, e := neturl.ParseRequestURI(path); e == nil {
-			url = path
-		}
+	logger = logger.With(log.String("method", method), log.String("path", endpoint))
+	parsedURL, err := parseURL(endpoint, connCtxt)
+	if err != nil {
+		return nil, err
 	}
-	if url == "" {
-		if connCtxt.URL == "" {
-			return nil, &MissingUrlError{AdapterError{path}}
-		}
-		url = connCtxt.URL + path
-	}
-	logger = logger.With(log.String("url", url))
-	req, err := http.NewRequest(method, url, body)
+	logger = logger.With(log.String("url", parsedURL.String()))
+
+	req, err := http.NewRequest(method, parsedURL.String(), body)
 	if err != nil {
 		logger.Error("Creating http request", log.Error(err))
-		return nil, &ClientError{AdapterError{path}, err}
+		return nil, &ClientError{AdapterError{endpoint}, err}
 	}
 	if length > 0 {
 		req.ContentLength = length
@@ -222,18 +214,18 @@ func Connect(
 	resp, err := client.Do(req)
 	if err != nil {
 		logger.Warn("HTTP request failed.", log.Error(err), log.Reflect("err2", err))
-		return nil, &ClientError{AdapterError{path}, err}
+		return nil, &ClientError{AdapterError{endpoint}, err}
 	}
 	defer resp.Body.Close()
 
 	if respHandler != nil {
-		err := respHandler(resp, path, logger)
+		err := respHandler(resp, endpoint, logger)
 		return nil, err
 	}
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Warn("Accessing response body failed.", log.Error(err))
-		return nil, &ClientError{AdapterError{path}, err}
+		return nil, &ClientError{AdapterError{endpoint}, err}
 	}
 	logger.Debug("successful reply", log.Int("statusCode", resp.StatusCode),
 		log.Int("body-length", len(respBody)), log.Reflect("headers", resp.Header))
@@ -242,7 +234,7 @@ func Connect(
 		if len(respBody) > 0 {
 			logger = logger.With(log.ByteString("body", respBody))
 		}
-		return nil, ProcessErrorResponse(resp, path, ToPayload(respBody, resp, logger), logger)
+		return nil, ProcessErrorResponse(resp, endpoint, ToPayload(respBody, resp, logger), logger)
 	}
 	return ToPayload(respBody, resp, logger), nil
 }
