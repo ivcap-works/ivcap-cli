@@ -162,7 +162,7 @@ var (
 				cobra.CheckErr(fmt.Sprintf("while marshalling collection list - %v", err))
 			}
 			ctxt := context.Background()
-			_, err = sdk.AddUpdateAspect(ctxt, true, id, CollectionSchema, policy, cb, CreateAdapter(true), logger)
+			_, err = sdk.AddUpdateAspect(ctxt, false, id, CollectionSchema, policy, cb, CreateAdapter(true), logger)
 			if err != nil {
 				cobra.CheckErr(fmt.Sprintf("while creating/updating collection list - %v", err))
 			}

@@ -4,7 +4,11 @@ __IVCAP__ is helping researchers better investigate their domains and derive new
 
 __IVCAP__ has an extensive REST API which is usually called directly from applications or scientific notebooks. However, to support simple data operation from the command line, we developed this simple command-line tool. It only covers the subset of the IVCAP API, but we would be very excited to receive pull requests to extend it's functionality or fix bugs.
 
-## Install
+* [Install released binaries](#install)
+* [Usage](#usage)
+* [Build from source](#build)
+
+## Install Released Binaries<a name="install"></a>
 
 [binary-releases]: https://github.com/ivcap-works/ivcap-cli/releases/latest
 [release-page]:    https://github.com/ivcap-works/ivcap-cli/releases
@@ -18,10 +22,9 @@ brew tap brew tap ivcap-works/ivcap
 brew install ivcap
 ```
 
-## Usage
+## Usage <a name="usage"></a>
 
 ```
-
 % ivcap
 A command line tool to to more conveniently interact with the
 API exposed by a specific IVCAP deployment.
@@ -55,19 +58,18 @@ Use "ivcap [command] --help" for more information about a command.
 
 ### Configure context for a specific deployment
 
-With the following command we are creating a context named `cip-2` for the IVCAP deployment at `https://api2.green-cirrus.com`
+With the following command we are creating a context named `sd-dev` for the IVCAP deployment at `https://develop.ivcap.net`. Please check first the details of deployment you want to use.
 
 ```
-% ivcap context create cip-2 https://api2.green-cirrus.com
-Context 'cip-2' created.
+% ivcap context create sd-dev https://develop.ivcap.net
+Context 'sd-dev' created.
 ```
 
 If we have multiple contexts, we can easily switch with `context set`
 
 ```
-
-% ivcap context set cip-2
-Switched to context 'cip-2'.
+% ivcap context set sd-dev
+Switched to context 'sd-dev'.
 ```
 
 The following command lists all the configured contexts:
@@ -77,7 +79,7 @@ The following command lists all the configured contexts:
 +---------+-----------+-----------------------------+--------------------------------+
 | CURRENT | NAME      | ACCOUNTID                   | URL                            |
 +---------+-----------+-----------------------------+--------------------------------+
-| *       | cip-2     | urn:ivcap:account:4c65b865  | <http://api2.green-cirrus.com> |
+| *       | sd-dev     | urn:ivcap:account:4c65b865  | <http://develop.ivcap.net> |
 +---------+-----------+-----------------------------+--------------------------------+
 ```
 
@@ -106,7 +108,6 @@ Follow this [link](./doc/ivcap_context.md) for more details about the `context` 
 To list all available services:
 
 ```
-
 % ivcap services list --limit 2
 +--------+------------------------+-------------------------------+
 | ID     | NAME                   | ACCOUNT                       |
@@ -120,7 +121,6 @@ To list all available services:
 To get more details about a specific service
 
 ```
-
 % ivcap service get @1
 
           ID  urn:ivcap:service:19f9c31e...
@@ -146,7 +146,6 @@ Follow this [link](./doc/ivcap_service.md) for more details about the `service` 
 To place an order:
 
 ```
-
 % ivcap orders create \
      urn:ivcap:service:d939b74d... \
      --name "Order for max" \
@@ -190,10 +189,9 @@ Follow this [link](./doc/ivcap_order.md) for more details about the `order` comm
 To check the details of the artifact created by the previously placed order:
 
 ```
+% ivcap artifact get urn:ivcap:artifact:017ecae8...
 
-% ivcap artifact get urn:ivcap:artifact:017ecae8-3d39-4297-a94f-00ddf9b26611
-
-         ID  urn:ivcap:artifact:017ecae8-3d39-4297-a94f-00ddf9b26611
+         ID  urn:ivcap:artifact:017ecae8...
        Name  out.png
      Status  available
        Size  50855
@@ -209,15 +207,13 @@ To check the details of the artifact created by the previously placed order:
 To download the content associated with the artifact.
 
 ```
-
-% ivcap artifact download urn:ivcap:artifact:017ecae8-3d39-4297-a94f-00ddf9b26611 -f /tmp/out.png
+% ivcap artifact download urn:ivcap:artifact:017ecae8... -f /tmp/out.png
 Successfully wrote 50855 bytes to /tmp/out.png
 ```
 
 Follow this [link](./doc/ivcap_artifact.md) for more details about the `artifact` command.
 
-
-## Development
+## Build from Source <a name="build"></a>
 
 ### Prerequisites
 
@@ -253,7 +249,6 @@ command available in your shell.
 
 To build and install without performing any code checks (implicitly done via `make
 check`) run:
-
 
 ```shell
 make build-dangerously
