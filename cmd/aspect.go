@@ -42,7 +42,7 @@ func init() {
 	aspectCmd.AddCommand(aspectGetCmd)
 
 	aspectCmd.AddCommand(aspectQueryCmd)
-	addFlags(aspectQueryCmd, []Flag{Schema, Entity})
+	addFlags(aspectQueryCmd, []Flag{SchemaPrefix, Entity})
 	aspectQueryCmd.Flags().BoolVarP(&aspectGetIfOne, "get-if-one", "g", false, "if only one found, get it immediately")
 	aspectQueryCmd.Flags().StringVarP(&aspectJsonFilter, "content-path", "c", "", "json path filter on aspect's content ('$.images[*] ? (@.size > 10000)')")
 	aspectQueryCmd.Flags().BoolVar(&aspectIncludeContent, "include-content", false, "if set, also include aspect's content in list")
