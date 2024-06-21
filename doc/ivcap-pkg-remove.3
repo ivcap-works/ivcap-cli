@@ -3,33 +3,23 @@
 
 .SH NAME
 .PP
-ivcap-service-create - Create a new service
+ivcap-pkg-remove - remove service package by tag
 
 
 .SH SYNOPSIS
 .PP
-\fBivcap service create [flags] -f service-file|-\fP
+\fBivcap pkg remove tag [flags]\fP
 
 
 .SH DESCRIPTION
 .PP
-Define a new service to available on the platform. The service is
-described in a service definition file. If the service definition is provided
-through 'stdin' use '-' as the file name and also include the --format flag
+Remove the service package by tag, from the ivcap service repository
 
 
 .SH OPTIONS
 .PP
-\fB-f\fP, \fB--file\fP=""
-	Path to service description file
-
-.PP
-\fB--format\fP=""
-	Format of service description file [json, yaml]
-
-.PP
 \fB-h\fP, \fB--help\fP[=false]
-	help for create
+	help for remove
 
 
 .SH OPTIONS INHERITED FROM PARENT COMMANDS
@@ -64,7 +54,7 @@ through 'stdin' use '-' as the file name and also include the --format flag
 
 .SH SEE ALSO
 .PP
-\fBivcap-service(3)\fP
+\fBivcap-pkg(3)\fP
 
 
 .SH HISTORY

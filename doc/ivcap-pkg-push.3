@@ -3,33 +3,27 @@
 
 .SH NAME
 .PP
-ivcap-service-create - Create a new service
+ivcap-pkg-push - Push service package(docker image) to repository
 
 
 .SH SYNOPSIS
 .PP
-\fBivcap service create [flags] -f service-file|-\fP
+\fBivcap pkg push [flags] tag\fP
 
 
 .SH DESCRIPTION
 .PP
-Define a new service to available on the platform. The service is
-described in a service definition file. If the service definition is provided
-through 'stdin' use '-' as the file name and also include the --format flag
+Before/After creating service, push the service package to a docker registry that the service can reference.
 
 
 .SH OPTIONS
 .PP
-\fB-f\fP, \fB--file\fP=""
-	Path to service description file
-
-.PP
-\fB--format\fP=""
-	Format of service description file [json, yaml]
+\fB-f\fP, \fB--force\fP[=false]
+	Push packages even it already exists
 
 .PP
 \fB-h\fP, \fB--help\fP[=false]
-	help for create
+	help for push
 
 
 .SH OPTIONS INHERITED FROM PARENT COMMANDS
@@ -64,7 +58,7 @@ through 'stdin' use '-' as the file name and also include the --format flag
 
 .SH SEE ALSO
 .PP
-\fBivcap-service(3)\fP
+\fBivcap-pkg(3)\fP
 
 
 .SH HISTORY
