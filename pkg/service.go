@@ -20,11 +20,10 @@ import (
 	"encoding/json"
 	"fmt"
 
-	api "github.com/ivcap-works/ivcap-core-api/http/service"
+	log "go.uber.org/zap"
 
 	"github.com/ivcap-works/ivcap-cli/pkg/adapter"
-
-	log "go.uber.org/zap"
+	api "github.com/ivcap-works/ivcap-core-api/http/service"
 )
 
 /**** LIST ****/
