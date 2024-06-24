@@ -69,6 +69,7 @@ type Flag int64
 const (
 	Name Flag = iota
 	Schema
+	SchemaPrefix
 	Entity
 	InputFormat
 	Policy
@@ -94,6 +95,8 @@ func addFlags(cmd *cobra.Command, names []Flag) {
 			addNameFlag(cmd)
 		case Schema:
 			addSchemaFlag(cmd)
+		case SchemaPrefix:
+			addSchemaPrefixFlag(cmd)
 		case Entity:
 			addEntityFlag(cmd)
 		case InputFormat:
@@ -144,6 +147,11 @@ func addInputFormatFlag(cmd *cobra.Command) {
 func addSchemaFlag(cmd *cobra.Command) {
 	fs := cmd.Flags()
 	fs.StringVarP(&schemaURN, "schema", "s", "", "URN/UUID of schema")
+}
+
+func addSchemaPrefixFlag(cmd *cobra.Command) {
+	fs := cmd.Flags()
+	fs.StringVarP(&schemaPrefix, "schemaPrefix", "s", "", "schema prefix")
 }
 
 func addEntityFlag(cmd *cobra.Command) {
