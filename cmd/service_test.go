@@ -18,21 +18,15 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
-	"os"
 	"testing"
-
-	log "go.uber.org/zap"
-	"go.uber.org/zap/zapcore"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 	api "github.com/ivcap-works/ivcap-core-api/http/service"
 )
 
-var (
-	createReqBody = []byte(`
+var createReqBody = []byte(`
 {
     "banner": "http://quigleyjakubowski.net/otilia_miller",
     "description": "This service ...",
@@ -113,55 +107,8 @@ var (
     }
   }
 `)
-)
 
-var (
-	adapter   *a.Adapter
-	serviceID string
-	testToken string
-	tlogger   *log.Logger
-)
-
-func TestMain(m *testing.M) {
-	initConfig()
-	ctxt, err := GetContextWithError("", true)
-	if err != nil {
-		fmt.Printf("Can not get active context, %s\n", err)
-		return
-	}
-	if ctxt.Name != "minikube" {
-		fmt.Printf("Unit test should run against minikube, please set to minikube context\n")
-		return
-	}
-	testToken = getAccessToken(true)
-	if testToken == "" {
-		fmt.Printf("Access token not found\n")
-		return
-	}
-
-	url := ctxt.URL
-	var headers *map[string]string
-	if ctxt.Host != "" {
-		headers = &(map[string]string{"Host": ctxt.Host})
-	}
-
-	adapter, err = NewAdapter(url, testToken, DEFAULT_SERVICE_TIMEOUT_IN_SECONDS, headers)
-	if err != nil {
-		fmt.Printf("Failed to get adapter: %v\n", err)
-		return
-	}
-	cfg := log.NewDevelopmentConfig()
-	cfg.OutputPaths = []string{"stdout"}
-	logLevel := zapcore.ErrorLevel
-	cfg.Level = log.NewAtomicLevelAt(logLevel)
-	tlogger, err = cfg.Build()
-	if err != nil {
-		fmt.Printf("Failed to create tlogger: %v\n", err)
-		return
-	}
-
-	os.Exit(m.Run())
-}
+var serviceID string
 
 func TestAll(t *testing.T) {
 	testCreateService(t)
@@ -245,8 +192,7 @@ func testGetService(t *testing.T) {
 	}
 }
 
-var (
-	updateReqBody = []byte(`
+var updateReqBody = []byte(`
 	{
 		"banner": "http://quigleyjakubowski.net/otilia_miller",
 		"description": "This service is updated",
@@ -334,7 +280,6 @@ var (
 		}
 	  }
 `)
-)
 
 func testUpdateService(t *testing.T) {
 	if testToken == "" {
@@ -366,5 +311,4 @@ func testUpdateService(t *testing.T) {
 	if *res.ID != serviceID {
 		t.Fatalf("unexpected updated id: %v, expecting: %s", *res.ID, serviceID)
 	}
-
 }
