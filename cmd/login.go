@@ -198,10 +198,10 @@ func getTokenResponse(authProvider *AuthProvider, params url.Values, ctxt *Conte
 			if apiErr.StatusCode == http.StatusForbidden {
 				pyld = apiErr.Payload
 			} else {
-				cobra.CheckErr(fmt.Sprintf("Cannot obtain OAuth Token - %s", err))
+				cobra.CheckErr(fmt.Sprintf("Cannot obtain OAuth Token, please try `ivcap context login`. Error detail: - %s", err))
 			}
 		} else {
-			cobra.CheckErr(fmt.Sprintf("Cannot obtain OAuth Token - %s", err))
+			cobra.CheckErr(fmt.Sprintf("Cannot obtain OAuth Token, please try `ivcap context login`. Error detail: - %s", err))
 			return // never reached
 		}
 	}
