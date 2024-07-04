@@ -101,7 +101,7 @@ var (
            "limit": "4Gi",
            "request": "2Gi"
         },
-        "image": "alpine",
+        "image": "registry.kube-system.svc.cluster.local/0f0e3f57-80f7-4899-9b69-459af2efd789/alpine:3.20.1",
         "memory": {
           "limit": "100Mi",
           "request": "10Mi"
@@ -310,9 +310,9 @@ var (
 		  "argo": "Maxime eius voluptatibus tempore assumenda et qui.",
 		  "basic": {
 			"command": [
-			  "/usr/local/bin/python",
-			  "-c",
-			  "import sys,time; print('cmd entry:', sys.argv); time.sleep(60)"
+				"/bin/sh",
+				"-c",
+				"echo $PATH updated! && sleep 60"
 			],
 			"cpu": {
 			  "limit": "100m",
@@ -322,7 +322,7 @@ var (
 				"limit": "10Gi",
 				"request": "2Gi"
 			},
-			"image": "python",
+			"image": "registry.kube-system.svc.cluster.local/0f0e3f57-80f7-4899-9b69-459af2efd789/alpine:3.20.1",
 			"memory": {
 			  "limit": "100Mi",
 			  "request": "10Mi"

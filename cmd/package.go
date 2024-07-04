@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var forcePush bool
+var forcePush, localImage bool
 
 func init() {
 	rootCmd.AddCommand(pkgCmd)
@@ -30,14 +30,14 @@ func init() {
 	pkgCmd.AddCommand(listPackageCmd)
 	pkgCmd.AddCommand(pushPackageCmd)
 	pushPackageCmd.Flags().BoolVarP(&forcePush, "force", "f", false, "Push packages even it already exists")
+	pushPackageCmd.Flags().BoolVarP(&localImage, "local", "l", false, "Push packages from local docker daemon")
 	pkgCmd.AddCommand(pullPackageCmd)
-	pkgCmd.AddCommand(removePackageCmd)
 }
 
 var (
 	pkgCmd = &cobra.Command{
-		Use:     "pkg",
-		Aliases: []string{"pkgs", "package", "packages"},
+		Use:     "package",
+		Aliases: []string{"pkg", "pkgs", "packages"},
 		Short:   "Push/pull and manage service packages ",
 	}
 
@@ -58,7 +58,7 @@ var (
 				return err
 			}
 			if res != nil {
-				for _, tag := range res.Tags {
+				for _, tag := range res.Items {
 					fmt.Printf("%s\n", tag)
 				}
 			}
@@ -72,13 +72,11 @@ var (
 		Long:  `Before/After creating service, push the service package to a docker registry that the service can reference.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			ctxt := context.Background()
 			srcPackageTag := args[0]
-			res, err := sdk.PushServicePackage(ctxt, srcPackageTag, forcePush, CreateAdapter(true), logger)
+			_, err = sdk.PushServicePackage(srcPackageTag, forcePush, localImage, CreateAdapter(true), logger)
 			if err != nil {
 				return err
 			}
-			fmt.Printf("%s\n", *res.Tag)
 			return nil
 		},
 	}
@@ -95,24 +93,6 @@ var (
 			if err != nil {
 				return err
 			}
-			return nil
-		},
-	}
-
-	removePackageCmd = &cobra.Command{
-		Use:     "remove tag",
-		Aliases: []string{"rm"},
-		Short:   "remove service package by tag",
-		Long:    `Remove the service package by tag, from the ivcap service repository`,
-		Args:    cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			ctxt := context.Background()
-			tag := args[0]
-			err = sdk.RemovePackage(ctxt, tag, CreateAdapter(true), logger)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("package removed\n")
 			return nil
 		},
 	}
