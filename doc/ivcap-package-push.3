@@ -3,23 +3,31 @@
 
 .SH NAME
 .PP
-ivcap-context-login - Authenticate with a current deployment/context
+ivcap-package-push - Push service package(docker image) to repository
 
 
 .SH SYNOPSIS
 .PP
-\fBivcap context login [flags]\fP
+\fBivcap package push [flags] tag\fP
 
 
 .SH DESCRIPTION
 .PP
-Authenticate with a current deployment/context
+Before/After creating service, push the service package to a docker registry that the service can reference.
 
 
 .SH OPTIONS
 .PP
+\fB-f\fP, \fB--force\fP[=false]
+	Push packages even it already exists
+
+.PP
 \fB-h\fP, \fB--help\fP[=false]
-	help for login
+	help for push
+
+.PP
+\fB-l\fP, \fB--local\fP[=false]
+	Push packages from local docker daemon
 
 
 .SH OPTIONS INHERITED FROM PARENT COMMANDS
@@ -54,7 +62,7 @@ Authenticate with a current deployment/context
 
 .SH SEE ALSO
 .PP
-\fBivcap-context(3)\fP
+\fBivcap-package(3)\fP
 
 
 .SH HISTORY

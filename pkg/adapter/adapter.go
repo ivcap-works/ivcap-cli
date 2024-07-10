@@ -209,7 +209,11 @@ func Connect(
 	if host != "" {
 		req.Host = host
 	}
-	client := &http.Client{Timeout: time.Second * time.Duration(connCtxt.TimeoutSec)}
+	client := &http.Client{}
+	if _, ok := ctxt.Deadline(); !ok {
+		client.Timeout = time.Second * time.Duration(connCtxt.TimeoutSec)
+	}
+
 	logger.Debug("calling api", log.Reflect("headers", req.Header))
 	resp, err := client.Do(req)
 	if err != nil {
