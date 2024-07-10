@@ -27,8 +27,8 @@ github.com/hashicorp/go-multierror v1.1.1 h1:H5DkEtf6CXdFp0N0Em5UCwQpXMWke8IA0+l
 github.com/hashicorp/go-multierror v1.1.1/go.mod h1:iw975J/qwKPdAO1clOe2L8331t/9/fmwbPZ6JB6eMoM=
 github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2s0bqwp9tc8=
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
-github.com/ivcap-works/ivcap-core-api v0.35.3 h1:RuajWqoF1x6pilb8ZY7Drd2v9SkeOG87/FIaNH7og+U=
-github.com/ivcap-works/ivcap-core-api v0.35.3/go.mod h1:NbggH/FvNC8IPfHUaDBryKqfB5JPswoC0itpRUVqq6o=
+github.com/ivcap-works/ivcap-core-api v0.40.3 h1:ITdfxWSA4rBsM2lurwvHtXk33ruTV8OgQ4PYsqjBJDw=
+github.com/ivcap-works/ivcap-core-api v0.40.3/go.mod h1:NbggH/FvNC8IPfHUaDBryKqfB5JPswoC0itpRUVqq6o=
 github.com/jedib0t/go-pretty/v6 v6.5.8 h1:8BCzJdSvUbaDuRba4YVh+SKMGcAAKdkcF3SVFbrHAtQ=
 github.com/jedib0t/go-pretty/v6 v6.5.8/go.mod h1:zbn98qrYlh95FIhwwsbIip0LYpwSG8SUOScs+v9/t0E=
 github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213 h1:qGQQKEcAR99REcMpsXCp3lJ03zYT1PkRd3kQGPn9GVg=
