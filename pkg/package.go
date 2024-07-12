@@ -358,7 +358,9 @@ func pushManifest(manifest []byte, adpt *adapter.Adapter, srcTag name.Tag, force
 	if err := res.AsType(&body); err != nil {
 		return nil, fmt.Errorf("failed to decode update service response body; %w", err)
 	}
-	fmt.Printf("\033[2K\r %s pushed\n", srcTag.String())
+	if body.Digest != nil {
+		fmt.Printf("\033[2K\r %s pushed\n", *body.Digest)
+	}
 
 	return &body, nil
 }
