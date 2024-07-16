@@ -5,7 +5,6 @@ go 1.22.5
 require (
 	github.com/MicahParks/keyfunc v1.5.3
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
-	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/docker/docker v24.0.0+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
@@ -22,6 +21,8 @@ require (
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
+
+replace github.com/ivcap-works/ivcap-core-api v0.40.5 => ../ivcap-core/api_gateway/api
 
 require (
 	github.com/Azure/go-ansiterm v0.0.0-20230124172434-306776ec8161 // indirect
