@@ -214,6 +214,53 @@ Successfully wrote 50855 bytes to /tmp/out.png
 
 Follow this [link](./doc/ivcap_artifact.md) for more details about the `artifact` command.
 
+### Packages
+#### To upload service docker image
+```
+ivcap package push -f alpine:3.20.1
+
+ Pushing alpine:3.20.1 from local, may take multiple minutes depending on the size of the image ...
+ 40df18f632     4.21MB already exits
+ 092561eea8       1.45KB uploaded
+ registry.kube-system.svc.cluster.local/0f0e3f57-80f7-4899-9b69-459af2efd789/alpine:3.20.1 pushed
+
+```
+
+#### To upload a service docker image over 2G, which needs to push from a local registry
+
+- Start a local registry
+```
+docker run -d -p 8080:5000 --name registry-2 registry:2
+
+```
+- Tag image
+```
+docker tag alpine:3.20.1 localhost:8080/alpine:3.20.1
+```
+- Push to local registry
+```
+docker push localhost:8080/alpine:3.20.1
+```
+- Then push from local registry to ivcap service
+```
+ivcap package push -f localhost:8080/alpine:3.20.1
+ Pushing localhost:8080/alpine:3.20.1 from localhost:8080, may take multiple minutes depending on the size of the image ...
+ a258b2a6b5     3.90MB uploaded
+ 092561eea8       1.45KB uploaded
+ registry.kube-system.svc.cluster.local/0f0e3f57-80f7-4899-9b69-459af2efd789/alpine:3.20.1 pushed
+```
+
+#### List packages
+```
+ivcap package ls
+
+registry.kube-system.svc.cluster.local/0f0e3f57-80f7-4899-9b69-459af2efd789/alpine:3.20.1
+registry.kube-system.svc.cluster.local/0f0e3f57-80f7-4899-9b69-459af2efd789/cv_pipeline_v0_pm1:2024-03-27_16-48-57
+registry.kube-system.svc.cluster.local/0f0e3f57-80f7-4899-9b69-459af2efd789/python:3.13.0
+```
+
+Follow this [link](./doc/ivcap_package.md) for more details about the `package` command.
+
 ## Build from Source <a name="build"></a>
 
 ### Prerequisites

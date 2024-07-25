@@ -29,7 +29,7 @@ build-dangerously:
 	${GOPRIVATE_ENV_CMD} go mod tidy
 	go build -ldflags ${LD_FLAGS} ivcap.go
 
-install-dangerously:
+install-dangerously: build-dangerously
 	go install -ldflags ${LD_FLAGS} ivcap.go
 
 build-docs:
