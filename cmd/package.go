@@ -32,7 +32,6 @@ func init() {
 	pushPackageCmd.Flags().BoolVarP(&forcePush, "force", "f", false, "Push packages even it already exists")
 	pushPackageCmd.Flags().BoolVarP(&localImage, "local", "l", false, "Push packages from local docker daemon")
 	pkgCmd.AddCommand(pullPackageCmd)
-	pkgCmd.AddCommand(removePackageCmd)
 }
 
 var (
@@ -94,24 +93,6 @@ var (
 			if err != nil {
 				return err
 			}
-			return nil
-		},
-	}
-
-	removePackageCmd = &cobra.Command{
-		Use:     "remove tag",
-		Aliases: []string{"rm", "delete"},
-		Short:   "remove service package by tag",
-		Long:    `Remove the service package by tag, from the ivcap service repository`,
-		Args:    cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) (err error) {
-			ctxt := context.Background()
-			tag := args[0]
-			err = sdk.RemovePackage(ctxt, tag, CreateAdapter(true), logger)
-			if err != nil {
-				return err
-			}
-			fmt.Printf("package removed\n")
 			return nil
 		},
 	}
