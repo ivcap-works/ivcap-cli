@@ -1,6 +1,6 @@
 ## ivcap artifact
 
-Create and manage artifacts 
+Create and manage artifacts
 
 ### Options
 

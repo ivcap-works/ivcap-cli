@@ -1,6 +1,6 @@
 ## ivcap order
 
-Create and manage orders 
+Create and manage orders
 
 ### Options
 

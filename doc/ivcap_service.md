@@ -1,6 +1,6 @@
 ## ivcap service
 
-Create and manage services 
+Create and manage services
 
 ### Options
 
