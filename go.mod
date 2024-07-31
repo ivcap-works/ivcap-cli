@@ -11,7 +11,7 @@ require (
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/go-containerregistry v0.19.2
 	github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf
-	github.com/ivcap-works/ivcap-core-api v0.40.5
+	github.com/ivcap-works/ivcap-core-api v0.41.2
 	github.com/jedib0t/go-pretty/v6 v6.5.8
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/schollz/progressbar/v3 v3.14.2

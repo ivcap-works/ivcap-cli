@@ -110,7 +110,7 @@ func PushServicePackage(srcTagName string, forcePush, localImage bool, adpt *ada
 	var img v1.Image
 	var cl v1.Layer
 	// push from another repo registry
-	if srcTag.RegistryStr() != "local" {
+	if srcTag.RegistryStr() != "local" && !localImage {
 		ref, err := name.ParseReference(srcTagName)
 		if err != nil {
 			return nil, fmt.Errorf("parsing reference %q: %w", srcTagName, err)
@@ -284,6 +284,11 @@ func pushLayer(layer v1.Layer, adpt *adapter.Adapter, srcTag name.Tag, forcePush
 
 		if err = res.AsType(&body); err != nil {
 			return nil, fmt.Errorf("failed to decode push layer response body; %w", err)
+		}
+
+		if body.Exists != nil && *body.Exists { // already exists
+			fmt.Printf("\033[2K\r %s %10s already exits\n", digest.Hex[:10], bytesize.New(float64(total)))
+			return &body, nil
 		}
 
 		// reach the end, which is the last step, that an async operation to poll
