@@ -28,6 +28,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
@@ -109,7 +110,7 @@ func PushServicePackage(srcTagName string, forcePush, localImage bool, adpt *ada
 	var img v1.Image
 	var cl v1.Layer
 	// push from another repo registry
-	if srcTag.RegistryStr() != "local" {
+	if srcTag.RegistryStr() != "local" && !localImage {
 		ref, err := name.ParseReference(srcTagName)
 		if err != nil {
 			return nil, fmt.Errorf("parsing reference %q: %w", srcTagName, err)
@@ -241,51 +242,20 @@ func pushLayer(layer v1.Layer, adpt *adapter.Adapter, srcTag name.Tag, forcePush
 	q := url.Values{}
 	q.Set("force", strconv.FormatBool(forcePush))
 	q.Set("tag", srcTag.RepositoryStr()+":"+srcTag.TagStr())
+	q.Set("total", strconv.FormatInt(int64(total), 10))
 	q.Set("type", "layer")
 	q.Set("digest", digest.String())
-	postPath := path + "?" + q.Encode()
-
-	// do an inital post
-	fmt.Printf("\033[2K\r %s %10s uploading...", digest.Hex[:10], bytesize.New(float64(total)))
-	ctxt, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-
-	res, err := (*adpt).Post(ctxt, postPath, bytes.NewReader([]byte{}), -1, nil, logger)
-	if err != nil {
-		if strings.Contains(err.Error(), "already created") {
-			return nil, fmt.Errorf("tag: %s already created, use -f to force overwrite", srcTag)
-		}
-		return nil, fmt.Errorf("failed to push layer %s, %s, error: %w", digest.Hex[:10], bytesize.New(float64(total)), err)
-	}
-	var body api.PushResponseBody
-	if err = res.AsType(&body); err != nil {
-		return nil, fmt.Errorf("failed to decode push layer response body; %w", err)
-	}
-	if body.Mounted != nil && *body.Mounted { // already exists
-		fmt.Printf("\033[2K\r %s %10s already exits\n", digest.Hex[:10], bytesize.New(float64(total)))
-		return &body, nil
-	}
-
-	if body.Location == nil || *body.Location == "" {
-		return nil, fmt.Errorf("expecting locaton response from push")
-	}
 
 	layerData, err := layer.Compressed()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get compressed data for layer %s: %w", digest.Hex[:10], err)
 	}
 
-	location := *body.Location
+	var body api.PushResponseBody
 	chunkSize := 10 * 1024 * 1024 // 10MB
 	buffer := make([]byte, chunkSize)
 	start, end := 0, 0
 	for {
-		q := url.Values{}
-		q.Set("tag", srcTag.RepositoryStr()+":"+srcTag.TagStr())
-		q.Set("digest", digest.String())
-		q.Set("total", strconv.FormatInt(int64(total), 10))
-		q.Set("location", location)
-
 		n, err := io.ReadFull(layerData, buffer)
 		if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 			return nil, fmt.Errorf("failed to read layer data: %w", err)
@@ -297,55 +267,70 @@ func pushLayer(layer v1.Layer, adpt *adapter.Adapter, srcTag name.Tag, forcePush
 
 		q.Set("start", strconv.FormatInt(int64(start), 10))
 		q.Set("end", strconv.FormatInt(int64(end), 10))
-		patchPath := pkgPath(nil) + "/blob"
-		patchPath += "?" + q.Encode()
+		postPath := path + "?" + q.Encode()
 
 		fmt.Printf("\033[2K\r %s %10s%10s%10s uploading...", digest.Hex[:10], bytesize.New(float64(end)), "out of", bytesize.New(float64(total)))
-		ctxt, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+		ctxt, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 		defer cancel()
 
-		res, err := (*adpt).Patch(ctxt, patchPath, bytes.NewReader(buffer[:n]), -1, nil, logger)
+		res, err := (*adpt).Post(ctxt, postPath, bytes.NewReader(buffer[:n]), -1, nil, logger)
 		if err != nil {
+			// error type assertion with goa ???
 			if strings.Contains(err.Error(), "already created") {
 				return nil, fmt.Errorf("tag: %s already created, use -f to force overwrite", srcTag)
 			}
-			return nil, fmt.Errorf("failed to patch layer %s, %s, error: %w", digest.Hex[:10], bytesize.New(float64(total)), err)
+			return nil, fmt.Errorf("failed to push layer %s, %s, error: %w", digest.Hex[:10], bytesize.New(float64(total)), err)
 		}
 
-		var body api.PatchResponseBody
 		if err = res.AsType(&body); err != nil {
 			return nil, fmt.Errorf("failed to decode push layer response body; %w", err)
 		}
 
-		if body.Location == nil || *body.Location == "" {
-			return nil, fmt.Errorf("expecting location from patch response")
+		if body.Exists != nil && *body.Exists { // already exists
+			fmt.Printf("\033[2K\r %s %10s already exits\n", digest.Hex[:10], bytesize.New(float64(total)))
+			return &body, nil
 		}
-		location = *body.Location
+
+		// reach the end, which is the last step, that an async operation to poll
+		if int64(end) == total {
+			expBackoff := backoff.NewExponentialBackOff()
+			expBackoff.InitialInterval = 10 * time.Second
+			expBackoff.Multiplier = 1.0
+			expBackoff.MaxInterval = 120 * time.Second
+			expBackoff.MaxElapsedTime = 2*time.Minute + time.Duration(total/(1*1024*1024))*2*time.Second // 1M for 2 sec
+
+			step := 0
+
+			// Run the operation with retry logic
+			err := backoff.Retry(func() error {
+				step++
+				status, err := pushStatus(srcTag.RepositoryStr()+":"+srcTag.TagStr(), digest, adpt, logger)
+				if err != nil {
+					return backoff.Permanent(fmt.Errorf("failed polling push status %s, error: %w", digest.Hex[:10], err))
+				}
+				switch *status.Status {
+				case string(PushStatusErrored):
+					return backoff.Permanent(errors.New(*status.Message))
+				case string(PushStatusDone):
+					fmt.Printf("\033[2K\r %s %12s uploaded\n", digest.Hex[:10], bytesize.New(float64(total)))
+					return nil
+				case string(PushStatusUnstarted), string(PushStatusInprogress):
+					fmt.Printf("\033[2K\r %s %12s%10s server uploading %s", digest.Hex[:10], bytesize.New(float64(end)), bytesize.New(float64(total)), strings.Repeat("#", step))
+					return errors.New("waiting finish")
+				default:
+					return backoff.Permanent(fmt.Errorf("unexpected result %d", status))
+				}
+			}, expBackoff)
+			if err != nil {
+				return nil, fmt.Errorf("failed polling push status %s, error: %w", digest.Hex[:10], err)
+			}
+		}
 
 		// step forward
 		start += n
 	}
 
-	// commit
-	q = url.Values{}
-	q.Set("tag", srcTag.RepositoryStr()+":"+srcTag.TagStr())
-	q.Set("digest", digest.String())
-	q.Set("location", location)
-	putPath := pkgPath(nil) + "/blob"
-	putPath += "?" + q.Encode()
-
-	ctxt, cancel = context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-
-	if _, err = (*adpt).Put(ctxt, putPath, bytes.NewReader([]byte{}), -1, nil, logger); err != nil {
-		return nil, fmt.Errorf("failed to commit layer %s, %s, error: %w", digest.Hex[:10], bytesize.New(float64(total)), err)
-	}
-	fmt.Printf("\033[2K\r %s %10s uploaded\n", digest.Hex[:10], bytesize.New(float64(total)))
-
-	d := digest.String()
-	return &api.PushResponseBody{
-		Digest: &d,
-	}, nil
+	return &body, nil
 }
 
 func pushManifest(manifest []byte, adpt *adapter.Adapter, srcTag name.Tag, forcePush bool, logger *log.Logger) (*api.PushResponseBody, error) {
@@ -667,6 +652,35 @@ func pullManifest(tag string, adpt *adapter.Adapter, manifestHandler adapter.Res
 		return fmt.Errorf("failed to get manifest: %s, %w", mpath, err)
 	}
 	return nil
+}
+
+type PushStatus string
+
+const (
+	PushStatusUnstarted  PushStatus = "unstarted"
+	PushStatusInprogress PushStatus = "inprogress"
+	PushStatusErrored    PushStatus = "errored"
+	PushStatusDone       PushStatus = "done"
+)
+
+func pushStatus(tag string, digest v1.Hash, adpt *adapter.Adapter, logger *log.Logger) (*api.StatusResponseBody, error) {
+	path := pkgPath(nil) + "/status"
+	q := url.Values{}
+	q.Set("tag", tag)
+	q.Set("digest", digest.String())
+	path += "?" + q.Encode()
+
+	res, err := (*adpt).Get(context.Background(), path, logger)
+	if err != nil {
+		return nil, fmt.Errorf("failed to push status %s %s, error: %w", tag, digest.Hex[:10], err)
+	}
+
+	var body api.StatusResponseBody
+	if err = res.AsType(&body); err != nil {
+		return nil, fmt.Errorf("failed to decode get status response body; %w", err)
+	}
+
+	return &body, nil
 }
 
 func RemovePackage(ctxt context.Context, tag string, adpt *adapter.Adapter, logger *log.Logger) error {

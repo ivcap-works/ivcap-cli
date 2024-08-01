@@ -5,12 +5,13 @@ go 1.22.5
 require (
 	github.com/MicahParks/keyfunc v1.5.3
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
+	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/docker/docker v24.0.0+incompatible
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/google/go-containerregistry v0.19.2
 	github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf
-	github.com/ivcap-works/ivcap-core-api v0.41.1
+	github.com/ivcap-works/ivcap-core-api v0.41.2
 	github.com/jedib0t/go-pretty/v6 v6.5.8
 	github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213
 	github.com/schollz/progressbar/v3 v3.14.2
