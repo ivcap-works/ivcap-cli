@@ -20,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/MicahParks/keyfunc"
@@ -393,9 +394,7 @@ func login(_ *cobra.Command, args []string) {
 	// offline_access is required for the refresh tokens to be sent through
 	authProvider.scopes = "openid profile email offline_access"
 	authProvider.grantType = "urn:ietf:params:oauth:grant-type:device_code"
-	// TODO: Shouldn't that come from the server?
-	authProvider.audience = "https://api.ivcap.net/"
-
+	authProvider.audience = strings.TrimSuffix(ctxt.URL, "/") + "/"
 	// First request a device code for this command line tool
 	deviceCode := requestDeviceCode(authProvider)
 
