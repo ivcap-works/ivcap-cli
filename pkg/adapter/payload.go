@@ -193,7 +193,7 @@ func (p *payload) AsBytes() []byte {
 }
 
 func (p *payload) IsEmpty() bool {
-	return p.body == nil || len(p.body) == 0
+	return len(p.body) == 0
 }
 
 func (p *payload) Header(key string) string {
