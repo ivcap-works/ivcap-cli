@@ -20,7 +20,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/MicahParks/keyfunc"
@@ -83,7 +82,7 @@ type AuthProvider struct {
 	CodeURL   string `yaml:"code-url"`
 	JwksURL   string `yaml:"jwks-url"`
 	ClientID  string `yaml:"client-id"`
-	audience  string
+	Audience  string `yaml:"audience"`
 	scopes    string
 	grantType string
 }
@@ -272,6 +271,10 @@ func verifyProviderInfo(p *AuthProvider) *AuthProvider {
 	f("TokenURL", p.TokenURL)
 	f("CodeURL", p.CodeURL)
 	f("JwksURL", p.JwksURL)
+
+	if p.Audience == "" {
+		cobra.CheckErr("oauth: Authentication provider's audience is not set in the authinfo.yaml file")
+	}
 	return p
 }
 
@@ -284,7 +287,7 @@ func requestDeviceCode(authProvider *AuthProvider) (code *DeviceCode) {
 	params := url.Values{
 		"client_id": {authProvider.ClientID},
 		"scope":     {authProvider.scopes},
-		"audience":  {authProvider.audience},
+		"audience":  {authProvider.Audience},
 	}
 	pyld, err := (*adpt).PostForm(ctx, authProvider.CodeURL, params, nil, logger)
 	if err != nil {
@@ -394,7 +397,7 @@ func login(_ *cobra.Command, args []string) {
 	// offline_access is required for the refresh tokens to be sent through
 	authProvider.scopes = "openid profile email offline_access"
 	authProvider.grantType = "urn:ietf:params:oauth:grant-type:device_code"
-	authProvider.audience = strings.TrimSuffix(ctxt.URL, "/") + "/"
+	// authProvider.audience = strings.TrimSuffix(ctxt.URL, "/") + "/"
 	// First request a device code for this command line tool
 	deviceCode := requestDeviceCode(authProvider)
 
