@@ -36,8 +36,10 @@ import (
 	"go.uber.org/zap/zapcore"
 )
 
-const ENV_PREFIX = "IVCAP"
-const URN_PREFIX = "ivcap"
+const (
+	ENV_PREFIX = "IVCAP"
+	URN_PREFIX = "ivcap"
+)
 
 const RELEASE_CHECK_URL = "https://github.com/ivcap-works/ivcap-cli/releases/latest"
 
@@ -270,14 +272,15 @@ func safeTruncString(in *string) (out string) {
 }
 
 func safeBytes(n *int64) string {
-	if n != nil {
-		if *n <= 0 {
-			return "unknown"
-		}
-		return humanize.Bytes(uint64(*n))
-	} else {
+	if n == nil {
 		return "???"
 	}
+	if *n <= 0 {
+		return "unknown"
+	}
+	// Safe to convert to uint64 here because we've checked for negative values
+	// #nosec G115
+	return humanize.Bytes(uint64(*n))
 }
 
 func payloadFromFile(fileName string, inputFormat string) (pyld adpt.Payload, err error) {
