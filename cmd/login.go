@@ -397,7 +397,6 @@ func login(_ *cobra.Command, args []string) {
 	// offline_access is required for the refresh tokens to be sent through
 	authProvider.scopes = "openid profile email offline_access"
 	authProvider.grantType = "urn:ietf:params:oauth:grant-type:device_code"
-	// authProvider.audience = strings.TrimSuffix(ctxt.URL, "/") + "/"
 	// First request a device code for this command line tool
 	deviceCode := requestDeviceCode(authProvider)
 
