@@ -165,8 +165,8 @@ func initLogger() {
 	SetLogger(logger)
 }
 
-func CreateAdapter(requiresAuth bool) (adapter *adpt.Adapter) {
-	return CreateAdapterWithTimeout(requiresAuth, timeout)
+func CreateAdapter(requiresAuth bool, opts ...adpt.Option) (adapter *adpt.Adapter) {
+	return CreateAdapterWithTimeout(requiresAuth, timeout, opts...)
 }
 
 // Returns an HTTP adapter which will wait a max. of `timeoutSec` sec for a reply.
@@ -179,7 +179,7 @@ func CreateAdapter(requiresAuth bool) (adapter *adpt.Adapter) {
 //     the URL defined in ActiveContext is automatically prefixed.
 //   - If the ActiveContext defines a `Host` parameter, it is also added as a
 //     `Host` HTTP header.
-func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.Adapter) {
+func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int, opts ...adpt.Option) (adapter *adpt.Adapter) {
 	ctxt := GetActiveContext() // will always return with a context
 
 	if requiresAuth {
@@ -199,7 +199,7 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int) (adapter *adpt.
 	}
 	logger.Debug("Adapter config", log.String("url", url))
 
-	adp, err := NewAdapter(url, accessToken, timeoutSec, headers)
+	adp, err := NewAdapter(url, accessToken, timeoutSec, headers, opts...)
 	if adp == nil || err != nil {
 		cobra.CheckErr(fmt.Sprintf("cannot create adapter for '%s' - %s", url, err))
 	}
@@ -213,10 +213,15 @@ func NewAdapter(
 	accessToken string,
 	timeoutSec int,
 	headers *map[string]string,
+	opts ...adpt.Option,
 ) (*adpt.Adapter, error) {
-	adapter := adpt.RestAdapter(adpt.ConnectionCtxt{
-		URL: url, AccessToken: accessToken, TimeoutSec: timeoutSec, Headers: headers,
-	})
+	options := []adpt.Option{
+		adpt.WithConnContext(&adpt.ConnectionCtxt{
+			URL: url, AccessToken: accessToken, TimeoutSec: timeoutSec, Headers: headers,
+		}),
+	}
+	options = append(options, opts...)
+	adapter := adpt.RestAdapter(options...)
 	return &adapter, nil
 }
 
