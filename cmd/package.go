@@ -39,7 +39,7 @@ var (
 	pkgCmd = &cobra.Command{
 		Use:     "package",
 		Aliases: []string{"pkg", "pkgs", "packages"},
-		Short:   "Push/pull and manage service packages ",
+		Short:   "Push/pull and manage service packages",
 	}
 
 	listPackageCmd = &cobra.Command{

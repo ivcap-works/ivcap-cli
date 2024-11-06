@@ -17,6 +17,8 @@ package cmd
 import (
 	"bufio"
 	"context"
+
+	"crypto/md5" // #nosec G501
 	"fmt"
 	"io"
 	"path/filepath"
@@ -110,7 +112,7 @@ var (
 
 	artifactCmd = &cobra.Command{
 		Use:     "artifact",
-		Short:   "Create and manage artifacts ",
+		Short:   "Create and manage artifacts",
 		Aliases: []string{"a", "artifacts"},
 		// 	Long: `A longer description that spans multiple lines and likely contains examples
 		// and usage of using your command. For example:
@@ -355,16 +357,25 @@ func uploadArtifact(
 ) (artifactID string) {
 	var reader io.Reader
 	var size int64
+
+	fileHash := getFileHash(fileName)
 	metaFile, metaExists := getArtifactMetaFileFor(fileName)
 	if !force && metaFile != nil && metaExists {
-		artifactID = getArtifactIdFromMeta(*metaFile)
-		msg := fmt.Sprintf("File '%s' already uploaded as '%s (%s)'. Use '--force' to create a new artifact",
-			fileName, artifactID, MakeHistory(&artifactID))
-		cobra.CheckErr(msg)
-		return
+		if aidP := getArtifactIdFromMeta(*metaFile, fileHash); aidP != nil {
+			artifactID = *aidP
+			if silent {
+				fmt.Printf("%s\n", artifactID)
+			} else {
+				fmt.Printf("File '%s' is already uploaded as '%s (%s)'.\nUse '--force' to create a new artifact\n",
+					fileName, artifactID, MakeHistory(&artifactID))
+			}
+			os.Exit(0)
+			return
+		}
 	}
 	reader, contentType, size = getReader(fileName, contentType)
-	logger.Debug("create artifact", log.String("content-type", contentType), log.String("file", fileName))
+	logger.Debug("create artifact", log.String("content-type", contentType), log.String("file", fileName),
+		log.Int64("size", size))
 	if name == "" && fileName != "-" {
 		name = filepath.Base(fileName)
 	}
@@ -399,7 +410,8 @@ func uploadArtifact(
 		fmt.Printf("%s\n", artifactID)
 	}
 	if metaFile != nil {
-		err = os.WriteFile(*metaFile, []byte(artifactID), 0644) // #nosec G306 -- only includes the artifact ID
+		m := fmt.Sprintf("%s|%s", fileHash, artifactID)
+		err = os.WriteFile(*metaFile, []byte(m), 0644) // #nosec G306 -- only includes the artifact ID
 		if err != nil {
 			cobra.CheckErr(fmt.Sprintf("saving information to metafile '%s' failed - %v", *metaFile, err))
 		}
@@ -613,18 +625,46 @@ func getArtifactMetaFileFor(fileName string) (fnp *string, fileExists bool) {
 		cobra.CheckErr(fmt.Sprintf("Can't obtain absolute path of '%s' - %v", fileName, err))
 	}
 	fdir := filepath.Dir(afn)
-	fn := filepath.Join(fdir, fmt.Sprintf(".%s", filepath.Base(afn)))
+	fn := filepath.Join(fdir, fmt.Sprintf(".ivcap-%s.txt", filepath.Base(afn)))
+
 	if _, err = os.Stat(fn); err == nil {
 		fileExists = true
 	}
+	logger.Debug("checking for local artifact meta info", log.String("path", fn), log.Bool("exist?", fileExists))
 	return &fn, fileExists
 }
 
-func getArtifactIdFromMeta(fileName string) string {
+func getArtifactIdFromMeta(fileName string, fileHash string) *string {
 	b, err := os.ReadFile(filepath.Clean(fileName))
-	if err == nil {
-		return string(b)
-	} else {
-		return ""
+	if err != nil {
+		return nil
 	}
+	c := string(b)
+	sa := strings.Split(c, "|")
+	if len(sa) != 2 {
+		return nil
+	}
+	if sa[0] != fileHash {
+		return nil
+	}
+	aid := strings.Trim(sa[1], "\n")
+	return &aid
+}
+
+func getFileHash(fileName string) string {
+	file, err := os.Open(fileName) // #nosec G304
+	if err != nil {
+		cobra.CheckErr(fmt.Sprintf("while opening data file '%s' - %v", fileName, err))
+		// never get here as cobra.CheckErr calls os.Exit
+	}
+	defer file.Close()
+
+	hash := md5.New() // #nosec G401
+	if _, err = io.Copy(hash, file); err != nil {
+		cobra.CheckErr(fmt.Sprintf("while reading data file '%s' - %v", fileName, err))
+		// never get here as cobra.CheckErr calls os.Exit
+	}
+	sum := hash.Sum(nil)
+	return fmt.Sprintf("%x", sum)
+
 }
