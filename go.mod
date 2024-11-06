@@ -1,6 +1,6 @@
 module github.com/ivcap-works/ivcap-cli
 
-go 1.22.5
+go 1.23.1
 
 require (
 	github.com/MicahParks/keyfunc v1.5.3

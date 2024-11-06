@@ -145,11 +145,13 @@ var (
 					continue
 				}
 				fn := filepath.Join(collectionDir, name)
+				fileHash := getFileHash(fn)
 				if mfn, exists := getArtifactMetaFileFor(fn); exists {
-					aid := getArtifactIdFromMeta(*mfn)
-					addAID(name, aid)
-					fmt.Printf("... Skipping '%s', already uploaded as '%s'\n", name, aid)
-					continue
+					if aid := getArtifactIdFromMeta(*mfn, fileHash); aid != nil {
+						addAID(name, *aid)
+						fmt.Printf("... Skipping '%s', already uploaded as '%s'\n", name, *aid)
+						continue
+					}
 				}
 				addAID(name, uploadArtifact(fn, false, ""))
 			}
