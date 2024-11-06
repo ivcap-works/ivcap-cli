@@ -35,8 +35,30 @@ type ConnectionCtxt struct {
 	Headers     *map[string]string // default headers
 }
 
-func RestAdapter(connCtxt ConnectionCtxt) Adapter {
-	return &restAdapter{connCtxt}
+type Option func(adpr *restAdapter)
+
+func WithHttpClient(client *http.Client) Option {
+	return func(adpr *restAdapter) {
+		adpr.client = client
+	}
+}
+
+func WithConnContext(connCtxt *ConnectionCtxt) Option {
+	return func(adpr *restAdapter) {
+		adpr.connCtxt = connCtxt
+	}
+}
+
+func RestAdapter(opts ...Option) Adapter {
+	adpr := &restAdapter{
+		client:   &http.Client{},
+		connCtxt: &ConnectionCtxt{},
+	}
+	for _, opt := range opts {
+		opt(adpr)
+	}
+
+	return adpr
 }
 
 type IAdapterError interface {
@@ -93,28 +115,29 @@ func (e *ClientError) Error() string {
 }
 
 type restAdapter struct {
-	ctxt ConnectionCtxt
+	connCtxt *ConnectionCtxt
+	client   *http.Client
 }
 
 func (a *restAdapter) Head(ctxt context.Context, path string, headers *map[string]string, logger *log.Logger) (Payload, error) {
-	return Connect(ctxt, "HEAD", path, nil, -1, headers, &a.ctxt, nil, logger)
+	return a.Connect(ctxt, "HEAD", path, nil, -1, headers, nil, logger)
 }
 
 func (a *restAdapter) Get(ctxt context.Context, path string, logger *log.Logger) (Payload, error) {
-	return Connect(ctxt, "GET", path, nil, -1, nil, &a.ctxt, nil, logger)
+	return a.Connect(ctxt, "GET", path, nil, -1, nil, nil, logger)
 }
 
 func (a *restAdapter) GetWithHandler(ctxt context.Context, path string, headers *map[string]string, respHandler ResponseHandler, logger *log.Logger) error {
-	_, err := Connect(ctxt, "GET", path, nil, -1, headers, &a.ctxt, respHandler, logger)
+	_, err := a.Connect(ctxt, "GET", path, nil, -1, headers, respHandler, logger)
 	return err
 }
 
 func (a *restAdapter) Post(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error) {
-	return Connect(ctxt, "POST", path, body, length, headers, &a.ctxt, nil, logger)
+	return a.Connect(ctxt, "POST", path, body, length, headers, nil, logger)
 }
 
 func (a *restAdapter) PostWithHandler(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, respHandler ResponseHandler, logger *log.Logger) (Payload, error) {
-	return Connect(ctxt, "POST", path, body, length, headers, &a.ctxt, respHandler, logger)
+	return a.Connect(ctxt, "POST", path, body, length, headers, respHandler, logger)
 }
 
 func (a *restAdapter) PostForm(ctxt context.Context, path string, data neturl.Values, headers *map[string]string, logger *log.Logger) (Payload, error) {
@@ -124,47 +147,46 @@ func (a *restAdapter) PostForm(ctxt context.Context, path string, data neturl.Va
 		headers = &map[string]string{}
 	}
 	(*headers)["Content-Type"] = "application/x-www-form-urlencoded"
-	return Connect(ctxt, "POST", path, body, int64(len(ed)), headers, &a.ctxt, nil, logger)
+	return a.Connect(ctxt, "POST", path, body, int64(len(ed)), headers, nil, logger)
 }
 
 func (a *restAdapter) Put(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error) {
-	return Connect(ctxt, "PUT", path, body, length, headers, &a.ctxt, nil, logger)
+	return a.Connect(ctxt, "PUT", path, body, length, headers, nil, logger)
 }
 
 func (a *restAdapter) Patch(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error) {
-	return Connect(ctxt, "PATCH", path, body, length, headers, &a.ctxt, nil, logger)
+	return a.Connect(ctxt, "PATCH", path, body, length, headers, nil, logger)
 }
 
 func (a *restAdapter) Delete(ctxt context.Context, path string, logger *log.Logger) (Payload, error) {
-	return Connect(ctxt, "DELETE", path, nil, -1, nil, &a.ctxt, nil, logger)
+	return a.Connect(ctxt, "DELETE", path, nil, -1, nil, nil, logger)
 }
 
 func (a *restAdapter) SetUrl(url string) {
-	a.ctxt.URL = url
+	a.connCtxt.URL = url
 }
 
 func (a *restAdapter) GetPath(url string) (path string, err error) {
-	if strings.HasPrefix(url, a.ctxt.URL) {
-		path = url[len(a.ctxt.URL):]
+	if strings.HasPrefix(url, a.connCtxt.URL) {
+		path = url[len(a.connCtxt.URL):]
 	} else {
-		err = fmt.Errorf("url '%s' is not for this deployment '%s'", url, a.ctxt.URL)
+		err = fmt.Errorf("url '%s' is not for this deployment '%s'", url, a.connCtxt.URL)
 	}
 	return
 }
 
-func Connect(
+func (a *restAdapter) Connect(
 	ctxt context.Context,
 	method string,
 	endpoint string,
 	body io.Reader,
 	length int64,
 	headers *map[string]string,
-	connCtxt *ConnectionCtxt,
 	respHandler ResponseHandler,
 	logger *log.Logger,
 ) (Payload, error) {
 	logger = logger.With(log.String("method", method), log.String("path", endpoint))
-	parsedURL, err := parseURL(endpoint, connCtxt)
+	parsedURL, err := parseURL(endpoint, a.connCtxt)
 	if err != nil {
 		return nil, err
 	}
@@ -188,11 +210,11 @@ func Connect(
 		req.Header.Set("Content-Type", contentType)
 	}
 	req.Header.Set("Cache-Control", "no-cache")
-	if connCtxt.AccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+connCtxt.AccessToken)
+	if a.connCtxt.AccessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+a.connCtxt.AccessToken)
 	}
-	if connCtxt.Headers != nil {
-		for key, val := range *connCtxt.Headers {
+	if a.connCtxt.Headers != nil {
+		for key, val := range *a.connCtxt.Headers {
 			req.Header.Set(key, val)
 		}
 	}
@@ -209,13 +231,11 @@ func Connect(
 	if host != "" {
 		req.Host = host
 	}
-	client := &http.Client{}
 	if _, ok := ctxt.Deadline(); !ok {
-		client.Timeout = time.Second * time.Duration(connCtxt.TimeoutSec)
+		a.client.Timeout = time.Second * time.Duration(a.connCtxt.TimeoutSec)
 	}
-
 	logger.Debug("calling api", log.Reflect("headers", req.Header))
-	resp, err := client.Do(req)
+	resp, err := a.client.Do(req)
 	if err != nil {
 		logger.Warn("HTTP request failed.", log.Error(err), log.Reflect("err2", err))
 		return nil, &ClientError{AdapterError{endpoint}, err}
