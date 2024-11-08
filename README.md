@@ -144,7 +144,7 @@ Follow this [link](./doc/ivcap_service.md) for more details about the `service` 
 
 ### Orders
 
-Toplace an order:
+To place an order:
 
 ```
 % ivcap orders create \
@@ -288,7 +288,6 @@ The prerequisite tools can be installed by running the make target:
 
 ```shell
 make install-tools
-```
 ```
 
 ### Build & Install
