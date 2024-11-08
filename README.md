@@ -144,7 +144,7 @@ Follow this [link](./doc/ivcap_service.md) for more details about the `service` 
 
 ### Orders
 
-To place an order:
+Toplace an order:
 
 ```
 % ivcap orders create \
@@ -281,6 +281,15 @@ You will need the following installed:
 - [gosec] (e.g. `go install github.com/securego/gosec/v2/cmd/gosec@latest`)
 - [govulncheck] (e.g. `go install golang.org/x/vuln/cmd/govulncheck@latest`)
 - [addlicense] (e.g. `go install github.com/nokia/addlicense@latest`)
+
+#### Install prerequisites
+
+The prerequisite tools can be installed by running the make target:
+
+```shell
+make install-tools
+```
+```
 
 ### Build & Install
 
