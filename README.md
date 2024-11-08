@@ -282,6 +282,14 @@ You will need the following installed:
 - [govulncheck] (e.g. `go install golang.org/x/vuln/cmd/govulncheck@latest`)
 - [addlicense] (e.g. `go install github.com/nokia/addlicense@latest`)
 
+#### Install prerequisites
+
+The prerequisite tools can be installed by running the make target:
+
+```shell
+make install-tools
+```
+
 ### Build & Install
 
 To build and install from local source code, ensure you have the prerequisites

@@ -80,3 +80,68 @@ movie:
 	| ffmpeg -y -r 24 -f image2pipe -vcodec ppm -i - -vcodec libx264 -preset ultrafast -pix_fmt yuv420p \
 		-crf 1 -threads 2 -bf 0 \
 		${MOVIE_NAME}
+
+
+# Command existence check
+command_exists = command -v $(1) >/dev/null 2>&1
+
+# Install Go tools
+install-tools: install-golangci-lint install-go-critic install-go-tools install-gosec install-govulncheck install-staticcheck install-addlicense
+	@echo "All Go tools installed successfully!"
+
+# Install golangci-lint
+install-golangci-lint:
+	@if $(call command_exists,golangci-lint); then \
+		echo "golangci-lint is already installed."; \
+	else \
+		echo "Installing golangci-lint..."; \
+		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin; \
+	fi
+
+install-go-critic:
+	@if $(call command_exists,gocritic); then \
+		echo "go-critic is already installed."; \
+	else \
+		echo "Installing go-critic..."; \
+		go install -v github.com/go-critic/go-critic/cmd/gocritic@latest; \
+	fi
+
+install-go-tools:
+	@if $(call command_exists,go); then \
+		echo "go-tools are already installed."; \
+	else \
+		echo "Installing go-tools..."; \
+		go install golang.org/x/tools/...@latest; \
+	fi
+
+install-gosec:
+	@if $(call command_exists,gosec); then \
+		echo "gosec is already installed."; \
+	else \
+		echo "Installing gosec..."; \
+		go install github.com/securego/gosec/v2/cmd/gosec@latest; \
+	fi
+
+install-govulncheck:
+	@if $(call command_exists,govulncheck); then \
+		echo "govulncheck is already installed."; \
+	else \
+		echo "Installing govulncheck..."; \
+		go install golang.org/x/vuln/cmd/govulncheck@latest; \
+	fi
+
+install-staticcheck:
+	@if $(call command_exists,staticcheck); then \
+		echo "staticcheck is already installed."; \
+	else \
+		echo "Installing staticcheck..."; \
+		go install honnef.co/go/tools/cmd/staticcheck@latest; \
+	fi
+
+install-addlicense:
+	@if $(call command_exists,addlicense); then \
+		echo "addlicense is already installed."; \
+	else \
+		echo "Installing addlicense..."; \
+		go get -u github.com/nokia/addlicense; \
+	fi
