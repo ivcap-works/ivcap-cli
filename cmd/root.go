@@ -67,12 +67,13 @@ type Config struct {
 }
 
 type Context struct {
-	ApiVersion int    `yaml:"api-version"`
-	Name       string `yaml:"name"`
-	URL        string `yaml:"url"`
-	AccountID  string `yaml:"account-id"`
-	ProviderID string `yaml:"provider-id"`
-	Host       string `yaml:"host"` // set Host header if necessary
+	ApiVersion       int    `yaml:"api-version"`
+	Name             string `yaml:"name"`
+	URL              string `yaml:"url"`
+	DefaultProjectID string `yaml:"default-project-id"`
+	AccountID        string `yaml:"account-id"`
+	ProviderID       string `yaml:"provider-id"`
+	Host             string `yaml:"host"` // set Host header if necessary
 
 	// User Information
 	AccountName     string `yaml:"account-name"`
