@@ -32,8 +32,12 @@ import (
 	yaml "gopkg.in/yaml.v3"
 )
 
+var refreshTokenParam string
+
 func init() {
 	contextCmd.AddCommand(loginCmd)
+	var flags = loginCmd.Flags()
+	flags.StringVarP(&refreshTokenParam, "refresh-token", "r", "", "refresh token for login context")
 	contextCmd.AddCommand(logoutCmd)
 }
 
@@ -397,6 +401,12 @@ func login(_ *cobra.Command, args []string) {
 	// offline_access is required for the refresh tokens to be sent through
 	authProvider.scopes = "openid profile email offline_access"
 	authProvider.grantType = "urn:ietf:params:oauth:grant-type:device_code"
+
+	if refreshTokenParam != "" {
+		authProvider.grantType = "refresh_token"
+		loginByRefreshToken(ctxt, authProvider, refreshTokenParam)
+		return
+	}
 	// First request a device code for this command line tool
 	deviceCode := requestDeviceCode(authProvider)
 
@@ -427,4 +437,18 @@ func login(_ *cobra.Command, args []string) {
 	SetContext(ctxt, true)
 
 	fmt.Printf("Success: You are authorised.\n")
+}
+
+func loginByRefreshToken(ctxt *Context, authProvider *AuthProvider, requestTokenParam string) {
+	params := url.Values{
+		"refresh_token": {requestTokenParam},
+	}
+	tokenResponse := getTokenResponse(authProvider, params, ctxt, true)
+	ParseIDToken(&tokenResponse, ctxt, authProvider.JwksURL)
+	ctxt.AccessToken = tokenResponse.AccessToken
+	// Add a 10 second buffer to expiry to account for differences in clock time between client
+	// server and message transport time (oauth2 library does the same thing)
+	ctxt.AccessTokenExpiry = time.Now().Add(time.Second * time.Duration(tokenResponse.ExpiresIn-10))
+	ctxt.RefreshToken = tokenResponse.RefreshToken
+	SetContext(ctxt, true)
 }
