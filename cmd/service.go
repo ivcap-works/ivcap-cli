@@ -59,7 +59,7 @@ var (
 	serviceCmd = &cobra.Command{
 		Use:     "service",
 		Aliases: []string{"s", "services"},
-		Short:   "Create and manage services ",
+		Short:   "Create and manage services",
 	}
 
 	listServiceCmd = &cobra.Command{
@@ -146,7 +146,7 @@ through 'stdin' use '-' as the file name and also include the --format flag`,
 		Short: "Update an existing service",
 		Long: `Update an existing service description or create it if it does not exist
 AND the --create flag is set. If the service definition is provided
-through 'stdin' use '-' as the file name and also include the --format flag `,
+through 'stdin' use '-' as the file name and also include the --format flag`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()

@@ -112,7 +112,7 @@ var (
 
 	artifactCmd = &cobra.Command{
 		Use:     "artifact",
-		Short:   "Create and manage artifacts ",
+		Short:   "Create and manage artifacts",
 		Aliases: []string{"a", "artifacts"},
 		// 	Long: `A longer description that spans multiple lines and likely contains examples
 		// and usage of using your command. For example:
