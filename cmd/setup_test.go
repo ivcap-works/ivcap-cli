@@ -17,6 +17,7 @@ package cmd
 import (
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
@@ -37,7 +38,7 @@ func TestMain(m *testing.M) {
 		fmt.Printf("Can not get active context, %s\n", err)
 		return
 	}
-	if ctxt.Name != "minikube" && ctxt.Name != "docker-desktop" {
+	if ctxt.Name != "minikube" && ctxt.Name != "docker-desktop" && !strings.HasPrefix(ctxt.URL, "http://localhost") {
 		fmt.Printf("Unit test should run against minikube, please set to minikube context\n")
 		return
 	}
