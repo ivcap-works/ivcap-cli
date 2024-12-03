@@ -73,7 +73,7 @@ func ListProjectMembersRaw(ctx context.Context, cmd *ListProjectMembersRequest, 
 		cobra.CheckErr("No project urn provided")
 	}
 
-	path := membersPath(&cmd.ProjectURN)
+	path := membersPath(&cmd.ProjectURN, nil)
 
 	pa := []string{}
 	if cmd.Limit > 0 {
@@ -86,6 +86,49 @@ func ListProjectMembersRaw(ctx context.Context, cmd *ListProjectMembersRequest, 
 		path = path + "?" + strings.Join(pa, "&")
 	}
 	return (*adpt).Get(ctx, path, logger)
+}
+
+/**** UPDATE MEMBERSHIP ****/
+func UpdateMembershipRaw(ctx context.Context,
+	projectURN string,
+	userURN string,
+	cmd *api.UpdateMembershipRequestBody,
+	adpt *adapter.Adapter,
+	logger *log.Logger) (adapter.Payload, error) {
+	if projectURN == "" {
+		cobra.CheckErr("No project URN provided")
+	}
+	if userURN == "" {
+		cobra.CheckErr("No user URN provided")
+	}
+
+	path := membershipsPath(projectURN, userURN)
+
+	body, err := json.MarshalIndent(*cmd, "", "  ")
+	if err != nil {
+		logger.Error("error marshalling body.", log.Error(err))
+		return nil, err
+	}
+
+	return (*adpt).Put(ctx, path, bytes.NewReader(body), int64(len(body)), nil, logger)
+}
+
+/**** REMOVE MEMBERSHIP ****/
+func RemoveMembershipRaw(ctx context.Context,
+	projectURN string,
+	userURN string,
+	adpt *adapter.Adapter,
+	logger *log.Logger) (adapter.Payload, error) {
+	if projectURN == "" {
+		cobra.CheckErr("No project URN provided")
+	}
+	if userURN == "" {
+		cobra.CheckErr("No user URN provided")
+	}
+
+	path := membershipsPath(projectURN, userURN)
+
+	return (*adpt).Delete(ctx, path, logger)
 }
 
 /**** Project Info ****/
@@ -196,10 +239,10 @@ func SetProjectAccountRaw(
 
 /**** UTILS ****/
 
-func projectPath(projectId *string) string {
+func projectPath(projectURN *string) string {
 	path := "/1/project"
-	if projectId != nil {
-		path = path + "/" + *projectId
+	if projectURN != nil {
+		path = path + "/" + *projectURN
 	}
 	return path
 }
@@ -209,12 +252,17 @@ func defaultProjectPath() string {
 	return path
 }
 
-func membersPath(projectId *string) string {
-	path := projectPath(projectId) + "/members"
+func membersPath(projectURN *string, userURN *string) string {
+	path := projectPath(projectURN) + "/members"
 	return path
 }
 
-func accountPath(projectId *string) string {
-	path := projectPath(projectId) + "/account"
+func membershipsPath(projectURN string, userURN string) string {
+	path := projectPath(&projectURN) + "/memberships/" + userURN
+	return path
+}
+
+func accountPath(projectURN *string) string {
+	path := projectPath(projectURN) + "/account"
 	return path
 }

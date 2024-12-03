@@ -20,6 +20,8 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"slices"
+	"strings"
 
 	api "github.com/ivcap-works/ivcap-core-api/http/project"
 
@@ -35,16 +37,20 @@ func init() {
 
 	projectCmd.AddCommand(listProjectsCmd)
 
+	projectCmd.AddCommand(projectInfoCmd)
+
 	projectCmd.AddCommand(createProjectCmd)
 	createProjectCmd.Flags().StringVarP(&projectName, "name", "n", "", "Name of project")
 	createProjectCmd.Flags().StringVarP(&projectDetails, "details", "d", "", "Details of the project")
 	createProjectCmd.Flags().StringVarP(&projectParentUrn, "parent_id", "p", "", "Project ID of the parent of this project")
 
-	projectCmd.AddCommand(projectInfoCmd)
-
-	projectCmd.AddCommand(listProjectMembersCmd)
-
 	projectCmd.AddCommand(deleteProjectCmd)
+
+	var membersCmd = &cobra.Command{Use: "members", Short: "Updates/Removes/Lists the members of a project"}
+	membersCmd.AddCommand(listProjectMembersCmd)
+	membersCmd.AddCommand(updateMembershipRoleCmd)
+	membersCmd.AddCommand(removeMembershipRoleCmd)
+	projectCmd.AddCommand(membersCmd)
 
 	var defaultCmd = &cobra.Command{Use: "default", Short: "Gets/Sets the default project to use"}
 	defaultCmd.AddCommand(getDefaultProjectCmd)
@@ -57,11 +63,23 @@ func init() {
 	projectCmd.AddCommand(accountCmd)
 }
 
-var projectURN string
-var accountURN string
-var projectName string
-var projectDetails string
-var projectParentUrn string
+var (
+	projectURN       string
+	userURN          string
+	accountURN       string
+	projectName      string
+	projectDetails   string
+	projectParentUrn string
+	role             string
+)
+
+var validRoles = []string{"owner", "member"}
+
+const (
+	projectNameExample string = "Ice Shelf Dynamics"
+	projectURNExample  string = "urn:ivcap:project:2feb717c-c3c3-4fb2-ad02-e122b22c7465"
+	userURNExample     string = "urn:ivcap:user:02690b3e-6fd6-4cae-89a1-6eb61007bc8c"
+)
 
 var (
 	projectCmd = &cobra.Command{
@@ -110,7 +128,15 @@ var (
 		Short: "Create a new project",
 		Long: `Create a new project for use on the platform. The project requires a
 		name.`,
-		Args:       cobra.ExactArgs(1),
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 1 {
+				return fmt.Errorf(" Please provide the project's name in quotations.\nExample: %s \"%s\"", cmd.CommandPath(), projectNameExample)
+			}
+			if len(args) > 1 {
+				return fmt.Errorf(" Please provide the project's name in quotations.\nExample: %s \"%s\"", cmd.CommandPath(), projectNameExample)
+			}
+			return cobra.ExactArgs(1)(cmd, args)
+		},
 		ArgAliases: []string{"project-name"},
 
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -138,7 +164,7 @@ var (
 		Use:   "info project_urn",
 		Short: "Retrieve a project's Information",
 		Long:  "Requests all information about a specific project",
-		Args:  cobra.ExactArgs(1),
+		Args:  validateProjectURNArgument,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectURN = args[0]
@@ -159,7 +185,7 @@ var (
 		Use:        "delete project_urn",
 		Short:      "Deletes a project by project_urn",
 		Long:       `Deletes a project by project_urn from the platform.`, // This will also delete all child projects
-		Args:       cobra.ExactArgs(1),
+		Args:       validateProjectURNArgument,
 		ArgAliases: []string{"project-id"},
 
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -184,9 +210,9 @@ var (
 	}
 
 	listProjectMembersCmd = &cobra.Command{
-		Use:   "members project_urn",
-		Short: "Lists the members of the project",
-		Args:  cobra.ExactArgs(1),
+		Use:   "list project_urn",
+		Short: "Lists the members of the specified project",
+		Args:  validateProjectURNArgument,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectURN = args[0]
@@ -222,6 +248,104 @@ var (
 		},
 	}
 
+	updateMembershipRoleCmd = &cobra.Command{
+		Use:   "update project_urn user_urn role",
+		Short: "Changes the role of a user in the specified project",
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 3 {
+				return fmt.Errorf(" Please provide the project's URN, user's URN and the new role.\nExample: %s %s %s %s", cmd.CommandPath(), projectURNExample, userURN, "member")
+			}
+
+			validated_project_urn, err := ValidateResourceURN(args[0], "project")
+
+			if err != nil {
+				return fmt.Errorf(" Invalid project URN format.\nExample: %s", projectURNExample)
+			} else {
+				args[0] = validated_project_urn
+			}
+
+			validated_user_urn, err := ValidateResourceURN(args[1], "user")
+
+			if err != nil {
+				return fmt.Errorf(" Invalid user URN format.\nExample: %s", userURNExample)
+			} else {
+				args[1] = validated_user_urn
+			}
+
+			return cobra.ExactArgs(3)(cmd, args)
+		},
+
+		RunE: func(cmd *cobra.Command, args []string) error {
+			projectURN = args[0]
+			userURN = args[1]
+			role = args[2]
+			if !silent {
+				fmt.Printf("Changing the role of user %s to %s in project %s...\n", userURN, role, projectURN)
+			}
+
+			// TODO: Grab this list dynamically from the backend
+			if !slices.Contains(validRoles, role) {
+				return fmt.Errorf(" Invalid Role. Please provide one of the following roles: %s", strings.Join(validRoles, ", "))
+			}
+
+			req := &api.UpdateMembershipRequestBody{Role: role}
+
+			if res, err := sdk.UpdateMembershipRaw(context.Background(), projectURN, userURN, req, CreateAdapter(true), logger); err == nil {
+				if res.StatusCode() == http.StatusNoContent {
+					fmt.Printf("Success! User's role has been to: %s\n", role)
+				}
+				return nil
+			} else {
+				return err
+			}
+		},
+	}
+
+	removeMembershipRoleCmd = &cobra.Command{
+		Use:   "remove project_urn user_urn role",
+		Short: "Removes user from the specified project",
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 2 {
+				return fmt.Errorf(" Please provide the project's URN and user's URN.\nExample: %s %s %s", cmd.CommandPath(), projectURNExample, userURN)
+			}
+
+			validated_project_urn, err := ValidateResourceURN(args[0], "project")
+
+			if err != nil {
+				return fmt.Errorf(" Invalid project URN format.\nExample: %s", projectURNExample)
+			} else {
+				args[0] = validated_project_urn
+			}
+
+			validated_user_urn, err := ValidateResourceURN(args[1], "user")
+
+			if err != nil {
+				return fmt.Errorf(" Invalid user URN format.\nExample: %s", userURNExample)
+			} else {
+				args[1] = validated_user_urn
+			}
+
+			return cobra.ExactArgs(2)(cmd, args)
+		},
+
+		RunE: func(cmd *cobra.Command, args []string) error {
+			projectURN = args[0]
+			userURN = args[1]
+			if !silent {
+				fmt.Printf("Removing user %s from project %s...\n", projectURN, projectURN)
+			}
+
+			if res, err := sdk.RemoveMembershipRaw(context.Background(), projectURN, userURN, CreateAdapter(true), logger); err == nil {
+				if res.StatusCode() == http.StatusNoContent {
+					fmt.Printf("Success! User Removed")
+				}
+				return nil
+			} else {
+				return err
+			}
+		},
+	}
+
 	getDefaultProjectCmd = &cobra.Command{
 		Use:   "get",
 		Short: "Returns the current default project to use when interacting with IVCAP",
@@ -243,7 +367,7 @@ var (
 	setDefaultProjectCmd = &cobra.Command{
 		Use:   "set project_urn",
 		Short: "Sets the default project to use when interacting with IVCAP",
-		Args:  cobra.ExactArgs(1),
+		Args:  validateProjectURNArgument,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectURN = args[0]
@@ -267,7 +391,7 @@ var (
 	getAccountCmd = &cobra.Command{
 		Use:   "get project_urn",
 		Short: "Returns the billing account associated with the specified project",
-		Args:  cobra.ExactArgs(1),
+		Args:  validateProjectURNArgument,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectURN = args[0]
@@ -327,7 +451,7 @@ func printMembersTable(list *api.ListProjectMembersResponseBody, wide bool) {
 	t.AppendHeader(table.Row{"Members", "Email", "Role"})
 	rows := make([]table.Row, len(list.Members))
 	for i, o := range list.Members {
-		rows[i] = table.Row{safeString(o.Urn), safeString(o.Email)}
+		rows[i] = table.Row{safeString(o.Urn), safeString(o.Email), safeString(o.Role)}
 	}
 	t.AppendRows(rows)
 	t.Render()
@@ -464,4 +588,20 @@ func setupFirstProject(_ *cobra.Command, _ []string) {
 		ctxt.AccountID = *defaultProjectInfo.Account
 		SetContext(ctxt, true)
 	}
+}
+
+func validateProjectURNArgument(cmd *cobra.Command, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf(" Please provide the project's URN.\nExample: %s %s", cmd.CommandPath(), projectURNExample)
+	}
+
+	validated_urn, err := ValidateResourceURN(args[0], "project")
+
+	if err != nil {
+		return fmt.Errorf(" Invalid project URN format.\nExample: %s", projectURNExample)
+	} else {
+		args[0] = validated_urn
+	}
+
+	return cobra.ExactArgs(1)(cmd, args)
 }
