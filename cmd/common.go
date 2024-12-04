@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v2"
 
@@ -421,5 +422,52 @@ func GetConfigFilePath() (path string) {
 func makeConfigFilePath(fileName string) (path string) {
 	configDir := GetConfigDir(true) // Create the configuration directory if it doesn't exist
 	path = configDir + string(os.PathSeparator) + fileName
+	return
+}
+
+// URN Validation
+
+var resourcePrefix = "ivcap"
+var urnPrefix = fmt.Sprintf("urn:%s:", resourcePrefix)
+
+func ValidateResourceURN(u string, expectedResourceType string) (urn string, err error) {
+	u = strings.TrimSpace(u)
+	parts := strings.Split(u, ":")
+	var uids string
+	if len(parts) == 1 {
+		// should be just a UUID
+		uids = parts[0]
+	} else {
+		if parts[0] == "urn" {
+			parts = parts[1:]
+		}
+		if len(parts) < 3 {
+			err = fmt.Errorf("cannot parse '%s' as a resource URN", u)
+			return
+		}
+		if parts[0] != resourcePrefix {
+			err = fmt.Errorf("unknown resource schema '%s' in '%s'", parts[0], u)
+			return
+		}
+
+		resourceType := parts[1]
+
+		if resourceType != "" && resourceType != expectedResourceType { // no 'resource' in 'u' is acceptable
+			err = fmt.Errorf("urn '%s' is not for resource '%s'", u, expectedResourceType)
+			return
+		}
+
+		uids = parts[2]
+	}
+
+	uid, err := uuid.Parse(uids)
+	if err != nil {
+		// Currently expect a 'normally' formatted UUID as record ID
+		err = fmt.Errorf("cannot parse parts of '%s' into a UUID", u)
+		return
+	}
+
+	urn = fmt.Sprintf("%s%s:%s", urnPrefix, expectedResourceType, uid)
+
 	return
 }

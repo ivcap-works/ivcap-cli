@@ -10,6 +10,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-jwt/jwt/v4 v4.5.1
 	github.com/google/go-containerregistry v0.19.2
+	github.com/google/uuid v1.3.0
 	github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf
 	github.com/ivcap-works/ivcap-core-api v0.42.0
 	github.com/jedib0t/go-pretty/v6 v6.5.8
