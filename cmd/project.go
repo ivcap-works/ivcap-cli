@@ -147,13 +147,32 @@ var (
 			ctx := context.Background()
 
 			req := &api.CreateProjectRequestBody{
-				Name: projectName,
-				Properties: &api.ProjectPropertiesRequestBodyRequestBody{
-					Details: &projectDetails,
-				},
+				Name:       projectName,
+				Properties: &api.ProjectPropertiesRequestBodyRequestBody{},
+			}
+
+			if projectDetails != "" {
+				req.Properties.Details = &projectDetails
+			}
+
+			projectParentUrn = GetHistory(projectParentUrn)
+			if projectParentUrn != "" {
+				req.ParentProjectUrn = &projectParentUrn
 			}
 			if res, err := sdk.CreateProjectRaw(ctx, req, CreateAdapter(true), logger); err == nil {
-				return a.ReplyPrinter(res, outputFormat == "yaml")
+				switch outputFormat {
+				case "json":
+					return a.ReplyPrinter(res, false)
+				case "yaml":
+					return a.ReplyPrinter(res, true)
+				default:
+					var projectInfo api.ReadResponseBody
+					if err = res.AsType(&projectInfo); err != nil {
+						return fmt.Errorf("failed to parse response body: %w", err)
+					}
+					printProjectInformation(&projectInfo, false)
+				}
+				return nil
 			} else {
 				return err
 			}
@@ -174,7 +193,19 @@ var (
 			ctx := context.Background()
 
 			if res, err := sdk.ProjectInfoRaw(ctx, projectURN, CreateAdapter(true), logger); err == nil {
-				return a.ReplyPrinter(res, outputFormat == "yaml")
+				switch outputFormat {
+				case "json":
+					return a.ReplyPrinter(res, false)
+				case "yaml":
+					return a.ReplyPrinter(res, true)
+				default:
+					var projectInfo api.ReadResponseBody
+					if err = res.AsType(&projectInfo); err != nil {
+						return fmt.Errorf("failed to parse response body: %w", err)
+					}
+					printProjectInformation(&projectInfo, false)
+				}
+				return nil
 			} else {
 				return err
 			}
@@ -216,8 +247,10 @@ var (
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectURN = args[0]
+			projectHistoryToken := MakeHistory(&projectURN)
+
 			if !silent {
-				fmt.Printf("Listing members of project with URN %s...\n", projectURN)
+				fmt.Printf("Listing members of project with URN %s (%s)...\n", projectURN, projectHistoryToken)
 			}
 
 			req := &sdk.ListProjectMembersRequest{ProjectURN: projectURN, Page: "", Limit: 50}
@@ -256,18 +289,20 @@ var (
 				return fmt.Errorf(" Please provide the project's URN, user's URN and the new role.\nExample: %s %s %s %s", cmd.CommandPath(), projectURNExample, userURN, "member")
 			}
 
+			args[0] = GetHistory(args[0])
 			validated_project_urn, err := ValidateResourceURN(args[0], "project")
 
 			if err != nil {
-				return fmt.Errorf(" Invalid project URN format.\nExample: %s", projectURNExample)
+				return fmt.Errorf("\"%s\" is an invalid project URN.\nExample: %s", validated_project_urn, projectURNExample)
 			} else {
 				args[0] = validated_project_urn
 			}
 
+			args[0] = GetHistory(args[1])
 			validated_user_urn, err := ValidateResourceURN(args[1], "user")
 
 			if err != nil {
-				return fmt.Errorf(" Invalid user URN format.\nExample: %s", userURNExample)
+				return fmt.Errorf("\"%s\" is an invalid user URN.\nExample: %s", validated_user_urn, userURNExample)
 			} else {
 				args[1] = validated_user_urn
 			}
@@ -279,8 +314,12 @@ var (
 			projectURN = args[0]
 			userURN = args[1]
 			role = args[2]
+
+			projectHistoryToken := MakeHistory(&projectURN)
+			userHistoryToken := MakeHistory(&userURN)
+
 			if !silent {
-				fmt.Printf("Changing the role of user %s to %s in project %s...\n", userURN, role, projectURN)
+				fmt.Printf("Changing the role of user %s (%s) to %s (%s) in project %s...\n", userURN, userHistoryToken, role, projectURN, projectHistoryToken)
 			}
 
 			// TODO: Grab this list dynamically from the backend
@@ -309,18 +348,20 @@ var (
 				return fmt.Errorf(" Please provide the project's URN and user's URN.\nExample: %s %s %s", cmd.CommandPath(), projectURNExample, userURN)
 			}
 
+			args[0] = GetHistory(args[0])
 			validated_project_urn, err := ValidateResourceURN(args[0], "project")
 
 			if err != nil {
-				return fmt.Errorf(" Invalid project URN format.\nExample: %s", projectURNExample)
+				return fmt.Errorf("\"%s\" is an invalid project URN.\nExample: %s", validated_project_urn, projectURNExample)
 			} else {
 				args[0] = validated_project_urn
 			}
 
+			args[1] = GetHistory(args[1])
 			validated_user_urn, err := ValidateResourceURN(args[1], "user")
 
 			if err != nil {
-				return fmt.Errorf(" Invalid user URN format.\nExample: %s", userURNExample)
+				return fmt.Errorf("\"%s\" is an invalid user URN.\nExample: %s", validated_user_urn, userURNExample)
 			} else {
 				args[1] = validated_user_urn
 			}
@@ -331,8 +372,12 @@ var (
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectURN = args[0]
 			userURN = args[1]
+
+			projectHistoryToken := MakeHistory(&projectURN)
+			userHistoryToken := MakeHistory(&userURN)
+
 			if !silent {
-				fmt.Printf("Removing user %s from project %s...\n", projectURN, projectURN)
+				fmt.Printf("Removing user %s (%s) from project %s (%s)...\n", userURN, userHistoryToken, projectURN, projectHistoryToken)
 			}
 
 			if res, err := sdk.RemoveMembershipRaw(context.Background(), projectURN, userURN, CreateAdapter(true), logger); err == nil {
@@ -357,7 +402,19 @@ var (
 			}
 
 			if res, err := sdk.GetDefaultProjectRaw(context.Background(), CreateAdapter(true), logger); err == nil {
-				return a.ReplyPrinter(res, outputFormat == "yaml")
+				switch outputFormat {
+				case "json":
+					return a.ReplyPrinter(res, false)
+				case "yaml":
+					return a.ReplyPrinter(res, true)
+				default:
+					var projectInfo api.ReadResponseBody
+					if err = res.AsType(&projectInfo); err != nil {
+						return fmt.Errorf("failed to parse response body: %w", err)
+					}
+					printProjectInformation(&projectInfo, false)
+				}
+				return nil
 			} else {
 				return err
 			}
@@ -371,8 +428,9 @@ var (
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectURN = args[0]
+			projectHistoryToken := MakeHistory(&projectURN)
 			if !silent {
-				fmt.Printf("Setting default project with URN %s...\n", projectURN)
+				fmt.Printf("Setting default project with URN %s (%s)...\n", projectURN, projectHistoryToken)
 			}
 
 			req := &api.SetDefaultProjectRequestBody{ProjectUrn: projectURN}
@@ -395,12 +453,26 @@ var (
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectURN = args[0]
+			projectHistoryToken := MakeHistory(&projectURN)
+
 			if !silent {
-				fmt.Printf("Getting project's (%s) account...\n", projectURN)
+				fmt.Printf("Getting the account of project %s (%s)...\n", projectURN, projectHistoryToken)
 			}
 
 			if res, err := sdk.GetProjectAccountRaw(context.Background(), projectURN, CreateAdapter(true), logger); err == nil {
-				return a.ReplyPrinter(res, outputFormat == "yaml")
+				switch outputFormat {
+				case "json":
+					return a.ReplyPrinter(res, false)
+				case "yaml":
+					return a.ReplyPrinter(res, true)
+				default:
+					var accountResponseBody api.ProjectAccountResponseBody
+					if err = res.AsType(&accountResponseBody); err != nil {
+						return fmt.Errorf("failed to parse response body: %w", err)
+					}
+					printAccountInformation(&accountResponseBody, false)
+				}
+				return nil
 			} else {
 				return err
 			}
@@ -410,13 +482,41 @@ var (
 	setAccountCmd = &cobra.Command{
 		Use:   "set project_urn account_urn",
 		Short: "Sets the billing account associated with this project",
-		Args:  cobra.ExactArgs(2),
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) < 2 {
+				return fmt.Errorf(" Please provide the project's URN and user's URN.\nExample: %s %s %s", cmd.CommandPath(), projectURNExample, userURN)
+			}
+
+			args[0] = GetHistory(args[0])
+			validated_project_urn, err := ValidateResourceURN(args[0], "project")
+
+			if err != nil {
+				return fmt.Errorf("\"%s\" is an invalid project URN.\nExample: %s", validated_project_urn, projectURNExample)
+			} else {
+				args[0] = validated_project_urn
+			}
+
+			args[1] = GetHistory(args[1])
+			validated_user_urn, err := ValidateResourceURN(args[1], "account")
+
+			if err != nil {
+				return fmt.Errorf("\"%s\" is an invalid user URN.\nExample: %s", validated_user_urn, userURNExample)
+			} else {
+				args[1] = validated_user_urn
+			}
+
+			return cobra.ExactArgs(2)(cmd, args)
+		},
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectURN = args[0]
 			accountURN = args[1]
+
+			projectHistoryToken := MakeHistory(&projectURN)
+			accountHistoryToken := MakeHistory(&accountURN)
+
 			if !silent {
-				fmt.Printf("Setting account %s on project %s...\n", accountURN, projectURN)
+				fmt.Printf("Setting account %s (%s) on project %s (%s)...\n", accountURN, accountHistoryToken, projectURN, projectHistoryToken)
 			}
 
 			req := &api.SetProjectAccountRequestBody{AccountUrn: accountURN}
@@ -439,9 +539,41 @@ func printProjectsTable(list *api.ListResponseBody, wide bool) {
 	t.AppendHeader(table.Row{"Name", "Role", "ID"})
 	rows := make([]table.Row, len(list.Projects))
 	for i, o := range list.Projects {
-		rows[i] = table.Row{safeString(o.Name), safeString(o.Role), safeString(o.Urn)}
+		rows[i] = table.Row{safeString(o.Name), safeString(o.Role), fmt.Sprintf("%s (%s)", safeString(o.Urn), MakeHistory(o.Urn))}
 	}
 	t.AppendRows(rows)
+	t.Render()
+}
+
+func printProjectInformation(projectInfo *api.ReadResponseBody, wide bool) {
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"Key", "Value"})
+
+	propsTW := table.NewWriter()
+	propsTW.SetStyle(table.StyleLight)
+	if projectInfo.Properties != nil {
+		if projectInfo.Properties.Details != nil {
+			propsTW.AppendRow(table.Row{"Details", safeString(projectInfo.Properties.Details)})
+		}
+	}
+
+	parentString := "No Parent"
+	if projectInfo.Parent != nil {
+		parentString = fmt.Sprintf("%s (%s)", *projectInfo.Parent, MakeMaybeHistory(projectInfo.Parent))
+	}
+
+	t.AppendRows([]table.Row{
+		{"URN", fmt.Sprintf("%s (%s)", *projectInfo.Urn, MakeHistory(projectInfo.Urn))},
+		{"Name", safeString(projectInfo.Name)},
+		{"Status", safeString(projectInfo.Status)},
+		{"CreatedAt", safeDate(projectInfo.CreatedAt, false)},
+		{"ModifiedAt", safeDate(projectInfo.ModifiedAt, false)},
+		{"Parent Project URN", parentString},
+		{"Account URN", safeString(projectInfo.Account)},
+		{"Additional Properties", propsTW.Render()},
+	})
+
 	t.Render()
 }
 
@@ -451,9 +583,16 @@ func printMembersTable(list *api.ListProjectMembersResponseBody, wide bool) {
 	t.AppendHeader(table.Row{"Members", "Email", "Role"})
 	rows := make([]table.Row, len(list.Members))
 	for i, o := range list.Members {
-		rows[i] = table.Row{safeString(o.Urn), safeString(o.Email), safeString(o.Role)}
+		rows[i] = table.Row{fmt.Sprintf("%s (%s)", safeString(o.Urn), MakeHistory(o.Urn)), safeString(o.Email), safeString(o.Role)}
 	}
 	t.AppendRows(rows)
+	t.Render()
+}
+
+func printAccountInformation(accountInfo *api.ProjectAccountResponseBody, wide bool) {
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendRow(table.Row{"Account", fmt.Sprintf("%s (%s)", safeString(accountInfo.AccountUrn), MakeHistory(accountInfo.AccountUrn))})
 	t.Render()
 }
 
@@ -595,10 +734,10 @@ func validateProjectURNArgument(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf(" Please provide the project's URN.\nExample: %s %s", cmd.CommandPath(), projectURNExample)
 	}
 
-	validated_urn, err := ValidateResourceURN(args[0], "project")
+	validated_urn, err := ValidateResourceURN(GetHistory(args[0]), "project")
 
 	if err != nil {
-		return fmt.Errorf(" Invalid project URN format.\nExample: %s", projectURNExample)
+		return fmt.Errorf("\"%s\" is an invalid project URN.\nExample: %s", validated_urn, projectURNExample)
 	} else {
 		args[0] = validated_urn
 	}
