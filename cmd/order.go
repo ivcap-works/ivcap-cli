@@ -65,7 +65,7 @@ var (
 	orderCmd = &cobra.Command{
 		Use:     "order",
 		Aliases: []string{"o", "orders"},
-		Short:   "Create and manage orders ",
+		Short:   "Create and manage orders",
 	}
 
 	listOrderCmd = &cobra.Command{

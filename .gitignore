@@ -4,3 +4,4 @@ dist
 .vscode/
 __debug_bin
 data/.direnv/
+data/
