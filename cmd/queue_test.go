@@ -66,7 +66,7 @@ func testEnqueue(t *testing.T) {
 		t.Skip("access token not found, login to run unit test...")
 	}
 
-	schema := "urn:test:schema:temp-measurement.1"
+	schema := "urn:ivcap:schema:queue:message.1"
 	payload := `{
     "temperature": "21",
     "location": "Buoy101",
