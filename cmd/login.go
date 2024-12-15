@@ -42,9 +42,10 @@ func init() {
 }
 
 var loginCmd = &cobra.Command{
-	Use:   "login",
-	Short: "Authenticate with a current deployment/context",
-	Run:   login,
+	Use:     "login",
+	Short:   "Authenticate with a current deployment/context",
+	Run:     login,
+	PostRun: setupFirstProject,
 }
 
 var logoutCmd = &cobra.Command{
