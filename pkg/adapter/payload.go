@@ -207,23 +207,3 @@ func (p *payload) Header(key string) string {
 func (p *payload) StatusCode() int {
 	return p.statusCode
 }
-
-// type JsonObjPayload struct {
-// 	payload map[string]interface{}
-// 	bytes   []byte
-// }
-
-// func (p JsonObjPayload) IsObject() bool                   { return true }
-// func (p JsonObjPayload) AsObject() map[string]interface{} { return p.payload }
-// func (p JsonObjPayload) AsArray() []interface{}           { return []interface{}{p.payload} }
-// func (p JsonObjPayload) AsBytes() []byte                  { return p.bytes }
-
-// type JsonArrPayload struct {
-// 	payload []interface{}
-// 	bytes   []byte
-// }
-
-// func (JsonArrPayload) IsObject() bool                     { return false }
-// func (p JsonArrPayload) AsObject() map[string]interface{} { return nil }
-// func (p JsonArrPayload) AsArray() []interface{}           { return p.payload }
-// func (p JsonArrPayload) AsBytes() []byte                  { return p.bytes }
