@@ -29,26 +29,27 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(aspectCmd)
+	rootCmd.AddCommand(datafabricCmd)
 
-	aspectCmd.AddCommand(aspectAddCmd)
+	datafabricCmd.AddCommand(aspectAddCmd)
 	addFlags(aspectAddCmd, []Flag{Schema, InputFormat, Policy})
 	aspectAddCmd.Flags().StringVarP(&aspectFile, "file", "f", "", "Path to file containing aspect content")
 
-	aspectCmd.AddCommand(aspectUpdateCmd)
+	datafabricCmd.AddCommand(aspectUpdateCmd)
 	addFlags(aspectUpdateCmd, []Flag{Schema, InputFormat, Policy})
 	aspectUpdateCmd.Flags().StringVarP(&aspectFile, "file", "f", "", "Path to file containing metdata")
 
-	aspectCmd.AddCommand(aspectGetCmd)
+	datafabricCmd.AddCommand(aspectGetCmd)
+	aspectGetCmd.Flags().BoolVar(&aspectContentOnly, "content-only", false, "if set, only display the aspect's content part")
 
-	aspectCmd.AddCommand(aspectQueryCmd)
-	addFlags(aspectQueryCmd, []Flag{SchemaPrefix, Entity})
-	aspectQueryCmd.Flags().BoolVarP(&aspectGetIfOne, "get-if-one", "g", false, "if only one found, get it immediately")
-	aspectQueryCmd.Flags().StringVarP(&aspectJsonFilter, "content-path", "c", "", "json path filter on aspect's content ('$.images[*] ? (@.size > 10000)')")
-	aspectQueryCmd.Flags().BoolVar(&aspectIncludeContent, "include-content", false, "if set, also include aspect's content in list")
-	addListFlags(aspectQueryCmd)
+	datafabricCmd.AddCommand(datafabricQueryCmd)
+	addFlags(datafabricQueryCmd, []Flag{SchemaPrefix, Entity})
+	datafabricQueryCmd.Flags().BoolVarP(&aspectGetIfOne, "get-if-one", "g", false, "if only one found, get it immediately")
+	datafabricQueryCmd.Flags().StringVarP(&aspectJsonFilter, "content-path", "c", "", "json path filter on aspect's content ('$.images[*] ? (@.size > 10000)')")
+	datafabricQueryCmd.Flags().BoolVar(&aspectIncludeContent, "include-content", false, "if set, also include aspect's content in list")
+	addListFlags(datafabricQueryCmd)
 
-	aspectCmd.AddCommand(aspectRetractCmd)
+	datafabricCmd.AddCommand(aspectRetractCmd)
 }
 
 var (
@@ -57,13 +58,14 @@ var (
 	aspectJsonFilter     string
 	aspectIncludeContent bool
 	aspectGetIfOne       bool
+	aspectContentOnly    bool
 )
 
 var (
-	aspectCmd = &cobra.Command{
-		Use:     "aspect",
-		Aliases: []string{"as", "aspect"},
-		Short:   "Create and manage aspects",
+	datafabricCmd = &cobra.Command{
+		Use:     "datafabric",
+		Aliases: []string{"df", "aspect", "as", "aspect"},
+		Short:   "Query the datafabric and create and manage aspects within",
 	}
 
 	aspectAddCmd = &cobra.Command{
@@ -113,9 +115,9 @@ var (
 		},
 	}
 
-	aspectQueryCmd = &cobra.Command{
+	datafabricQueryCmd = &cobra.Command{
 		Use:     "query [-e entity] [-s schemaPrefix] [flags]",
-		Short:   "Query the aspect store for any combination of entity, schema and time.",
+		Short:   "Query the datafabric for any combination of entity, schema and time.",
 		Aliases: []string{"q", "search", "s", "list", "l"},
 		// Long:    `.....`,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
@@ -159,9 +161,28 @@ var (
 
 func getAspect(aspectID string) error {
 	ctxt := context.Background()
+	if aspectContentOnly && outputFormat == "" {
+		outputFormat = "yaml"
+	}
 	switch outputFormat {
 	case "json", "yaml":
 		if res, err := sdk.GetAspectRaw(ctxt, aspectID, CreateAdapter(true), logger); err == nil {
+			if aspectContentOnly {
+				if o, err := res.AsObject(); err == nil {
+					if c, ok := o["content"]; ok {
+						if s, err := a.ToString(c, outputFormat == "yaml"); err == nil {
+							fmt.Printf("%s\n", s)
+							return nil
+						} else {
+							return err
+						}
+					} else {
+						return fmt.Errorf("aspect does not contain a 'Content' field")
+					}
+				} else {
+					return err
+				}
+			}
 			return a.ReplyPrinter(res, outputFormat == "yaml")
 		} else {
 			return err
@@ -204,7 +225,7 @@ func addAspectUpdateCmd(isAdd bool, cmd *cobra.Command, args []string) (err erro
 	}
 	if silent {
 		if m, err := res.AsObject(); err == nil {
-			fmt.Printf("%s\n", m["record-id"])
+			fmt.Printf("%s\n", m["id"])
 		} else {
 			cobra.CheckErr(fmt.Sprintf("Parsing reply: %s", res.AsBytes()))
 		}
