@@ -56,8 +56,8 @@ github.com/inconshreveable/mousetrap v1.1.0 h1:wN+x4NVGpMsO7ErUn/mUI3vEoE6Jt13X2
 github.com/inconshreveable/mousetrap v1.1.0/go.mod h1:vpF70FUmC8bwa3OWnCshd2FqLfsEA9PFc4w1p2J65bw=
 github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf h1:FtEj8sfIcaaBfAKrE1Cwb61YDtYq9JxChK1c7AKce7s=
 github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf/go.mod h1:yrqSXGoD/4EKfF26AOGzscPOgTTJcyAwM2rpixWT+t4=
-github.com/ivcap-works/ivcap-core-api v0.42.0 h1:pT/1Nbzm/CUaL6hgifOYqHZomoVH3yJU6MxfbAEU9Lg=
-github.com/ivcap-works/ivcap-core-api v0.42.0/go.mod h1:NbggH/FvNC8IPfHUaDBryKqfB5JPswoC0itpRUVqq6o=
+github.com/ivcap-works/ivcap-core-api v0.43.0 h1:isobBD81nq94JfUhEE5kltaHGnf9LcHvVtaN+CiKSRE=
+github.com/ivcap-works/ivcap-core-api v0.43.0/go.mod h1:NbggH/FvNC8IPfHUaDBryKqfB5JPswoC0itpRUVqq6o=
 github.com/jedib0t/go-pretty/v6 v6.5.8 h1:8BCzJdSvUbaDuRba4YVh+SKMGcAAKdkcF3SVFbrHAtQ=
 github.com/jedib0t/go-pretty/v6 v6.5.8/go.mod h1:zbn98qrYlh95FIhwwsbIip0LYpwSG8SUOScs+v9/t0E=
 github.com/k0kubun/go-ansi v0.0.0-20180517002512-3bf9e2903213 h1:qGQQKEcAR99REcMpsXCp3lJ03zYT1PkRd3kQGPn9GVg=
