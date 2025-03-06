@@ -181,7 +181,7 @@ var (
 			}
 
 			if err = sdk.SetSecret(context.Background(), reqHost, req, adpr, logger); err != nil {
-				return fmt.Errorf("failed to set secret: %w", err)
+				return fmt.Errorf("sdk failed to set secret: %w", err)
 			}
 
 			hash256 := sha256.New()

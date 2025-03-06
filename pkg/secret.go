@@ -52,12 +52,8 @@ func ListSecrets(ctxt context.Context, host string, req *ListSecretsRequest, adp
 }
 
 func ListSecretsRaw(ctxt context.Context, host string, req *ListSecretsRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	u := url.URL{
-		Scheme: "http",
-		Host:   host,
-		Path:   "/1/secrets/list",
-	}
-	q := u.Query()
+	path := "/1/secrets/list"
+	q := url.Values{}
 	if req.OffsetToken != "" {
 		q.Set("offset", req.OffsetToken)
 	}
@@ -68,9 +64,9 @@ func ListSecretsRaw(ctxt context.Context, host string, req *ListSecretsRequest, 
 		req.Limit = 10
 	}
 	q.Set("limit", strconv.FormatInt(int64(req.Limit), 10))
-	u.RawQuery = q.Encode()
+	path = fmt.Sprintf("%s?%s", path, q.Encode())
 
-	return (*adpt).Get(ctxt, u.String(), logger)
+	return (*adpt).Get(ctxt, path, logger)
 }
 
 func GetSecret(ctxt context.Context, host string, req *GetSecretRequest, adpt *adapter.Adapter, logger *log.Logger) (*api.GetResponseBody, error) {
@@ -86,19 +82,16 @@ func GetSecret(ctxt context.Context, host string, req *GetSecretRequest, adpt *a
 }
 
 func GetSecretRaw(ctxt context.Context, host string, req *GetSecretRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	u := url.URL{
-		Scheme: "http",
-		Host:   host,
-		Path:   "/1/secrets",
-	}
-	q := u.Query()
+	path := "/1/secrets"
+
+	q := url.Values{}
 	q.Set("secret-name", req.SecretName)
 	if req.SecretType != "" {
 		q.Set("secret-type", req.SecretType)
 	}
-	u.RawQuery = q.Encode()
+	path = fmt.Sprintf("%s?%s", path, q.Encode())
 
-	return (*adpt).Get(ctxt, u.String(), logger)
+	return (*adpt).Get(ctxt, path, logger)
 }
 
 func SetSecret(ctxt context.Context, host string, req *api.SetRequestBody, adpt *adapter.Adapter, logger *log.Logger) error {
@@ -106,13 +99,9 @@ func SetSecret(ctxt context.Context, host string, req *api.SetRequestBody, adpt 
 	if err != nil {
 		return fmt.Errorf("error marshalling body: %w", err)
 	}
-	u := url.URL{
-		Scheme: "http",
-		Host:   host,
-		Path:   "/1/secrets",
-	}
-	if _, err := (*adpt).Post(ctxt, u.String(), bytes.NewReader(body), int64(len(body)), nil, logger); err != nil {
-		return fmt.Errorf("failed to set secret: %w", err)
+	path := "/1/secrets"
+	if _, err := (*adpt).Post(ctxt, path, bytes.NewReader(body), int64(len(body)), nil, logger); err != nil {
+		return fmt.Errorf("failed to set secret via post: %w", err)
 	}
 	return nil
 }
