@@ -26,7 +26,7 @@ import (
 
 	"github.com/araddon/dateparse"
 	"github.com/spf13/cobra"
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 )
