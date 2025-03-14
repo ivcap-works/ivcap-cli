@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/MicahParks/keyfunc"
-	"github.com/golang-jwt/jwt/v4"
+	jwt "github.com/golang-jwt/jwt/v4"
 	adpt "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 	"github.com/skip2/go-qrcode"
 	"github.com/spf13/cobra"
