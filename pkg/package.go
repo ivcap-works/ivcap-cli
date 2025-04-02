@@ -17,6 +17,7 @@ package client
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -175,12 +176,20 @@ func PushServicePackage(srcTagName string, forcePush, localImage bool, adpt *ada
 	}
 
 	// send the image manifest
-	manifest, err := img.RawManifest()
+	manifest, err := img.Manifest()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get image manifest: %w", err)
 	}
+	if manifest.MediaType == types.OCIManifestSchema1 {
+		manifest.MediaType = types.DockerManifestSchema2
+	}
 
-	return pushManifest(manifest, adpt, srcTag, forcePush, logger)
+	data, err := json.Marshal(manifest)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal manifest: %w", err)
+	}
+
+	return pushManifest(data, adpt, srcTag, forcePush, logger)
 }
 
 func pushConfig(layer v1.Layer, adpt *adapter.Adapter, srcTag name.Tag, forcePush bool, logger *log.Logger) (*api.PushResponseBody, error) {
@@ -306,6 +315,9 @@ func pushLayer(layer v1.Layer, adpt *adapter.Adapter, srcTag name.Tag, forcePush
 				step++
 				status, err := pushStatus(srcTag.RepositoryStr()+":"+srcTag.TagStr(), digest, adpt, logger)
 				if err != nil {
+					if isTimeoutError(err.Error()) {
+						return errors.New("retry in case timeout")
+					}
 					return backoff.Permanent(fmt.Errorf("failed polling push status %s, error: %w", digest.Hex[:10], err))
 				}
 				switch *status.Status {
@@ -331,6 +343,10 @@ func pushLayer(layer v1.Layer, adpt *adapter.Adapter, srcTag name.Tag, forcePush
 	}
 
 	return &body, nil
+}
+
+func isTimeoutError(s string) bool {
+	return strings.Contains(s, "operation timed out") || strings.Contains(s, "Request Timeout") || strings.Contains(s, "temporary error")
 }
 
 func pushManifest(manifest []byte, adpt *adapter.Adapter, srcTag name.Tag, forcePush bool, logger *log.Logger) (*api.PushResponseBody, error) {
