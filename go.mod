@@ -1,6 +1,6 @@
 module github.com/ivcap-works/ivcap-cli
 
-go 1.23.1
+go 1.24.2
 
 require (
 	github.com/MicahParks/keyfunc v1.5.3
@@ -8,7 +8,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/docker/docker v24.0.0+incompatible
 	github.com/dustin/go-humanize v1.0.1
-	github.com/golang-jwt/jwt/v4 v4.5.1
+	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/go-containerregistry v0.19.2
 	github.com/inhies/go-bytesize v0.0.0-20220417184213-4913239db9cf
 	github.com/ivcap-works/ivcap-core-api v0.43.0
