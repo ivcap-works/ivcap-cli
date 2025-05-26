@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dustin/go-humanize"
+	humanize "github.com/dustin/go-humanize"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
 	"github.com/spf13/cobra/doc"
@@ -381,9 +381,9 @@ func checkForUpdates(currentVersion string) {
 			latest := strings.TrimPrefix(p[len(p)-1], "v")
 			current := strings.TrimPrefix(strings.Split(currentVersion, "|")[0], "v")
 			if current != latest {
-				fmt.Printf("\n>>>   A newer version 'v%s' is available. Please consider upgrading from 'v%s'", latest, current)
-				fmt.Printf("\n>>>     It is available at %s", RELEASE_CHECK_URL)
-				fmt.Printf("\n>>>     Or via 'brew upgrade ivcap'\n\n")
+				fmt.Fprintf(os.Stderr, "\n>>>   A newer version 'v%s' is available. Please consider upgrading from 'v%s'", latest, current)
+				fmt.Fprintf(os.Stderr, "\n>>>     It is available at %s", RELEASE_CHECK_URL)
+				fmt.Fprintf(os.Stderr, "\n>>>     Or via 'brew upgrade ivcap'\n\n")
 			}
 		}
 	}
