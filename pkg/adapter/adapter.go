@@ -18,6 +18,7 @@ package adapter
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -25,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	log "go.uber.org/zap"
 )
 
@@ -235,7 +237,7 @@ func (a *restAdapter) Connect(
 		a.client.Timeout = time.Second * time.Duration(a.connCtxt.TimeoutSec)
 	}
 	logger.Debug("calling api", log.Reflect("headers", req.Header))
-	resp, err := a.client.Do(req)
+	resp, err := doWithRetry(a.client, req)
 	if err != nil {
 		logger.Warn("HTTP request failed.", log.Error(err), log.Reflect("err2", err))
 		return nil, &ClientError{AdapterError{endpoint}, err}
@@ -277,4 +279,61 @@ func ProcessErrorResponse(resp *http.Response, path string, pyld Payload, logger
 			Payload:      pyld,
 		}
 	}
+}
+
+const (
+	// default retry values for ivcap cli http req/res
+	defaultInitialInterval = 200 * time.Millisecond
+	defaultMaxInterval     = 60 * time.Second
+	defaultMaxElapsedTime  = 60 * time.Second
+)
+
+func doWithRetry(client *http.Client, req *http.Request) (*http.Response, error) {
+	expBackoff := backoff.NewExponentialBackOff([]backoff.ExponentialBackOffOpts{
+		backoff.WithInitialInterval(defaultInitialInterval),
+		backoff.WithMaxInterval(defaultMaxInterval),
+		backoff.WithMaxElapsedTime(defaultMaxElapsedTime),
+	}...)
+
+	var res *http.Response
+
+	e := backoff.Retry(func() error {
+		resp, err := client.Do(req)
+		if err != nil {
+			return fmt.Errorf("failed to call http request: %w", err)
+		}
+
+		switch resp.StatusCode {
+		case http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent:
+			res = resp
+			return nil
+		default:
+			defer resp.Body.Close()
+
+			const maxBodySize = 1 * 1024 // max allow 1k read when error
+			respBody := make([]byte, maxBodySize)
+			n, err := io.LimitReader(resp.Body, maxBodySize).Read(respBody)
+			if err != nil && !errors.Is(err, io.EOF) {
+				return backoff.Permanent(fmt.Errorf("failed to read body: %w", err))
+			}
+			if isRetryableStatusCode(resp.StatusCode) {
+				return fmt.Errorf("failed to do http request, response code: %d, body: %s", resp.StatusCode, string(respBody[:n]))
+			}
+			// not retyable
+			return backoff.Permanent(fmt.Errorf("http request error, response code: %d, body: %s", resp.StatusCode, string(respBody[:n])))
+		}
+	}, expBackoff)
+	if e != nil {
+		return nil, fmt.Errorf("failed in retry http do request: %w", e)
+	}
+
+	return res, nil
+}
+
+func isRetryableStatusCode(statusCode int) bool {
+	return statusCode >= 500 ||
+		statusCode == http.StatusRequestTimeout ||
+		statusCode == http.StatusTooEarly ||
+		statusCode == http.StatusConflict ||
+		statusCode == http.StatusGone
 }
