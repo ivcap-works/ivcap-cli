@@ -151,7 +151,7 @@ func addSchemaFlag(cmd *cobra.Command) {
 
 func addSchemaPrefixFlag(cmd *cobra.Command) {
 	fs := cmd.Flags()
-	fs.StringVarP(&schemaPrefix, "schemaPrefix", "s", "", "schema prefix")
+	fs.StringVarP(&schemaPrefix, "schema-prefix", "s", "", "schema prefix")
 }
 
 func addEntityFlag(cmd *cobra.Command) {
