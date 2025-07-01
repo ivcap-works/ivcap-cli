@@ -198,7 +198,8 @@ func getTokenResponse(authProvider *AuthProvider, params url.Values, ctxt *Conte
 	var err error
 	pyld, err = (*adapter).PostForm(ctx, authProvider.TokenURL, params, nil, logger)
 	if err != nil {
-		if apiErr, ok := err.(*adpt.ApiError); ok && allowStatusForbidden {
+		var apiErr *adpt.ApiError
+		if errors.As(err, &apiErr) && allowStatusForbidden {
 			if apiErr.StatusCode == http.StatusForbidden {
 				pyld = apiErr.Payload
 			} else {

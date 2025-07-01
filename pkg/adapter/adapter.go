@@ -18,7 +18,6 @@ package adapter
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -237,32 +236,7 @@ func (a *restAdapter) Connect(
 		a.client.Timeout = time.Second * time.Duration(a.connCtxt.TimeoutSec)
 	}
 	logger.Debug("calling api", log.Reflect("headers", req.Header))
-	resp, err := doWithRetry(a.client, req)
-	if err != nil {
-		logger.Warn("HTTP request failed.", log.Error(err), log.Reflect("err2", err))
-		return nil, &ClientError{AdapterError{endpoint}, err}
-	}
-	defer resp.Body.Close()
-
-	if respHandler != nil {
-		err := respHandler(resp, endpoint, logger)
-		return nil, err
-	}
-	respBody, err := io.ReadAll(resp.Body)
-	if err != nil {
-		logger.Warn("Accessing response body failed.", log.Error(err))
-		return nil, &ClientError{AdapterError{endpoint}, err}
-	}
-	logger.Debug("successful reply", log.Int("statusCode", resp.StatusCode),
-		log.Int("body-length", len(respBody)), log.Reflect("headers", resp.Header))
-
-	if resp.StatusCode >= 300 {
-		if len(respBody) > 0 {
-			logger = logger.With(log.ByteString("body", respBody))
-		}
-		return nil, ProcessErrorResponse(resp, endpoint, ToPayload(respBody, resp, logger), logger)
-	}
-	return ToPayload(respBody, resp, logger), nil
+	return doWithRetry(a.client, req, respHandler, endpoint, logger)
 }
 
 func ProcessErrorResponse(resp *http.Response, path string, pyld Payload, logger *log.Logger) (err error) {
@@ -288,46 +262,54 @@ const (
 	defaultMaxElapsedTime  = 60 * time.Second
 )
 
-func doWithRetry(client *http.Client, req *http.Request) (*http.Response, error) {
+func doWithRetry(client *http.Client, req *http.Request, respHandler ResponseHandler, endpoint string, logger *log.Logger) (Payload, error) {
 	expBackoff := backoff.NewExponentialBackOff([]backoff.ExponentialBackOffOpts{
 		backoff.WithInitialInterval(defaultInitialInterval),
 		backoff.WithMaxInterval(defaultMaxInterval),
 		backoff.WithMaxElapsedTime(defaultMaxElapsedTime),
 	}...)
 
-	var res *http.Response
+	var (
+		respBody []byte
+		resp     *http.Response
+		err      error
+	)
 
 	e := backoff.Retry(func() error {
-		resp, err := client.Do(req)
+		resp, err = client.Do(req)
 		if err != nil {
 			return fmt.Errorf("failed to call http request: %w", err)
 		}
+		defer resp.Body.Close()
 
-		switch resp.StatusCode {
-		case http.StatusOK, http.StatusCreated, http.StatusAccepted, http.StatusNoContent:
-			res = resp
-			return nil
-		default:
-			defer resp.Body.Close()
-
-			const maxBodySize = 1 * 1024 // max allow 1k read when error
-			respBody := make([]byte, maxBodySize)
-			n, err := io.LimitReader(resp.Body, maxBodySize).Read(respBody)
-			if err != nil && !errors.Is(err, io.EOF) {
-				return backoff.Permanent(fmt.Errorf("failed to read body: %w", err))
-			}
-			if isRetryableStatusCode(resp.StatusCode) {
-				return fmt.Errorf("failed to do http request, response code: %d, body: %s", resp.StatusCode, string(respBody[:n]))
-			}
-			// not retyable
-			return backoff.Permanent(fmt.Errorf("http request error, response code: %d, body: %s", resp.StatusCode, string(respBody[:n])))
+		if respHandler != nil {
+			return respHandler(resp, endpoint, logger)
 		}
+		respBody, err = io.ReadAll(resp.Body)
+		if err != nil {
+			logger.Warn("Accessing response body failed.", log.Error(err))
+			return &ClientError{AdapterError{endpoint}, err}
+		}
+		logger.Debug("successful reply", log.Int("statusCode", resp.StatusCode),
+			log.Int("body-length", len(respBody)), log.Reflect("headers", resp.Header))
+
+		if resp.StatusCode >= 300 {
+			if len(respBody) > 0 {
+				logger = logger.With(log.ByteString("body", respBody))
+			}
+			e := ProcessErrorResponse(resp, endpoint, ToPayload(respBody, resp, logger), logger)
+			if isRetryableStatusCode(resp.StatusCode) {
+				return e
+			}
+			return backoff.Permanent(e)
+		}
+
+		return nil
 	}, expBackoff)
 	if e != nil {
 		return nil, fmt.Errorf("failed in retry http do request: %w", e)
 	}
-
-	return res, nil
+	return ToPayload(respBody, resp, logger), nil
 }
 
 func isRetryableStatusCode(statusCode int) bool {
