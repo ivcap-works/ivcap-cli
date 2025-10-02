@@ -178,7 +178,7 @@ func (a *restAdapter) GetSSE(
 	}
 	client := sse.NewClient(parsedURL.String())
 	if lastEventID != nil {
-		client.EventID = *lastEventID
+		client.LastEventID.Store([]byte(*lastEventID))
 	}
 	if headers != nil {
 		for key, value := range *headers {

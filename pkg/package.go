@@ -96,7 +96,7 @@ func PushServicePackage(srcTagName string, forcePush, localImage bool, adpt *ada
 		if err != nil {
 			return nil, fmt.Errorf("failed to create docker client: %w", err)
 		}
-		inspect, _, err := client.ImageInspectWithRaw(context.Background(), srcTag.String())
+		inspect, err := client.ImageInspect(context.Background(), srcTag.String())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get inspect: %w", err)
 		}

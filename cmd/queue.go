@@ -524,8 +524,9 @@ func printReadResponse(queue *api.ReadResponseBody) {
 		{"Total Messages", safeString(&totalMessagesStr)},
 		{"Bytes", safeString(&bytesStr)},
 		{"Consumer Count", safeString(&consumerCountStr)},
-		{"First ID", safeString(queue.FirstID)},
-		{"Last ID", safeString(queue.LastID)},
+		// Did the API change here?
+		// {"First ID", safeString(queue.FirstID)},
+		// {"Last ID", safeString(queue.LastID)},
 		{"First Time", safeString(queue.FirstTime)},
 		{"Last Time", safeString(queue.LastTime)},
 	})
