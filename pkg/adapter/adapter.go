@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/r3labs/sse/v2"
 	log "go.uber.org/zap"
 )
 
@@ -161,6 +162,33 @@ func (a *restAdapter) Patch(ctxt context.Context, path string, body io.Reader, l
 
 func (a *restAdapter) Delete(ctxt context.Context, path string, logger *log.Logger) (Payload, error) {
 	return a.Connect(ctxt, "DELETE", path, nil, -1, nil, nil, logger)
+}
+
+func (a *restAdapter) GetSSE(
+	ctxt context.Context,
+	path string,
+	lastEventID *string,
+	onEvent func(*sse.Event),
+	headers *map[string]string,
+	logger *log.Logger,
+) error {
+	parsedURL, err := parseURL(path, a.connCtxt)
+	if err != nil {
+		return err
+	}
+	client := sse.NewClient(parsedURL.String())
+	if lastEventID != nil {
+		client.EventID = *lastEventID
+	}
+	if headers != nil {
+		for key, value := range *headers {
+			client.Headers[key] = value
+		}
+	}
+	if a.connCtxt.AccessToken != "" {
+		client.Headers["Authorization"] = "Bearer " + a.connCtxt.AccessToken
+	}
+	return client.Subscribe("", onEvent)
 }
 
 func (a *restAdapter) SetUrl(url string) {

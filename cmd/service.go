@@ -20,8 +20,6 @@ import (
 	"os"
 	"strings"
 
-	api "github.com/ivcap-works/ivcap-core-api/http/service"
-
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 
@@ -46,6 +44,7 @@ func init() {
 	// createServiceCmd.Flags().StringVarP(&serviceFile, "file", "f", "", "Path to service description file")
 	createServiceCmd.Flags().StringVar(&inputFormat, "format", "", "Format of service description file [json, yaml]")
 
+	// UPDATE
 	serviceCmd.AddCommand(updateServiceCmd)
 	addFlags(updateServiceCmd, []Flag{InputFormat})
 	updateServiceCmd.Flags().BoolVarP(&createAnyway, "create", "", false, "Create service record if it doesn't exist")
@@ -58,7 +57,7 @@ var inputFormat string
 var (
 	serviceCmd = &cobra.Command{
 		Use:     "service",
-		Aliases: []string{"s", "services"},
+		Aliases: []string{"s", "svc", "services"},
 		Short:   "Create and manage services",
 	}
 
@@ -75,7 +74,7 @@ var (
 				case "yaml":
 					return a.ReplyPrinter(res, true)
 				default:
-					var list api.ListResponseBody
+					var list sdk.ServiceListResponseBody
 					if err = res.AsType(&list); err != nil {
 						return err
 					}
@@ -125,11 +124,14 @@ through 'stdin' use '-' as the file name and also include the --format flag`,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
 
+			if fileName == "" {
+				cobra.CheckErr("Missing service file '-f service-file|-'")
+			}
 			pyld, err := payloadFromFile(fileName, inputFormat)
 			if err != nil {
 				cobra.CheckErr(fmt.Sprintf("While reading service file '%s' - %s", fileName, err))
 			}
-			var req api.CreateServiceRequestBody
+			var req sdk.ServiceCreateRequestBody
 			if err = pyld.AsType(&req); err != nil {
 				return
 			}
@@ -142,16 +144,18 @@ through 'stdin' use '-' as the file name and also include the --format flag`,
 	}
 
 	updateServiceCmd = &cobra.Command{
-		Use:   "update [flags] service-id -f service-file|-",
+		Use:   "update [flags] [service-id] -f service-file|-",
 		Short: "Update an existing service",
 		Long: `Update an existing service description or create it if it does not exist
 AND the --create flag is set. If the service definition is provided
 through 'stdin' use '-' as the file name and also include the --format flag`,
-		Args: cobra.ExactArgs(1),
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
-			serviceID := GetHistory(args[0])
 			// serviceFile := args[1]
+			if fileName == "" {
+				cobra.CheckErr("Missing service file '-f service-file|-'")
+			}
 
 			isYaml := inputFormat == "yaml" || strings.HasSuffix(fileName, ".yaml") || strings.HasSuffix(fileName, ".yml")
 			var pyld a.Payload
@@ -164,10 +168,30 @@ through 'stdin' use '-' as the file name and also include the --format flag`,
 				cobra.CheckErr(fmt.Sprintf("While reading service file '%s' - %s", fileName, err))
 			}
 
-			var req api.UpdateRequestBody
+			var req sdk.ServiceUpdateRequestBody
 			if err = pyld.AsType(&req); err != nil {
 				return
 			}
+			var serviceID string
+			if len(args) > 0 {
+				serviceID = GetHistory(args[0])
+			} else {
+				serviceID = req.ID
+				if serviceID == "" {
+					// see if is part of the service file
+					var m map[string]interface{}
+					if m, err = pyld.AsObject(); err != nil {
+						return
+					}
+					if id, ok := m["$id"].(string); ok {
+						serviceID = id
+					}
+				}
+			}
+			if serviceID == "" {
+				cobra.CheckErr("Missing 'serviceID'. Neither provided nor found in serviceFile as 'ID' or '$id'")
+			}
+			req.ID = serviceID
 			res, err := sdk.UpdateServiceRaw(ctxt, serviceID, createAnyway, &req, CreateAdapter(true), logger)
 			if err != nil {
 				return err
@@ -177,70 +201,84 @@ through 'stdin' use '-' as the file name and also include the --format flag`,
 	}
 )
 
-func printServiceTable(list *api.ListResponseBody, wide bool) {
+func printServiceTable(list *sdk.ServiceListResponseBody, wide bool) {
 	t := table.NewWriter()
 	t.SetOutputMirror(os.Stdout)
-	t.AppendHeader(table.Row{"ID", "Name", "Account"})
+	t.AppendHeader(table.Row{"ID", "Name", "Description"})
 	rows := make([]table.Row, len(list.Items))
 	for i, o := range list.Items {
-		rows[i] = table.Row{MakeHistory(o.ID), safeTruncString(o.Name), safeString(o.Account)}
+		rows[i] = table.Row{MakeHistory(o.ID), safeTruncString(o.Name), safeString(o.Description)}
 	}
 	rows = addNextPageRow(findNextServicePage(list.Links), rows)
 	t.AppendRows(rows)
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 2, WidthMaxEnforcer: text.WrapSoft},
+		{Number: 3, WidthMax: 64, WidthMaxEnforcer: text.WrapSoft},
+	})
+	t.Style().Options.SeparateRows = true
 	t.Render()
 }
 
-func printService(service *api.ReadResponseBody, wide bool) {
+func printService(service *sdk.ServiceReadResponseBody, wide bool) {
 
-	// Name        *string                      `form:"name,omitempty" json:"name,omitempty" xml:"name,omitempty"`
-	// Label       *string                      `form:"label,omitempty" json:"label,omitempty" xml:"label,omitempty"`
-	// Type        *string                      `form:"type,omitempty" json:"type,omitempty" xml:"type,omitempty"`
-	// Description *string                      `form:"description,omitempty" json:"description,omitempty" xml:"description,omitempty"`
-	// Unit        *string                      `form:"unit,omitempty" json:"unit,omitempty" xml:"unit,omitempty"`
-	// Constant    *bool                        `form:"constant,omitempty" json:"constant,omitempty" xml:"constant,omitempty"`
-	// Optional    *bool                        `form:"optional,omitempty" json:"optional,omitempty" xml:"optional,omitempty"`
-	// Default     *string                      `form:"default,omitempty" json:"default,omitempty" xml:"default,omitempty"`
-	// Options     []*ParameterOptTResponseBody `form:"options,omitempty" json:"options,omitempty" xml:"options,omitempty"`
-	tw2 := table.NewWriter()
-	tw2.SetStyle(table.StyleLight)
-	tw2.SetColumnConfigs([]table.ColumnConfig{
-		{Number: 1, Align: text.AlignRight},
-		{Number: 2, WidthMax: MAX_NAME_COL_LEN},
-	})
-	tw2.Style().Options.SeparateRows = true
-	tw2.AppendHeader(table.Row{"Name", "Description", "Type", "Default", "Optional"})
-	rows := make([]table.Row, len(service.Parameters))
-	for i, p := range service.Parameters {
-		ptype := getPType(p)
-		var optional bool
-		if p.Optional != nil {
-			optional = *p.Optional
+	parameters := "None"
+	if len(service.Parameters) > 0 {
+
+		// Name        *string                      `form:"name,omitempty" json:"name,omitempty" xml:"name,omitempty"`
+		// Label       *string                      `form:"label,omitempty" json:"label,omitempty" xml:"label,omitempty"`
+		// Type        *string                      `form:"type,omitempty" json:"type,omitempty" xml:"type,omitempty"`
+		// Description *string                      `form:"description,omitempty" json:"description,omitempty" xml:"description,omitempty"`
+		// Unit        *string                      `form:"unit,omitempty" json:"unit,omitempty" xml:"unit,omitempty"`
+		// Constant    *bool                        `form:"constant,omitempty" json:"constant,omitempty" xml:"constant,omitempty"`
+		// Optional    *bool                        `form:"optional,omitempty" json:"optional,omitempty" xml:"optional,omitempty"`
+		// Default     *string                      `form:"default,omitempty" json:"default,omitempty" xml:"default,omitempty"`
+		// Options     []*ParameterOptTResponseBody `form:"options,omitempty" json:"options,omitempty" xml:"options,omitempty"`
+		tw2 := table.NewWriter()
+		tw2.SetStyle(table.StyleLight)
+		tw2.SetColumnConfigs([]table.ColumnConfig{
+			{Number: 1, Align: text.AlignRight},
+			{Number: 2, WidthMax: MAX_NAME_COL_LEN, WidthMaxEnforcer: text.WrapSoft},
+		})
+		tw2.Style().Options.SeparateRows = true
+		tw2.AppendHeader(table.Row{"Name", "Description", "Type", "Default", "Optional"})
+		rows := make([]table.Row, len(service.Parameters))
+		for i, p := range service.Parameters {
+			ptype := getPType(p)
+			var optional bool
+			if p.Optional != nil {
+				optional = *p.Optional
+			}
+			rows[i] = table.Row{safeString(p.Name), safeString(p.Description), ptype, safeString(p.Default), optional}
 		}
-		rows[i] = table.Row{safeString(p.Name), safeString(p.Description), ptype, safeString(p.Default), optional}
+		tw2.AppendRows(rows)
+		parameters = tw2.Render()
 	}
-	tw2.AppendRows(rows)
 
 	tw := table.NewWriter()
 	tw.SetStyle(table.StyleLight)
 	tw.Style().Options.SeparateColumns = false
 	tw.Style().Options.SeparateRows = false
 	tw.Style().Options.DrawBorder = false
-	tw.SetColumnConfigs([]table.ColumnConfig{
-		{Number: 1, Align: text.AlignRight},
-		// {Number: 2, WidthMax: 80},
-	})
+
 	tw.AppendRows([]table.Row{
-		{"ID", fmt.Sprintf("%s (%s)", *service.ID, MakeHistory(service.ID))},
 		{"Name", safeString(service.Name)},
 		{"Description", safeString(service.Description)},
+		{"", ""},
+		{"ID", fmt.Sprintf("%s (%s)", *service.ID, MakeHistory(service.ID))},
 		{"Status", safeString(service.Status)},
-		{"Account ID", safeString(service.Account)},
-		{"Parameters", tw2.Render()},
+		{"Controller", safeString(service.ControllerSchema)},
+		{"Policy", safeString(service.Policy)},
+		{"Account", safeString(service.Account)},
+		{"Parameters", parameters},
+	})
+	tw.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, Align: text.AlignRight},
+		{Number: 2, WidthMax: 100, WidthMaxEnforcer: WrapSoftSoft},
 	})
 	fmt.Printf("\n%s\n\n", tw.Render())
 }
 
-func getPType(p *api.ParameterDefTResponseBody) string {
+func getPType(p *sdk.ParameterDefTResponseBody) string {
 	if p == nil {
 		return "???"
 	}
@@ -269,7 +307,7 @@ func GetServiceNameForId(serviceID *string) string {
 	}
 }
 
-func findNextServicePage(links []*api.LinkTResponseBody) *string {
+func findNextServicePage(links []*sdk.LinkTResponseBody) *string {
 	if links == nil {
 		return nil
 	}
@@ -279,4 +317,20 @@ func findNextServicePage(links []*api.LinkTResponseBody) *string {
 		}
 	}
 	return nil
+}
+
+func WrapSoftSoft(str string, wrapLen int) string {
+	if wrapLen <= 0 {
+		return ""
+	}
+	out := &strings.Builder{}
+	for idx, paragraph := range strings.Split(str, "\n") {
+		if idx > 0 {
+			out.WriteString("\n")
+		}
+		l := text.WrapSoft(paragraph, wrapLen)
+		out.WriteString(l)
+	}
+
+	return out.String()
 }

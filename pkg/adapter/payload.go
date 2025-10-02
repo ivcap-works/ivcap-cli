@@ -16,6 +16,7 @@
 package adapter
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -73,7 +74,16 @@ func LoadPayloadFromBytes(data []byte, isYAML bool) (pyld Payload, err error) {
 			return
 		}
 	}
-	pyld = &payload{body: data}
+	var contentType string
+	if isYAML {
+		contentType = "application/yaml"
+	} else {
+		contentType = "application/json"
+	}
+	pyld = &payload{
+		body:        data,
+		contentType: contentType,
+	}
 	return
 }
 
@@ -192,6 +202,10 @@ func (p *payload) AsBytes() []byte {
 	return p.body
 }
 
+func (p *payload) AsReader() (io.Reader, int64) {
+	return bytes.NewReader(p.body), int64(len(p.body))
+}
+
 func (p *payload) IsEmpty() bool {
 	return len(p.body) == 0
 }
@@ -202,6 +216,10 @@ func (p *payload) Header(key string) string {
 	} else {
 		return ""
 	}
+}
+
+func (p *payload) ContentType() string {
+	return p.contentType
 }
 
 func (p *payload) StatusCode() int {

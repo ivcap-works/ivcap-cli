@@ -67,8 +67,11 @@ release: addlicense check build-docs
 	goreleaser release --clean
 
 addlicense:
-	# go install github.com/google/addlicense@v1.0.0
-	addlicense -c 'Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230' -l apache ./**/*.go
+	# go install github.com/google/addlicense@latest
+	addlicense -v \
+		-c 'Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230' \
+		-l apache \
+		./**/*.go
 
 tv:
 	gource -f --title "ivcap-cli" --seconds-per-day 0.1 --auto-skip-seconds 0.1 --bloom-intensity 0.05 \
