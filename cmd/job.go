@@ -47,8 +47,7 @@ func init() {
 
 	// LIST
 	jobCmd.AddCommand(listJobCmd)
-	jobCmd.Flags().StringVarP(&jobsJsonFilter, "content-path", "c", "", "json path filter on jobs's content ('$.images[*] ? (@.size > 10000)')")
-
+	listJobCmd.Flags().StringVarP(&jobsJsonFilter, "content-path", "c", "", "json path filter on jobs's content ('$.images[*] ? (@.size > 10000)')")
 	addListFlags(listJobCmd)
 
 	// READ
@@ -386,16 +385,4 @@ func printJob(job *sdk.JobReadResponseBody, wide bool) {
 		{Number: 2, WidthMax: 100, WidthMaxEnforcer: WrapSoftSoft},
 	})
 	fmt.Printf("\n%s\n\n", tw.Render())
-}
-
-func findNextJobPage(links []*sdk.LinkTResponseBody) *string {
-	if links == nil {
-		return nil
-	}
-	for _, l := range links {
-		if l.Rel != nil && *l.Rel == "next" {
-			return l.Href
-		}
-	}
-	return nil
 }
