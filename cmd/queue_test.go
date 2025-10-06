@@ -123,15 +123,9 @@ func testReadQueue(t *testing.T) {
 	if res.Bytes != nil {
 		t.Logf("\tBytes: %v", *res.Bytes)
 	}
-	// if res.FirstID != nil {
-	// 	t.Logf("\tFirst ID: %v", *res.FirstID)
-	// }
 	if res.FirstTime != nil {
 		t.Logf("\tFirst Time: %v", *res.FirstTime)
 	}
-	// if res.LastID != nil {
-	// 	t.Logf("\tLast ID: %v", *res.LastID)
-	// }
 	if res.LastTime != nil {
 		t.Logf("\tLast Time: %v", *res.LastTime)
 	}
