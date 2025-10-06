@@ -184,14 +184,32 @@ func ReadServiceJobRaw(ctxt context.Context, cmd *ReadServiceJobRequest, adpt *a
 
 /**** CREATE JOB ****/
 
-func CreateServiceJobRaw(ctxt context.Context, serviceId string, pyld adapter.Payload, timeout int, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+type JobCreateT struct {
+	JobID      string  `json:"job-id"`
+	ServiceID  string  `json:"service-id,omitempty"`
+	RetryLater float64 `json:"retry-later"`
+}
+
+func CreateServiceJobRaw(ctxt context.Context, serviceId string, pyld adapter.Payload, timeout int, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, *JobCreateT, error) {
 	path := serviceJobPath(serviceId, nil)
 	body, len := pyld.AsReader()
 	headers := &map[string]string{
 		"Content-Type": pyld.ContentType(),
 		"Timeout":      fmt.Sprintf("%d", timeout),
 	}
-	return (*adpt).Post(ctxt, path, body, len, headers, logger)
+	res, err := (*adpt).Post(ctxt, path, body, len, headers, logger)
+	if err != nil {
+		return nil, nil, err
+	}
+	if res.StatusCode() == 202 {
+		var jobCreate JobCreateT
+		if err := res.AsType(&jobCreate); err != nil {
+			return nil, nil, err
+		}
+		// jobCreate.ServiceID = serviceID
+		return res, &jobCreate, nil
+	}
+	return res, nil, nil
 }
 
 /**** JOB EVENTS ****/

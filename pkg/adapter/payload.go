@@ -48,6 +48,17 @@ func ToPayload(body []byte, resp *http.Response, logger *log.Logger) Payload {
 	}
 }
 
+func JsonPayloadFromAny(msg any, logger *log.Logger) (Payload, error) {
+	body, err := json.Marshal(msg) // or json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return &payload{
+		body:        body,
+		contentType: "application/json",
+	}, nil
+}
+
 func LoadPayloadFromStdin(isYAML bool) (Payload, error) {
 	if data, err := io.ReadAll(os.Stdin); err != nil {
 		return nil, err

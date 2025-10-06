@@ -240,7 +240,8 @@ func (a *restAdapter) Connect(
 	}
 	req.Header.Set("Cache-Control", "no-cache")
 	if a.connCtxt.AccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+a.connCtxt.AccessToken)
+		// hide token in debug message below
+		req.Header.Set("Authorization", "Bearer ****")
 	}
 	if a.connCtxt.Headers != nil {
 		for key, val := range *a.connCtxt.Headers {
@@ -264,6 +265,9 @@ func (a *restAdapter) Connect(
 		a.client.Timeout = time.Second * time.Duration(a.connCtxt.TimeoutSec)
 	}
 	logger.Debug("calling api", log.Reflect("headers", req.Header))
+	if a.connCtxt.AccessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+a.connCtxt.AccessToken)
+	}
 	return doWithRetry(a.client, req, respHandler, endpoint, logger)
 }
 

@@ -118,7 +118,8 @@ var (
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := GetHistory(args[0])
-			return readDisplayJob(recordID)
+			ctxt := context.Background()
+			return readDisplayJob(ctxt, recordID)
 		},
 	}
 
@@ -142,21 +143,21 @@ provided through 'stdin' use '-' as the file name and also include the --format 
 			var pyld a.Payload
 			if fileName != "" {
 				if pyld, err = payloadFromFile(fileName, inputFormat); err != nil {
-					cobra.CheckErr(fmt.Sprintf("While reading job file '%s' - %s", fileName, err))
+					cobra.CheckErr(fmt.Sprintf("While reading job file '%s' - %v", fileName, err))
 				}
 			}
 			if aspectURN != "" {
 				j := fmt.Sprintf(CREATE_FROM_ASPECT, aspectURN, serviceID)
 				if pyld, err = a.LoadPayloadFromBytes([]byte(j), false); err != nil {
-					cobra.CheckErr(fmt.Sprintf("While reading job file '%s' - %s", fileName, err))
+					cobra.CheckErr(fmt.Sprintf("While reading job file '%s' - %v", fileName, err))
 				}
 			}
-			res, err := sdk.CreateServiceJobRaw(ctxt, serviceID, pyld, 0, CreateAdapter(true), logger)
+			res, jobCreate, err := sdk.CreateServiceJobRaw(ctxt, serviceID, pyld, 0, CreateAdapter(true), logger)
 			if err != nil {
 				return err
 			}
-			if res.StatusCode() == 202 {
-				return waitForResult(ctxt, res, serviceID)
+			if jobCreate != nil {
+				return waitForResult(ctxt, jobCreate, serviceID)
 			}
 			reply, err := res.AsObject()
 			if err != nil {
@@ -166,25 +167,19 @@ provided through 'stdin' use '-' as the file name and also include the --format 
 			if !ok {
 				cobra.CheckErr("Cannot find job ID in response")
 			}
-			return readDisplayJob(jobID) // a.ReplyPrinter(res, outputFormat == "yaml")
+			return readDisplayJob(ctxt, jobID) // a.ReplyPrinter(res, outputFormat == "yaml")
 		},
 	}
 )
 
-type JobCreateT struct {
-	JobID      string  `json:"job-id"`
-	ServiceID  string  `json:"service-id,omitempty"`
-	RetryLater float64 `json:"retry-later"`
-}
-
-func waitForResult(ctxt context.Context, res a.Payload, serviceID string) error {
-	var jobCreate JobCreateT
-	if err := res.AsType(&jobCreate); err != nil {
-		return err
-	}
-	jobCreate.ServiceID = serviceID
+func waitForResult(
+	ctxt context.Context,
+	jobCreate *sdk.JobCreateT,
+	serviceID string,
+) error {
+	// jobCreate.ServiceID = serviceID
 	if streamFlag {
-		return streamJobResults(ctxt, &jobCreate)
+		return streamJobResults(ctxt, jobCreate)
 	}
 	wait := 2
 	if !watchFlag {
@@ -193,27 +188,40 @@ func waitForResult(ctxt context.Context, res a.Payload, serviceID string) error 
 	logger.Info("Job created", log.String("job-id", jobCreate.JobID), log.Int("waiting [sec]", wait))
 
 	jobID := jobCreate.JobID
+	maxCheck := 1
+	if watchFlag {
+		maxCheck = 99 // should really define that in t terms of max. wait
+	}
+	job, pyld, err := watchJob(ctxt, jobID, maxCheck, wait)
+	if err != nil {
+		return err
+	}
+	return displayJob(job, pyld)
+}
+
+func watchJob(ctxt context.Context, jobID string, maxChecks int, wait int) (*sdk.JobReadResponseBody, a.Payload, error) {
 	done := false
+	tries := 0
 	for !done {
 		time.Sleep(time.Duration(wait) * time.Second)
-		job, pyld, err := readJob(jobID)
+		job, pyld, err := readJob(ctxt, jobID)
 		if err != nil {
-			return err
+			return nil, nil, err
 		}
 		status := "?"
 		if job.Status != nil {
 			status = *job.Status
 		}
-		done = !watchFlag || !(status == "?" || status == "scheduled" || status == "executing")
+		tries += 1
+		done = tries >= maxChecks || !(status == "?" || status == "scheduled" || status == "executing")
 		if done {
-			return displayJob(job, pyld)
+			return job, pyld, nil
 		}
 	}
-
-	return readDisplayJob(jobCreate.JobID)
+	return nil, nil, fmt.Errorf("timed out waiting for job to finish")
 }
 
-func streamJobResults(ctxt context.Context, jobCreate *JobCreateT) error {
+func streamJobResults(ctxt context.Context, jobCreate *sdk.JobCreateT) error {
 	onEvent := func(msg *sse.Event) {
 		var out bytes.Buffer
 		if err := json.Indent(&out, msg.Data, "", "  "); err == nil {
@@ -227,11 +235,11 @@ func streamJobResults(ctxt context.Context, jobCreate *JobCreateT) error {
 		cobra.CheckErr(fmt.Sprintf("While watching events for job '%s' - %s", jobCreate.JobID, err))
 	}
 	fmt.Println("---------")
-	return readDisplayJob(jobCreate.JobID)
+	return readDisplayJob(ctxt, jobCreate.JobID)
 }
 
-func readDisplayJob(jobID string) error {
-	job, pyld, err := readJob(jobID)
+func readDisplayJob(ctxt context.Context, jobID string) error {
+	job, pyld, err := readJob(ctxt, jobID)
 	if err != nil {
 		return err
 	}
@@ -248,13 +256,12 @@ func displayJob(job *sdk.JobReadResponseBody, pyld a.Payload) error {
 	return nil
 }
 
-func readJob(jobID string) (*sdk.JobReadResponseBody, a.Payload, error) {
+func readJob(ctxt context.Context, jobID string) (*sdk.JobReadResponseBody, a.Payload, error) {
 	selector := sdk.AspectSelector{
 		Entity:         jobID,
 		SchemaPrefix:   JOB_SCHEMA,
 		IncludeContent: true,
 	}
-	ctxt := context.Background()
 	var serviceId string
 	if list, _, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger); err == nil {
 		if len(list.Items) != 1 {
