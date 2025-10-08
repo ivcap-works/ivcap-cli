@@ -16,6 +16,7 @@
 package adapter
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -47,6 +48,17 @@ func ToPayload(body []byte, resp *http.Response, logger *log.Logger) Payload {
 	}
 }
 
+func JsonPayloadFromAny(msg any, logger *log.Logger) (Payload, error) {
+	body, err := json.Marshal(msg) // or json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return &payload{
+		body:        body,
+		contentType: "application/json",
+	}, nil
+}
+
 func LoadPayloadFromStdin(isYAML bool) (Payload, error) {
 	if data, err := io.ReadAll(os.Stdin); err != nil {
 		return nil, err
@@ -73,7 +85,16 @@ func LoadPayloadFromBytes(data []byte, isYAML bool) (pyld Payload, err error) {
 			return
 		}
 	}
-	pyld = &payload{body: data}
+	var contentType string
+	if isYAML {
+		contentType = "application/yaml"
+	} else {
+		contentType = "application/json"
+	}
+	pyld = &payload{
+		body:        data,
+		contentType: contentType,
+	}
 	return
 }
 
@@ -192,6 +213,10 @@ func (p *payload) AsBytes() []byte {
 	return p.body
 }
 
+func (p *payload) AsReader() (io.Reader, int64) {
+	return bytes.NewReader(p.body), int64(len(p.body))
+}
+
 func (p *payload) IsEmpty() bool {
 	return len(p.body) == 0
 }
@@ -202,6 +227,10 @@ func (p *payload) Header(key string) string {
 	} else {
 		return ""
 	}
+}
+
+func (p *payload) ContentType() string {
+	return p.contentType
 }
 
 func (p *payload) StatusCode() int {

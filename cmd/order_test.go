@@ -50,6 +50,7 @@ var (
 )
 
 var orderID string
+var serviceID string
 
 func testCreateOrder(t *testing.T) {
 	if testToken == "" {

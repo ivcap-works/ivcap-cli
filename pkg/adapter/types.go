@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/r3labs/sse/v2"
 	log "go.uber.org/zap"
 )
 
@@ -36,6 +37,7 @@ type Adapter interface {
 	Put(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error)
 	Patch(ctxt context.Context, path string, body io.Reader, length int64, headers *map[string]string, logger *log.Logger) (Payload, error)
 	Delete(ctxt context.Context, path string, logger *log.Logger) (Payload, error)
+	GetSSE(ctxt context.Context, path string, lastEventID *string, onEvent func(*sse.Event), headers *map[string]string, logger *log.Logger) error
 	SetUrl(url string)
 	GetPath(url string) (path string, err error)
 }
@@ -46,7 +48,9 @@ type Payload interface {
 	AsObject() (map[string]interface{}, error)
 	AsArray() ([]interface{}, error)
 	AsBytes() []byte
+	AsReader() (io.Reader, int64)
 	IsEmpty() bool
 	Header(key string) string
+	ContentType() string
 	StatusCode() int
 }

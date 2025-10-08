@@ -26,6 +26,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
+	"github.com/r3labs/sse/v2"
 	log "go.uber.org/zap"
 )
 
@@ -163,6 +164,33 @@ func (a *restAdapter) Delete(ctxt context.Context, path string, logger *log.Logg
 	return a.Connect(ctxt, "DELETE", path, nil, -1, nil, nil, logger)
 }
 
+func (a *restAdapter) GetSSE(
+	ctxt context.Context,
+	path string,
+	lastEventID *string,
+	onEvent func(*sse.Event),
+	headers *map[string]string,
+	logger *log.Logger,
+) error {
+	parsedURL, err := parseURL(path, a.connCtxt)
+	if err != nil {
+		return err
+	}
+	client := sse.NewClient(parsedURL.String())
+	if lastEventID != nil {
+		client.LastEventID.Store([]byte(*lastEventID))
+	}
+	if headers != nil {
+		for key, value := range *headers {
+			client.Headers[key] = value
+		}
+	}
+	if a.connCtxt.AccessToken != "" {
+		client.Headers["Authorization"] = "Bearer " + a.connCtxt.AccessToken
+	}
+	return client.Subscribe("", onEvent)
+}
+
 func (a *restAdapter) SetUrl(url string) {
 	a.connCtxt.URL = url
 }
@@ -212,7 +240,8 @@ func (a *restAdapter) Connect(
 	}
 	req.Header.Set("Cache-Control", "no-cache")
 	if a.connCtxt.AccessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+a.connCtxt.AccessToken)
+		// hide token in debug message below
+		req.Header.Set("Authorization", "Bearer ****")
 	}
 	if a.connCtxt.Headers != nil {
 		for key, val := range *a.connCtxt.Headers {
@@ -236,6 +265,9 @@ func (a *restAdapter) Connect(
 		a.client.Timeout = time.Second * time.Duration(a.connCtxt.TimeoutSec)
 	}
 	logger.Debug("calling api", log.Reflect("headers", req.Header))
+	if a.connCtxt.AccessToken != "" {
+		req.Header.Set("Authorization", "Bearer "+a.connCtxt.AccessToken)
+	}
 	return doWithRetry(a.client, req, respHandler, endpoint, logger)
 }
 

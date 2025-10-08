@@ -5,3 +5,4 @@ dist
 __debug_bin
 data/.direnv/
 data/
+.dbg-env
