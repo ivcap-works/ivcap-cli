@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "default-server": {
+      "type": "stdio",
+      "command": "./ivcap",
+      "args": [
+        "mcp"
+      ]
+    },
+    "sse-8077": {
+      "type": "sse",
+      "url": "http://localhost:8077/mcp"
+    }
+  }
+}

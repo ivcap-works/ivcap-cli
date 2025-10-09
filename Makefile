@@ -148,3 +148,9 @@ install-addlicense:
 		echo "Installing addlicense..."; \
 		go get -u github.com/nokia/addlicense; \
 	fi
+
+mcp-inspector:
+	npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server default-server
+
+mcp-inspector-sse:
+	npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server sse-8077
