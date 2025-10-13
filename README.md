@@ -6,6 +6,11 @@ __IVCAP__ has an extensive REST API which is usually called directly from applic
 
 * [Install released binaries](#install)
 * [Usage](#usage)
+  * [Context](#context)
+  * [Service](#service)
+  * [Job](#job)
+  * [Artifact](#artifact)
+  * [Package](#package)
 * [Build from source](#build)
 
 ## Install Released Binaries<a name="install"></a>
@@ -34,13 +39,17 @@ Usage:
 
 Available Commands:
   artifact    Create and manage artifacts
-  aspect      Create and manage aspects
   collection  Create and manage collections
   completion  Generate the autocompletion script for the specified shell
   context     Manage and set access to various IVCAP deployments
+  datafabric  Query the datafabric and create and manage aspects within
   help        Help about any command
+  job         Create and manage jobs
+  mcp         Start an MCP server for all tools on an IVCAP platform
   order       Create and manage orders
+  package     Push/pull and manage service packages
   queue       Create and manage queues
+  secret      Set and list secrets
   service     Create and manage services
 
 Flags:
@@ -57,7 +66,7 @@ Flags:
 Use "ivcap [command] --help" for more information about a command.
 ```
 
-### Configure context for a specific deployment
+### Configure context for a specific deployment <a name="context"></a>
 
 With the following command we are creating a context named `sd-dev` for the IVCAP deployment at `https://develop.ivcap.net`. Please check first the details of deployment you want to use.
 
@@ -104,19 +113,21 @@ Waiting for authorisation...
 
 Follow this [link](./doc/ivcap_context.md) for more details about the `context` command.
 
-### Services
+### Service <a name="service"></a>
 
 To list all available services:
 
 ```
 % ivcap services list --limit 2
-+--------+------------------------+-------------------------------+
-| ID     | NAME                   | ACCOUNT                       |
-+--------+------------------------+-------------------------------+
-| @1     | image-analysis-example | urn:ivcap:account:45a06508... |
-| @2     | cv-pipeline-v0-ps1-gpu | urn:ivcap:account:29df453d... |
-| ... @3 |                        |                               |
-+--------+------------------------+-------------------------------+
++----+--------------------------+------------------------------------------------------------------+
+| ID | NAME                     | DESCRIPTION                                                      |
++----+--------------------------+------------------------------------------------------------------+
+| @1 | llama-index-agent-runner | Executes queries or chats with LlamaIndex agents.                |
++----+--------------------------+------------------------------------------------------------------+
+| @2 | gene-whisperer           | A tool for answering genomic questions. Collates information     |
+|    |                          | across various sources such as NCBI, UniProt, Blast and          |
+|    |                          | GeneOntology to answer biomedical questions.                     |
++----+--------------------------+------------------------------------------------------------------+
 ```
 
 To get more details about a specific service
@@ -124,68 +135,205 @@ To get more details about a specific service
 ```
 % ivcap service get @1
 
-          ID  urn:ivcap:service:19f9c31e...
-        Name  image-analysis-example
- Description  A simple IVCAP service creating a thumbnail and reporting stats on a collection of images
-      Status
-  Account ID  urn:ivcap:account:45a06508...
-  Parameters  ┌────────┬────────────────────────────────┬────────────┬─────────┬──────────┐
-              │ NAME   │ DESCRIPTION                    │ TYPE       │ DEFAULT │ OPTIONAL │
-              ├────────┼────────────────────────────────┼────────────┼─────────┼──────────┤
-              │ images │ Collection of image artifacts. │ collection │         │ true     │
-              ├────────┼────────────────────────────────┼────────────┼─────────┼──────────┤
-              │  width │ Thumbnail width.               │ int        │ 100     │ false    │
-              ├────────┼────────────────────────────────┼────────────┼─────────┼──────────┤
-              │ height │ Thumbnail height.              │ int        │ 100     │ false    │
-              └────────┴────────────────────────────────┴────────────┴─────────┴──────────┘
+
+        Name  llama-index-agent-runner
+ Description  Executes queries or chats with LlamaIndex agents.
+
+          ID  urn:ivcap:service:b35153c3-3f66-5ed1-9e33-c46949783575 (@1)
+      Status  active
+  Controller  urn:ivcap:schema.service.rest.1
+      Policy  urn:ivcap:policy:ivcap.open.metadata
+     Account  urn:ivcap:account:45a06508-5c3a-4678-8e6d-e6399bf27538
+  Parameters  None
 ```
 
 Follow this [link](./doc/ivcap_service.md) for more details about the `service` command.
 
-### Orders
+### Jobs <a name="job"></a>
 
-To place an order:
-
-```
-% ivcap orders create \
-     urn:ivcap:service:d939b74d... \
-     --name "Order for max" \
-     msg="Hi, how are you"
-Order 'urn:ivcap:order:81b204e8...' with status 'Pending' submitted.
+A _job_ is a specific instantiation of a service.
 
 ```
+% ivcap job
 
-To check on the status of an order:
+Create and manage jobs
 
-```
-% ivcap orders get urn:ivcap:order:81b204e8...
+Usage:
+  ivcap job [command]
 
-         ID  urn:ivcap:order:f169f54d-ec8d-4d6a-af17-0c1c33625379
-       Name  urn:ibenthos:collection:indo_flores_0922:LB4 UQ PhotoTransect@256028
-     Status  succeeded
-    Ordered  6 months ago (01 Oct 23 17:26 AEDT)
-    Service  image-analysis-example (@15)
- Account ID  urn:ivcap:account:45a06508-5c3a-4678-8e6d-e6399bf27538
- Parameters  ┌─────────────────────────────────────────────────┐
-             │ images =  @1 (urn:ivcap:collection:508a2aba...) │
-             │  width =  100                                   │
-             │ height =  100                                   │
-             └─────────────────────────────────────────────────┘
-   Products  ┌────┬───────────────┬──────────────────┐
-             │ @2 │ result.png    │ image/png        │
-             │ @3 │ stats.json    │ application/json │
-             │ @4 │ thumbnail.png │ image/png        │
-             └────┴───────────────┴──────────────────┘
-   Metadata  ┌─────┬────────────────────────────────────────┐
-             │ @6  │ urn:ivcap:schema:order-uses-workflow.  │
-             │ @7  │ urn:ivcap:schema:order-uses-artifact.1 │
-             │ ...                                          │
-             └─────┴────────────────────────────────────────┘
+Aliases:
+  job, js, jobs
+
+Available Commands:
+  create      Create a new job
+  get         Fetch details about a single job
+  list        List existing jobs
+
+Flags:
+  -h, --help   help for job
 ```
 
-Follow this [link](./doc/ivcap_order.md) for more details about the `order` command.
+To list all jobs initiated or visible to the user:
 
-### Artifacts
+```
+% ivcap job list --limit 2
+
+ At Time  2 seconds ago (13 Oct 25 11:29 AEDT)
+    Jobs  ┌────┬────────────────────────────────┬───────────┬──────────────┐
+          │ ID │ SERVICE                        │ STATUS    │ REQUESTED AT │
+          ├────┼────────────────────────────────┼───────────┼──────────────┤
+          │ @1 │ Batch service example          │ succeeded │ 2 days ago   │
+          │ @2 │ Gene Ontology (GO) Term Mapper │ succeeded │ 4 days ago   │
+          └────┴────────────────────────────────┴───────────┴──────────────┘
+  ... @3
+```
+
+To obtain the details of an existing job:
+
+```
+% ./ivcap job get @1
+
+        Name  b-3678e5f1-8fb7-5ad6-b65b-8bd8c23c0948-szje7stt
+
+          ID  urn:ivcap:job:763e4b1d-26e4-4cd2-ba51-fb5a912a1e9c (@1)
+      Status  succeeded
+  Started At  2 days ago (10 Oct 25 13:29 AEDT)
+ Finished At  2 days ago (10 Oct 25 13:29 AEDT)
+     Service  urn:ivcap:service:3678e5f1-8fb7-5ad6-b65b-8bd8c23c0948 (@2)
+      Policy  urn:ivcap:policy:ivcap.base.service
+     Account  urn:ivcap:account:45a06508-....
+
+ Result-Type  application/vnd.ivcap.urn:sd:schema:batch-tester.1
+      Result  {
+                "$schema": "urn:sd:schema:batch-tester.1",
+                "msg": "CPU consumption finished.",
+                "run_time": 2.0046427249908447
+              }
+```
+
+To crate a job from a service:
+
+```
+% ivcap job create -h
+Create a new job by executing the service 'service-id' with the
+input paramters defined in either a provided (json) file or a reference
+to an aspect containing the parameter definitions. If the job definition is
+provided through 'stdin' use '-' as the file name and also include the --format flag
+
+Usage:
+  ivcap job create [flags] service-id -f job-input|- -a aspect-urn --watch --stream
+
+Flags:
+  -a, --aspect string   URN of aspect containing job parameters
+  -f, --file string     Path to job description file
+      --format string   Format of input file [json, yaml] (default "json")
+  -h, --help            help for create
+      --stream          if set, print job related events to stdout
+      --watch           if set, watch the job until it is finished
+```
+
+The `--watch` flag will block the command until the job has finished and then return the result.
+
+```
+% ivcap job create urn:ivcap:service:3678e5f1-8fb7-5ad6-b65b-8bd8c23c0948 -f .../load_1.json --watch
+
+        Name  b-3678e5f1-8fb7-5ad6-b65b-8bd8c23c0948-oimafhg3
+
+          ID  urn:ivcap:job:939f55f5-243b-49ef-8176-ee32eef966de (@1)
+      Status  succeeded
+  Started At  12 seconds ago (13 Oct 25 13:35 AEDT)
+ Finished At  1 second ago (13 Oct 25 13:36 AEDT)
+     Service  urn:ivcap:service:3678e5f1-8fb7-5ad6-b65b-8bd8c23c0948 (@2)
+      Policy  urn:ivcap:policy:ivcap.base.service
+     Account  urn:ivcap:account:45a06508-5c3a-4678-8e6d-e6399bf27538
+
+ Result-Type  application/vnd.ivcap.urn:sd:schema:batch-tester.1
+      Result  {
+                "$schema": "urn:sd:schema:batch-tester.1",
+                "msg": "CPU consumption finished.",
+                "run_time": 10.001116037368774
+              }
+```
+
+In contrast, the `--stream` flag will also print out any events generated by the job during its execution. The individual events will
+be a mix of system related events (e.g. `ivcap.job.status`) and systemd specific ones (e.g. `urn:ag-ui:schema:event.1`).
+
+```
+% ivcap job create urn:ivcap:service:3678e5f1-8fb7-5ad6-b65b-8bd8c23c0948 -f .../load_1.json --stream
+---------
+{
+  "SeqID": "00007016",
+  "EventID": "0199db6f-766e-7ebf-b113-96664880bcdb",
+  "Type": "ivcap.job.status",
+  "Schema": "urn:ivcap:schema:job.status.1",
+  "Source": "b-3678e5f1-8fb7-5ad6-b65b-8bd8c23c0948-gyfgm6rl",
+  "Timestamp": "2025-10-13T02:38:59.141759565Z",
+  "Data": {
+    "job-urn": "urn:ivcap:job:a63971a8-4e99-460c-8e5e-d2b00a50e3f2",
+    "status": "executing"
+  }
+}
+---------
+{
+  "SeqID": "00007017",
+  "EventID": "0199db6f-7721-7f05-8230-6c835856dc6d",
+  "Type": "ivcap.job.event",
+  "Schema": "urn:ag-ui:schema:event.1",
+  "Source": "b-3678e5f1-8fb7-5ad6-b65b-8bd8c23c0948-gyfgm6rl",
+  "Timestamp": "2025-10-13T02:38:59.354310095Z",
+  "Data": {
+    "$schema": "urn:ag-ui:schema:event.1",
+    "raw_event": "Consuming CPU for 10 seconds at 80%",
+    "step_name": "consume_compute",
+    "timestamp": 1760323139188,
+    "type": "STEP_STARTED"
+  }
+}
+---------
+...
+---------
+
+        Name  b-3678e5f1-8fb7-5ad6-b65b-8bd8c23c0948-gyfgm6rl
+
+          ID  urn:ivcap:job:a63971a8-4e99-460c-8e5e-d2b00a50e3f2 (@1)
+      Status  succeeded
+  Started At  11 seconds ago (13 Oct 25 13:38 AEDT)
+ Finished At  1 second ago (13 Oct 25 13:39 AEDT)
+     Service  urn:ivcap:service:3678e5f1-8fb7-5ad6-b65b-8bd8c23c0948 (@2)
+      Policy  urn:ivcap:policy:ivcap.base.service
+     Account  urn:ivcap:account:45a06508-5c3a-4678-8e6d-e6399bf27538
+
+ Result-Type  application/vnd.ivcap.urn:sd:schema:batch-tester.1
+      Result  {
+                "$schema": "urn:sd:schema:batch-tester.1",
+                "msg": "CPU consumption finished.",
+                "run_time": 10.020376205444336
+              }
+```
+
+
+### Artifacts <a name="artifact"></a>
+
+```
+% ./ivcap artifact
+Create and manage artifacts
+
+Usage:
+  ivcap artifact [command]
+
+Aliases:
+  artifact, a, artifacts
+
+Available Commands:
+  create      Create a new artifact
+  download    Download the content associated with this artifact
+  get         Fetch details about a single artifact
+  list        List existing artifacts
+  upload      Resume uploading artifact content
+
+Flags:
+  -h, --help   help for artifact
+```
 
 To check the details of the artifact created by the previously placed order:
 
@@ -214,8 +362,11 @@ Successfully wrote 50855 bytes to /tmp/out.png
 
 Follow this [link](./doc/ivcap_artifact.md) for more details about the `artifact` command.
 
-### Packages
-#### To upload service docker image
+### Packages <a name="package"></a>
+
+The computation behind each service is encapsulated by one or more "packages" (aka Docker containers). This command supports managing them.
+
+#### Upload packages (aka Docker containers)
 ```
 ivcap package push -f alpine:3.20.1
 
@@ -226,7 +377,7 @@ ivcap package push -f alpine:3.20.1
 
 ```
 
-#### To upload a service docker image over 2G, which needs to push from a local registry
+**Note: If the image is larger than 2GB we need to push it from a local registry instead of pusing it directly.**
 
 - Start a local registry
 ```
@@ -289,6 +440,49 @@ The prerequisite tools can be installed by running the make target:
 ```shell
 make install-tools
 ```
+
+----
+### Deprecated: Orders <a name="orders"></a>
+
+To place an order:
+
+```
+% ivcap orders create \
+     urn:ivcap:service:d939b74d... \
+     --name "Order for max" \
+     msg="Hi, how are you"
+Order 'urn:ivcap:order:81b204e8...' with status 'Pending' submitted.
+```
+
+To check on the status of an order:
+
+```
+% ivcap orders get urn:ivcap:order:81b204e8...
+
+         ID  urn:ivcap:order:f169f54d-ec8d-4d6a-af17-0c1c33625379
+       Name  urn:ibenthos:collection:indo_flores_0922:LB4 UQ PhotoTransect@256028
+     Status  succeeded
+    Ordered  6 months ago (01 Oct 23 17:26 AEDT)
+    Service  image-analysis-example (@15)
+ Account ID  urn:ivcap:account:45a06508-5c3a-4678-8e6d-e6399bf27538
+ Parameters  ┌─────────────────────────────────────────────────┐
+             │ images =  @1 (urn:ivcap:collection:508a2aba...) │
+             │  width =  100                                   │
+             │ height =  100                                   │
+             └─────────────────────────────────────────────────┘
+   Products  ┌────┬───────────────┬──────────────────┐
+             │ @2 │ result.png    │ image/png        │
+             │ @3 │ stats.json    │ application/json │
+             │ @4 │ thumbnail.png │ image/png        │
+             └────┴───────────────┴──────────────────┘
+   Metadata  ┌─────┬────────────────────────────────────────┐
+             │ @6  │ urn:ivcap:schema:order-uses-workflow.  │
+             │ @7  │ urn:ivcap:schema:order-uses-artifact.1 │
+             │ ...                                          │
+             └─────┴────────────────────────────────────────┘
+```
+
+Follow this [link](./doc/ivcap_order.md) for more details about the `order` command.
 
 ### Build & Install
 
