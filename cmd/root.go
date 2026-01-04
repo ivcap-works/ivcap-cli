@@ -409,3 +409,26 @@ func addNextPageRow(
 	}
 	return
 }
+
+func newGrpcAdapter(
+	opts ...adpt.GrpcAdapterOption,
+) (*adpt.GrpcAdapter, error) {
+	ctxt := GetActiveContext() // will always return with a context
+
+	if accessToken == "" {
+		accessToken = getAccessToken(true)
+	}
+	if accessToken == "" {
+		cobra.CheckErr(
+			fmt.Sprintf("Adapter requires auth token. Set with '--access-token' or env '%s'", ACCESS_TOKEN_ENV))
+	}
+
+	options := []adpt.GrpcAdapterOption{
+		adpt.WithGrpcConnContext(&adpt.ConnectionCtxt{
+			URL:         ctxt.URL,
+			AccessToken: accessToken,
+		}),
+	}
+	options = append(options, opts...)
+	return adpt.NewGrpcAdapter(options...)
+}

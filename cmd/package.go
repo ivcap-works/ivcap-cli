@@ -74,7 +74,12 @@ var (
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			srcPackageTag := args[0]
-			_, err = sdk.PushServicePackage(srcPackageTag, forcePush, localImage, CreateAdapter(true), logger)
+			ra, err := newGrpcAdapter()
+			if err != nil {
+				return err
+			}
+			ctxt := context.Background()
+			err = sdk.PushPackage(ctxt, ra, srcPackageTag, forcePush, localImage, logger)
 			if err != nil {
 				return err
 			}
@@ -90,7 +95,11 @@ var (
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
 			tag := args[0]
-			err = sdk.PullPackage(ctxt, tag, CreateAdapter(true), logger)
+			ra, err := newGrpcAdapter()
+			if err != nil {
+				return err
+			}
+			err = sdk.PullPackage(ctxt, tag, ra, logger)
 			if err != nil {
 				return err
 			}
