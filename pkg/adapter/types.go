@@ -40,6 +40,7 @@ type Adapter interface {
 	GetSSE(ctxt context.Context, path string, lastEventID *string, onEvent func(*sse.Event), headers *map[string]string, logger *log.Logger) error
 	SetUrl(url string)
 	GetPath(url string) (path string, err error)
+	GetConnectionContext() *ConnectionCtxt
 }
 
 type Payload interface {
