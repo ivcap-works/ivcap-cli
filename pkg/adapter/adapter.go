@@ -271,6 +271,10 @@ func (a *restAdapter) Connect(
 	return doWithRetry(a.client, req, respHandler, endpoint, logger)
 }
 
+func (a *restAdapter) GetConnectionContext() *ConnectionCtxt {
+	return a.connCtxt
+}
+
 func ProcessErrorResponse(resp *http.Response, path string, pyld Payload, logger *log.Logger) (err error) {
 	switch resp.StatusCode {
 	case http.StatusNotFound:

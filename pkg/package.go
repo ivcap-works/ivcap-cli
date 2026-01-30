@@ -17,27 +17,18 @@ package client
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
-	"strconv"
 	"strings"
-	"time"
 
-	"github.com/cenkalti/backoff/v4"
+	dockerimage "github.com/docker/docker/api/types/image"
+	dockerregistry "github.com/docker/docker/api/types/registry"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
-	v1 "github.com/google/go-containerregistry/pkg/v1"
-	"github.com/google/go-containerregistry/pkg/v1/daemon"
-	"github.com/google/go-containerregistry/pkg/v1/partial"
-	"github.com/google/go-containerregistry/pkg/v1/remote"
-	"github.com/google/go-containerregistry/pkg/v1/tarball"
-	"github.com/google/go-containerregistry/pkg/v1/types"
 	"github.com/inhies/go-bytesize"
 	log "go.uber.org/zap"
 
@@ -74,629 +65,129 @@ func ListPackages(ctxt context.Context, tag string, adpt *adapter.Adapter, logge
 	return &body, nil
 }
 
-var _ partial.WithRawConfigFile = (*withRawConfig)(nil)
-
-type withRawConfig struct {
-	Raw []byte
-}
-
-func (w withRawConfig) RawConfigFile() ([]byte, error) {
-	return w.Raw, nil
-}
-
-func PushServicePackage(srcTagName string, forcePush, localImage bool, adpt *adapter.Adapter, logger *log.Logger) (*api.PushResponseBody, error) {
+func PushPackage(ctx context.Context, srcTagName string, forcePush, localImage bool, adpt adapter.Adapter, logger *log.Logger) (*api.PushResponseBody, error) {
 	srcTag, err := name.NewTag(srcTagName, name.WeakValidation, name.WithDefaultRegistry("local"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid src tag format: %w", err)
 	}
 
-	if srcTag.RegistryStr() == "local" || localImage {
-		// check size
-		client, err := dockerclient.NewClientWithOpts(dockerclient.FromEnv)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create docker client: %w", err)
-		}
-		inspect, err := client.ImageInspect(context.Background(), srcTag.String())
-		if err != nil {
-			return nil, fmt.Errorf("failed to get inspect: %w", err)
-		}
-		if inspect.Size > 2*1024*1024*1024 {
-			fmt.Println("Image too large, please upload from a local docker registry, check README for how to do that.")
-			return nil, nil
-		}
+	client, err := dockerclient.NewClientWithOpts(
+		dockerclient.WithAPIVersionNegotiation(),
+		dockerclient.FromEnv,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create docker client: %w", err)
 	}
 
 	fmt.Printf("\033[2K\r Pushing %s from %s, may take multiple minutes depending on the size of the image ...\n", srcTag.String(), srcTag.RegistryStr())
 
-	var img v1.Image
-	var cl v1.Layer
-	// push from another repo registry
-	if srcTag.RegistryStr() != "local" && !localImage {
-		ref, err := name.ParseReference(srcTagName)
-		if err != nil {
-			return nil, fmt.Errorf("parsing reference %q: %w", srcTagName, err)
-		}
+	registrySrvHost, err := getDockerRegistryHost(adpt)
+	if err != nil {
+		return nil, err
+	}
 
-		desc, err := remote.Get(ref)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get %s, %w", srcTag, err)
-		}
-		img, err = desc.Image()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get image from description: %w", err)
-		}
-		config, err := img.RawConfigFile()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get image raw config: %w", err)
-		}
-		cl, err = partial.ConfigLayer(&withRawConfig{
-			Raw: config,
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to get config layer: %w", err)
-		}
+	targetImage := registrySrvHost + "/docker-registry/" + srcTagName
+	if err := client.ImageTag(ctx, srcTagName, targetImage); err != nil {
+		return nil, fmt.Errorf("failed to tag image: %w", err)
+	}
 
+	// Encode bearer token as Docker AuthConfig
+	encodedAuth, err := getDockerRegistryAuth(registrySrvHost, adpt)
+	if err != nil {
+		return nil, err
+	}
+
+	pushResp, err := client.ImagePush(context.Background(), targetImage, dockerimage.PushOptions{
+		RegistryAuth: encodedAuth,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to push image: %w", err)
+	}
+	defer pushResp.Close()
+
+	if err = checkPushResponse(pushResp, srcTagName); err != nil {
+		fmt.Printf("\033[2K\r %s push failed, error: %s\n", srcTagName, err.Error())
 	} else {
-		// load docker image
-		ref, err := name.ParseReference(srcTag.String())
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse name reference: %s, %w", srcTag.String(), err)
-		}
-		img, err = daemon.Image(ref)
-		if err != nil {
-			return nil, fmt.Errorf("reading image %q: %w", ref, err)
-		}
-		cl, err = partial.ConfigLayer(img)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get config layer: %w", err)
-		}
+		fmt.Printf("\033[2K\r %s pushed\n", srcTagName)
 	}
 
-	layers, err := img.Layers()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get image layers: %w", err)
-	}
-	layers = append(layers, cl)
-
-	// send layers
-	for _, layer := range layers {
-		mediaType, err := layer.MediaType()
-		if err != nil {
-			return nil, fmt.Errorf("failed to get media type: %w", err)
-		}
-		if mediaType == types.OCIConfigJSON {
-			if res, err := pushConfig(layer, adpt, srcTag, forcePush, logger); err != nil {
-				return res, err
-			}
-		} else {
-			if res, err := pushLayer(layer, adpt, srcTag, forcePush, logger); err != nil {
-				return res, err
-			}
-		}
-	}
-
-	// send the image manifest
-	manifest, err := img.Manifest()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get image manifest: %w", err)
-	}
-	if manifest.MediaType == types.OCIManifestSchema1 {
-		manifest.MediaType = types.DockerManifestSchema2
-	}
-
-	data, err := json.Marshal(manifest)
-	if err != nil {
-		return nil, fmt.Errorf("failed to marshal manifest: %w", err)
-	}
-
-	return pushManifest(data, adpt, srcTag, forcePush, logger)
+	return &api.PushResponseBody{
+		Digest: &srcTagName,
+	}, nil
 }
 
-func pushConfig(layer v1.Layer, adpt *adapter.Adapter, srcTag name.Tag, forcePush bool, logger *log.Logger) (*api.PushResponseBody, error) {
-	digest, err := layer.Digest()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get layer digest: %w", err)
-	}
-
-	total, err := layer.Size()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get layer size: %w", err)
-	}
-
-	path := pkgPath(nil) + "/push"
-	q := url.Values{}
-	q.Set("force", strconv.FormatBool(forcePush))
-	q.Set("tag", srcTag.RepositoryStr()+":"+srcTag.TagStr())
-	q.Set("total", strconv.FormatInt(int64(total), 10))
-	q.Set("type", "config")
-	q.Set("digest", digest.String())
-	path += "?" + q.Encode()
-
-	layerData, err := layer.Compressed()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get compressed data for layer %s: %w", digest.Hex[:10], err)
-	}
-
-	res, err := (*adpt).Post(context.Background(), path, layerData, -1, nil, logger)
-	if err != nil {
-		// error type assertion with goa ???
-		if strings.Contains(err.Error(), "already created") {
-			return nil, fmt.Errorf("tag: %s already created, use -f to force overwrite", srcTag)
-		}
-		return nil, fmt.Errorf("failed to push layer %s, %s, error: %w", digest.Hex[:10], bytesize.New(float64(total)), err)
-	}
-
-	var body api.PushResponseBody
-	if err := res.AsType(&body); err != nil {
-		return nil, fmt.Errorf("failed to decode update service response body; %w", err)
-	}
-
-	fmt.Printf("\033[2K\r %s %12s uploaded\n", digest.Hex[:10], bytesize.New(float64(total)))
-
-	return &body, nil
-}
-
-func pushLayer(layer v1.Layer, adpt *adapter.Adapter, srcTag name.Tag, forcePush bool, logger *log.Logger) (*api.PushResponseBody, error) {
-	digest, err := layer.Digest()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get layer digest: %w", err)
-	}
-
-	total, err := layer.Size()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get layer size: %w", err)
-	}
-
-	path := pkgPath(nil) + "/push"
-	q := url.Values{}
-	q.Set("force", strconv.FormatBool(forcePush))
-	q.Set("tag", srcTag.RepositoryStr()+":"+srcTag.TagStr())
-	q.Set("total", strconv.FormatInt(int64(total), 10))
-	q.Set("type", "layer")
-	q.Set("digest", digest.String())
-
-	layerData, err := layer.Compressed()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get compressed data for layer %s: %w", digest.Hex[:10], err)
-	}
-
-	var body api.PushResponseBody
-	chunkSize := 10 * 1024 * 1024 // 10MB
-	buffer := make([]byte, chunkSize)
-	start, end := 0, 0
-	for {
-		n, err := io.ReadFull(layerData, buffer)
-		if err != nil && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
-			return nil, fmt.Errorf("failed to read layer data: %w", err)
-		}
-		if n == 0 {
-			break
-		}
-		end = start + n
-
-		q.Set("start", strconv.FormatInt(int64(start), 10))
-		q.Set("end", strconv.FormatInt(int64(end), 10))
-		postPath := path + "?" + q.Encode()
-
-		fmt.Printf("\033[2K\r %s %10s%10s%10s uploading...", digest.Hex[:10], bytesize.New(float64(end)), "out of", bytesize.New(float64(total)))
-		ctxt, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-		defer cancel()
-
-		res, err := (*adpt).Post(ctxt, postPath, bytes.NewReader(buffer[:n]), -1, nil, logger)
-		if err != nil {
-			// error type assertion with goa ???
-			if strings.Contains(err.Error(), "already created") {
-				return nil, fmt.Errorf("tag: %s already created, use -f to force overwrite", srcTag)
-			}
-			return nil, fmt.Errorf("failed to push layer %s, %s, error: %w", digest.Hex[:10], bytesize.New(float64(total)), err)
-		}
-
-		if err = res.AsType(&body); err != nil {
-			return nil, fmt.Errorf("failed to decode push layer response body; %w", err)
-		}
-
-		if body.Exists != nil && *body.Exists { // already exists
-			fmt.Printf("\033[2K\r %s %10s already exits\n", digest.Hex[:10], bytesize.New(float64(total)))
-			return &body, nil
-		}
-
-		// reach the end, which is the last step, that an async operation to poll
-		if int64(end) == total {
-			expBackoff := backoff.NewExponentialBackOff()
-			expBackoff.InitialInterval = 10 * time.Second
-			expBackoff.Multiplier = 1.0
-			expBackoff.MaxInterval = 120 * time.Second
-			expBackoff.MaxElapsedTime = 2*time.Minute + time.Duration(total/(1*1024*1024))*2*time.Second // 1M for 2 sec
-
-			step := 0
-
-			// Run the operation with retry logic
-			err := backoff.Retry(func() error {
-				step++
-				status, err := pushStatus(srcTag.RepositoryStr()+":"+srcTag.TagStr(), digest, adpt, logger)
-				if err != nil {
-					if isTimeoutError(err.Error()) {
-						return errors.New("retry in case timeout")
-					}
-					return backoff.Permanent(fmt.Errorf("failed polling push status %s, error: %w", digest.Hex[:10], err))
-				}
-				switch *status.Status {
-				case string(PushStatusErrored):
-					return backoff.Permanent(errors.New(*status.Message))
-				case string(PushStatusDone):
-					fmt.Printf("\033[2K\r %s %12s uploaded\n", digest.Hex[:10], bytesize.New(float64(total)))
-					return nil
-				case string(PushStatusUnstarted), string(PushStatusInprogress):
-					fmt.Printf("\033[2K\r %s %12s%10s server uploading %s", digest.Hex[:10], bytesize.New(float64(end)), bytesize.New(float64(total)), strings.Repeat("#", step))
-					return errors.New("waiting finish")
-				default:
-					return backoff.Permanent(fmt.Errorf("unexpected result %d", status))
-				}
-			}, expBackoff)
-			if err != nil {
-				return nil, fmt.Errorf("failed polling push status %s, error: %w", digest.Hex[:10], err)
-			}
-		}
-
-		// step forward
-		start += n
-	}
-
-	return &body, nil
-}
-
-func isTimeoutError(s string) bool {
-	return strings.Contains(s, "operation timed out") || strings.Contains(s, "Request Timeout") || strings.Contains(s, "temporary error")
-}
-
-func pushManifest(manifest []byte, adpt *adapter.Adapter, srcTag name.Tag, forcePush bool, logger *log.Logger) (*api.PushResponseBody, error) {
-	digest, _, err := v1.SHA256(bytes.NewReader(manifest))
-	if err != nil {
-		return nil, fmt.Errorf("failed to get img digest: %w", err)
-	}
-
-	fmt.Printf("\033[2K\r %s pushing ...", srcTag.String())
-
-	path := pkgPath(nil) + "/push"
-	q := url.Values{}
-	q.Set("force", strconv.FormatBool(forcePush))
-	q.Set("tag", srcTag.RepositoryStr()+":"+srcTag.TagStr())
-	q.Set("type", "manifest")
-	q.Set("digest", digest.String())
-	postPath := path + "?" + q.Encode()
-
-	ctxt, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
-	defer cancel()
-	res, err := (*adpt).Post(ctxt, postPath, bytes.NewReader(manifest), -1, nil, logger)
-	if err != nil {
-		// error type assertion with goa ???
-		if strings.Contains(err.Error(), "already created") {
-			return nil, fmt.Errorf("tag: %s already created, use -f to force overwrite", srcTag)
-		}
-		return nil, fmt.Errorf("failed to push service package: %w", err)
-	}
-	var body api.PushResponseBody
-	if err := res.AsType(&body); err != nil {
-		return nil, fmt.Errorf("failed to decode update service response body; %w", err)
-	}
-	if body.Digest != nil {
-		fmt.Printf("\033[2K\r %s pushed\n", *body.Digest)
-	}
-
-	return &body, nil
-}
-
-var _ partial.CompressedImageCore = (*image)(nil)
-
-type image struct {
-	RawC []byte
-	RawM []byte
-	Ls   []v1.Layer
-}
-
-func (i *image) RawManifest() ([]byte, error) {
-	return i.RawM, nil
-}
-func (i *image) MediaType() (types.MediaType, error) {
-	return types.DockerManifestSchema2, nil
-}
-func (i *image) RawConfigFile() ([]byte, error) {
-	return i.RawC, nil
-}
-func (i *image) LayerByDigest(h v1.Hash) (partial.CompressedLayer, error) {
-	for _, layer := range i.Ls {
-		d, err := layer.Digest()
-		if err != nil {
-			return nil, err
-		}
-		if h == d {
-			return layer, nil
-		}
-	}
-	return nil, fmt.Errorf("blob %v not found", h)
-}
-
-var _ partial.CompressedLayer = (*imageLayer)(nil)
-
-type imageLayer struct {
-	Data []byte // compressed data
-	Hash v1.Hash
-}
-
-func (l *imageLayer) Digest() (v1.Hash, error) {
-	return l.Hash, nil
-}
-
-func (l *imageLayer) Compressed() (io.ReadCloser, error) {
-	return io.NopCloser(bytes.NewReader(l.Data)), nil
-}
-
-func (l *imageLayer) Size() (int64, error) {
-	return int64(len(l.Data)), nil
-}
-
-func (l *imageLayer) MediaType() (types.MediaType, error) {
-	return types.DockerLayer, nil
-}
-
-func PullPackage(ctxt context.Context, tag string, adpt *adapter.Adapter, logger *log.Logger) error {
+func PullPackage(ctxt context.Context, tag string, adpt adapter.Adapter, logger *log.Logger) error {
 	srcTag, err := name.NewTag(tag, name.WeakValidation)
 	if err != nil {
 		return fmt.Errorf("invalid src tag format: %w", err)
 	}
 	tag = srcTag.String()
 
-	// the image to store
-	img := &image{}
-
-	// pull the image config
-	configHander := func(resp *http.Response, path string, logger *log.Logger) error {
-		if resp.StatusCode != 200 {
-			data, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return fmt.Errorf("failed to read res body: %w", err)
-			}
-			return fmt.Errorf("statusCode: %d, error: %s", resp.StatusCode, string(data))
-		}
-
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("failed to read res body: %w", err)
-		}
-
-		// no copy, don't change data afterwards
-		img.RawC = data
-
-		fmt.Printf("\033[2K\r Writing image %s ...", tag)
-		dockerImage, err := partial.CompressedToImage(img)
-		if err != nil {
-			return fmt.Errorf("failed to convert compressed image: %w", err)
-		}
-		if _, err = daemon.Write(srcTag, dockerImage); err != nil {
-			return fmt.Errorf("failed to write image: %w", err)
-		}
-		fmt.Printf("\033[2K\r %s image pulled \n", tag)
-
-		// clean the temp file if any
-		m, err := dockerImage.Manifest()
-		if err != nil {
-			return fmt.Errorf("failed to get manifest: %w", err)
-		}
-		for _, l := range m.Layers {
-			ref := strings.TrimSuffix(tag, ":"+srcTag.TagStr()) + "@" + l.Digest.String()
-			filePath := filepath.Clean(filepath.Join(os.TempDir(), ref))
-			if _, err := os.Stat(filePath); err != os.ErrNotExist {
-				_ = os.Remove(filePath)
-			}
-		}
-
-		return nil
-	}
-
-	var layers []v1.Layer
-	manifestHandler := func(resp *http.Response, path string, logger *log.Logger) error {
-		if resp.StatusCode != 200 {
-			data, err := io.ReadAll(resp.Body)
-			if err != nil {
-				return fmt.Errorf("failed to read res body: %w", err)
-			}
-			return fmt.Errorf("statusCode: %d, error: %s", resp.StatusCode, string(data))
-		}
-
-		// read manifest
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("failed to get data from manifest response: %w", err)
-		}
-
-		img.RawM = data
-
-		manifest, err := v1.ParseManifest(bytes.NewReader(img.RawM))
-		if err != nil {
-			return fmt.Errorf("failed to parse manifest %s: %w", string(img.RawM), err)
-		}
-
-		// get layers in reverse order
-		manifestLayers := len(manifest.Layers)
-		for i := len(manifest.Layers) - 1; i >= 0; i-- {
-			layerDesc := manifest.Layers[i]
-			ref := strings.TrimSuffix(tag, ":"+srcTag.TagStr()) + "@" + layerDesc.Digest.String()
-
-			layer, err := retreiveFullLayer(ref, layerDesc, adpt, logger)
-			if err != nil {
-				return fmt.Errorf("failed to retrieve full layer: %w", err)
-			}
-
-			layers = append(layers, layer)
-
-			// pull config
-			if len(layers) == manifestLayers {
-				if err = pullConfig(tag, adpt, configHander, logger); err != nil {
-					return err
-				}
-			}
-		}
-		return nil
-	}
-
-	return pullManifest(tag, adpt, manifestHandler, logger)
-}
-
-func pullLayerWithOffset(ref string, offset int, adpt *adapter.Adapter, layerHandler adapter.ResponseHandler, logger *log.Logger) error {
-	lpath := pkgPath(nil) + "/pull"
-	q := url.Values{
-		"type":   []string{"layer"},
-		"ref":    []string{ref},
-		"offset": []string{strconv.Itoa(offset)},
-	}
-
-	lpath += "?" + q.Encode()
-
-	if err := (*adpt).GetWithHandler(context.Background(), lpath, nil, layerHandler, logger); err != nil {
-		return fmt.Errorf("failed to get layer: %w", err)
-	}
-
-	return nil
-}
-
-func retreiveFullLayer(ref string, layerDesc v1.Descriptor, adpt *adapter.Adapter, logger *log.Logger) (layer v1.Layer, err error) {
-	layerOffset := 0
-	// temp file to start layer data
-	filePath := filepath.Clean(filepath.Join(os.TempDir(), ref))
-
-	fmt.Printf("\033[2K\r %s %d out of %s ...", layerDesc.Digest.Hex[:10], 0, bytesize.New(float64(layerDesc.Size)))
-
-	layerWithOffsetHandler := func(resp *http.Response, path string, logger *log.Logger) error {
-		data, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("failed to read res body: %w", err)
-		}
-
-		if layerOffset == 0 {
-			if err = os.MkdirAll(filepath.Dir(filePath), 0750); err != nil {
-				return fmt.Errorf("failed to create path: %s, error: %w", filepath.Dir(filePath), err)
-			}
-			// file need to be truncated
-			if _, err = os.Create(filePath); err != nil {
-				return fmt.Errorf("failed to create file: %s, error: %w", filePath, err)
-			}
-		}
-
-		if len(data) == 0 {
-			return nil
-		}
-
-		// append to file
-		f, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, 0600)
-		if err != nil {
-			return fmt.Errorf("failed to open file: %s for write, error: %w", filepath.Dir(filePath), err)
-		}
-		defer func() {
-			if err = f.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
-				fmt.Printf("file %s close error : %v\n", filePath, err)
-			}
-		}()
-		if _, err = f.Write(data); err != nil {
-			return fmt.Errorf("failed to copy to file: %s, error: %w", filePath, err)
-		}
-
-		layerOffset += len(data)
-
-		fmt.Printf("\033[2K\r %s %s out of %s", layerDesc.Digest.Hex[:10], bytesize.New(float64(layerOffset)), bytesize.New(float64(layerDesc.Size)))
-
-		return nil
-	}
-
-	retries := 0
-	const maxRetries = 4
-
-	for layerOffset < int(layerDesc.Size) {
-		prev := layerOffset
-		if err = pullLayerWithOffset(ref, layerOffset, adpt, layerWithOffsetHandler, logger); err != nil {
-			return nil, err
-		}
-		if layerOffset == prev { // wait to catch up
-			retries++
-			time.Sleep(10 * time.Second)
-		} else {
-			retries = 0
-		}
-
-		if retries > maxRetries {
-			return nil, fmt.Errorf("max retries which got 0 bytes happend")
-		}
-	}
-
-	layer, err = tarball.LayerFromFile(filePath)
+	client, err := dockerclient.NewClientWithOpts(
+		dockerclient.WithAPIVersionNegotiation(),
+		dockerclient.FromEnv,
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create layer from path: %s, error: %w", filePath, err)
+		return fmt.Errorf("failed to create docker client: %w", err)
 	}
-
-	fmt.Printf("\033[2K\r %s %s pulled\n", layerDesc.Digest.Hex[:10], bytesize.New(float64(layerDesc.Size)))
-
-	return layer, err
-}
-
-func pullConfig(tag string, adpt *adapter.Adapter, configHandler adapter.ResponseHandler, logger *log.Logger) error {
-	cpath := pkgPath(nil) + "/pull"
-	q := url.Values{
-		"type": []string{"config"},
-		"ref":  []string{tag},
-	}
-	cpath += "?" + q.Encode()
-
-	fmt.Printf("\033[2K\r Pulling config from %s ...", tag)
-
-	if err := (*adpt).GetWithHandler(context.Background(), cpath, nil, configHandler, logger); err != nil {
-		return fmt.Errorf("failed to get config file: %w", err)
-	}
-	return nil
-}
-
-func pullManifest(tag string, adpt *adapter.Adapter, manifestHandler adapter.ResponseHandler, logger *log.Logger) error {
-	// pull the image manifest
-	mpath := pkgPath(nil) + "/pull"
-	q := url.Values{
-		"ref":  []string{tag},
-		"type": []string{"manifest"},
-	}
-	mpath += "?" + q.Encode()
 
 	fmt.Printf("\033[2K\r Pulling from %s, may take multiple minutes depending on the size of the image ...\n", tag)
 
-	if err := (*adpt).GetWithHandler(context.Background(), mpath, nil, manifestHandler, logger); err != nil {
-		return fmt.Errorf("failed to get manifest: %s, %w", mpath, err)
+	registrySrvHost, err := getDockerRegistryHost(adpt)
+	if err != nil {
+		return err
 	}
+	sourceImage := registrySrvHost + "/docker-registry/" + tag
+
+	// Encode bearer token as Docker AuthConfig
+	encodedAuth, err := getDockerRegistryAuth(registrySrvHost, adpt)
+	if err != nil {
+		return err
+	}
+
+	pullResp, err := client.ImagePull(context.Background(), sourceImage, dockerimage.PullOptions{
+		RegistryAuth: encodedAuth,
+	})
+	if err != nil {
+		return fmt.Errorf("failed to push image: %w", err)
+	}
+	defer pullResp.Close()
+
+	if err = checkPullResponse(pullResp, tag); err != nil {
+		fmt.Printf("\033[2K\r %s pull failed, error: %s\n", srcTag.TagStr(), err.Error())
+	} else {
+		fmt.Printf("\033[2K\r %s pulled\n", tag)
+	}
+
 	return nil
+
 }
 
-type PushStatus string
-
-const (
-	PushStatusUnstarted  PushStatus = "unstarted"
-	PushStatusInprogress PushStatus = "inprogress"
-	PushStatusErrored    PushStatus = "errored"
-	PushStatusDone       PushStatus = "done"
-)
-
-func pushStatus(tag string, digest v1.Hash, adpt *adapter.Adapter, logger *log.Logger) (*api.StatusResponseBody, error) {
-	path := pkgPath(nil) + "/status"
-	q := url.Values{}
-	q.Set("tag", tag)
-	q.Set("digest", digest.String())
-	path += "?" + q.Encode()
-
-	res, err := (*adpt).Get(context.Background(), path, logger)
+func getDockerRegistryHost(adpt adapter.Adapter) (string, error) {
+	apiSrvAddr := adpt.GetConnectionContext().URL
+	u, err := url.Parse(apiSrvAddr)
 	if err != nil {
-		return nil, fmt.Errorf("failed to push status %s %s, error: %w", tag, digest.Hex[:10], err)
+		return "", fmt.Errorf("failed to parse URL: %s, %w", apiSrvAddr, err)
 	}
 
-	var body api.StatusResponseBody
-	if err = res.AsType(&body); err != nil {
-		return nil, fmt.Errorf("failed to decode get status response body; %w", err)
+	// registry.develop.ivcap.net
+	return "registry." + u.Host, nil
+}
+
+func getDockerRegistryAuth(registrySrvHost string, adpt adapter.Adapter) (string, error) {
+	// Encode bearer token as Docker AuthConfig
+	authConfig := dockerregistry.AuthConfig{
+		Username:      "oauth2accesstoken", // required placeholder
+		Password:      adpt.GetConnectionContext().AccessToken,
+		ServerAddress: registrySrvHost,
 	}
 
-	return &body, nil
+	authJSON, err := json.Marshal(authConfig)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal registry auth config: %w", err)
+	}
+	encodedJSON := base64.URLEncoding.EncodeToString(authJSON)
+	return encodedJSON, nil
 }
 
 func RemovePackage(ctxt context.Context, tag string, adpt *adapter.Adapter, logger *log.Logger) error {
@@ -725,4 +216,98 @@ func pkgPath(id *string) string {
 		path = path + "/" + *id
 	}
 	return path
+}
+
+func checkPushResponse(pushResp io.Reader, digest string) error {
+	for {
+		data := make([]byte, 1024)
+		if _, err := pushResp.Read(data); err != nil {
+			if !errors.Is(err, io.EOF) {
+				return fmt.Errorf("failed to read push response: %w", err)
+			}
+			break
+		}
+		output := string(bytes.ReplaceAll(data, []byte{0x00}, nil))
+		switch {
+		case strings.Contains(output, `"error":`):
+			var errResult struct {
+				Error       string          `json:"error,omitempty"`
+				ErrorDetail json.RawMessage `json:"errorDetail,omitempty"`
+			}
+			if err := json.Unmarshal([]byte(output), &errResult); err == nil {
+				return fmt.Errorf("failed to push :%s, detail:%s", strings.TrimSpace(errResult.Error), errResult.ErrorDetail)
+			}
+			return fmt.Errorf("failed to push : %s", output)
+		default:
+			var progress struct {
+				Status         string          `json:"status,omitempty"`
+				ProgressDetail json.RawMessage `json:"progressDetail,omitempty"`
+				ID             string          `json:"id,omitempty"`
+			}
+			if err := json.Unmarshal([]byte(output), &progress); err == nil {
+				if progress.Status == "Pushing" {
+					var pushingDetail struct {
+						Current float64 `json:"current,omitempty"`
+						Total   float64 `json:"total,omitempty"`
+					}
+					if err := json.Unmarshal(progress.ProgressDetail, &pushingDetail); err == nil {
+						fmt.Printf("\033[2K\r %10s %12s %12s%10s Pushing", digest, progress.ID, bytesize.New(pushingDetail.Current), bytesize.New(pushingDetail.Total))
+					} else {
+						fmt.Printf("\033[2K\r %10s %12s %10s", digest, progress.ID, progress.Status)
+					}
+				} else {
+					fmt.Printf("\033[2K\r %10s %12s %10s", digest, progress.ID, progress.Status)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+func checkPullResponse(pullResp io.Reader, digest string) error {
+	for {
+		data := make([]byte, 1024)
+		if _, err := pullResp.Read(data); err != nil {
+			if !errors.Is(err, io.EOF) {
+				return fmt.Errorf("failed to read pull response: %w", err)
+			}
+			break
+		}
+		output := string(bytes.ReplaceAll(data, []byte{0x00}, nil))
+		switch {
+		case strings.Contains(output, `"error":`):
+			var errResult struct {
+				Error       string          `json:"error,omitempty"`
+				ErrorDetail json.RawMessage `json:"errorDetail,omitempty"`
+			}
+			if err := json.Unmarshal([]byte(output), &errResult); err == nil {
+				return fmt.Errorf("failed to pull :%s, detail:%s", strings.TrimSpace(errResult.Error), errResult.ErrorDetail)
+			}
+			return fmt.Errorf("failed to pull : %s", output)
+		default:
+			var progress struct {
+				Status         string          `json:"status,omitempty"`
+				ProgressDetail json.RawMessage `json:"progressDetail,omitempty"`
+			}
+			if err := json.Unmarshal([]byte(output), &progress); err == nil {
+				switch {
+				case strings.Contains(progress.Status, "Downloading"), strings.Contains(progress.Status, "Extracting"):
+					var pushingDetail struct {
+						Current float64 `json:"current,omitempty"`
+						Total   float64 `json:"total,omitempty"`
+					}
+					if err := json.Unmarshal(progress.ProgressDetail, &pushingDetail); err == nil {
+						fmt.Printf("\033[2K\r %10s %12s%10s Downloading", digest, bytesize.New(pushingDetail.Current), bytesize.New(pushingDetail.Total))
+					} else {
+						fmt.Printf("\033[2K\r %10s Downloading", digest)
+					}
+				default:
+					fmt.Printf("\033[2K\r %10s Pulling", digest)
+				}
+			}
+		}
+	}
+
+	return nil
 }
