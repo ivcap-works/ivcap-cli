@@ -10,6 +10,13 @@
     "sse-8077": {
       "type": "sse",
       "url": "http://localhost:8077/mcp"
+    },
+    "homebrew": {
+      "type": "stdio",
+      "command": "/opt/homebrew/bin/ivcap",
+      "args": [
+        "mcp"
+      ]
     }
   }
 }

@@ -154,3 +154,6 @@ mcp-inspector:
 
 mcp-inspector-sse:
 	npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server sse-8077
+
+mcp-inspector-homehomebrew:
+	npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server homebrew
