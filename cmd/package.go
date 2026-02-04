@@ -17,6 +17,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	"github.com/spf13/cobra"
@@ -73,8 +74,14 @@ var (
 		Long:  `Before/After creating service, push the service package to a docker registry that the service can reference.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
+			ivcapContext := GetActiveContext()
+			parts := strings.Split(ivcapContext.AccountID, ":")
+			if len(parts) < 2 {
+				return fmt.Errorf("invalid format of context accountID: %s", ivcapContext.AccountID)
+			}
+			accountID := parts[len(parts)-1]
 			srcPackageTag := args[0]
-			_, err = sdk.PushPackage(context.Background(), srcPackageTag, forcePush, localImage, *CreateAdapter(true), logger)
+			_, err = sdk.PushPackage(context.Background(), accountID, srcPackageTag, forcePush, localImage, *CreateAdapter(true), logger)
 			if err != nil {
 				return err
 			}

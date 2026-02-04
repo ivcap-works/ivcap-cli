@@ -65,7 +65,7 @@ func ListPackages(ctxt context.Context, tag string, adpt *adapter.Adapter, logge
 	return &body, nil
 }
 
-func PushPackage(ctx context.Context, srcTagName string, forcePush, localImage bool, adpt adapter.Adapter, logger *log.Logger) (*api.PushResponseBody, error) {
+func PushPackage(ctx context.Context, accountID string, srcTagName string, forcePush, localImage bool, adpt adapter.Adapter, logger *log.Logger) (*api.PushResponseBody, error) {
 	srcTag, err := name.NewTag(srcTagName, name.WeakValidation, name.WithDefaultRegistry("local"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid src tag format: %w", err)
@@ -108,7 +108,7 @@ func PushPackage(ctx context.Context, srcTagName string, forcePush, localImage b
 	if err = checkPushResponse(pushResp, srcTagName); err != nil {
 		fmt.Printf("\033[2K\r %s push failed, error: %s\n", srcTagName, err.Error())
 	} else {
-		fmt.Printf("\033[2K\r %s pushed\n", srcTagName)
+		fmt.Printf("\033[2K\r %s/%s pushed\n", accountID, srcTagName)
 	}
 
 	return &api.PushResponseBody{
