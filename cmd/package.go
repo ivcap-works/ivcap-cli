@@ -43,11 +43,11 @@ var (
 	}
 
 	listPackageCmd = &cobra.Command{
-		Use:     "list [tag]",
+		Use:     "list image[:tag]",
 		Aliases: []string{"ls"},
 		Short:   "list service packages",
-		Long:    `List the service packages under current account, or other accounts if you know the account id.`,
-		Args:    cobra.RangeArgs(0, 1),
+		Long:    `List the service packages by image or image:tag under current account, image can have other account-id as prefix, if you have the permission to read.`,
+		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
 			var tag string
