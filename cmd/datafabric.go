@@ -44,6 +44,7 @@ func init() {
 
 	datafabricCmd.AddCommand(datafabricQueryCmd)
 	addFlags(datafabricQueryCmd, []Flag{SchemaPrefix, Entity})
+	datafabricQueryCmd.Flags().StringVar(&schemaPrefix, "schema", "", "Alias for --schema-prefix")
 	datafabricQueryCmd.Flags().BoolVarP(&aspectGetIfOne, "get-if-one", "g", false, "if only one found, get it immediately")
 	datafabricQueryCmd.Flags().StringVarP(&aspectJsonFilter, "content-path", "c", "", "json path filter on aspect's content ('$.images[*] ? (@.size > 10000)')")
 	datafabricQueryCmd.Flags().BoolVar(&aspectIncludeContent, "include-content", false, "if set, also include aspect's content in list")
@@ -122,7 +123,7 @@ var (
 		// Long:    `.....`,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			if entityURN == "" && schemaPrefix == "" && page == "" {
-				cobra.CheckErr("Need at least one of '--schema', '--entity' or '--page'")
+				cobra.CheckErr("Need at least one of '--schema-prefix', '--entity' or '--page'")
 			}
 			if entityURN != "" {
 				entityURN = GetHistory(entityURN)
