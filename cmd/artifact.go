@@ -369,7 +369,6 @@ func uploadArtifact(
 				fmt.Printf("File '%s' is already uploaded as '%s (%s)'.\nUse '--force' to create a new artifact\n",
 					fileName, artifactID, MakeHistory(&artifactID))
 			}
-			os.Exit(0)
 			return
 		}
 	}
