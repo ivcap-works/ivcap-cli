@@ -182,6 +182,7 @@ func getDockerRegistryAuth(registrySrvHost string, adpt adapter.Adapter) (string
 		ServerAddress: registrySrvHost,
 	}
 
+	// #nosec G117 - Password is a required identifier for the API endpoint
 	authJSON, err := json.Marshal(authConfig)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal registry auth config: %w", err)

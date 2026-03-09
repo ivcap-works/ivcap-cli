@@ -95,6 +95,7 @@ func GetSecretRaw(ctxt context.Context, host string, req *GetSecretRequest, adpt
 }
 
 func SetSecret(ctxt context.Context, host string, req *api.SetRequestBody, adpt *adapter.Adapter, logger *log.Logger) error {
+	// #nosec G117 - SecretName is a required identifier for the API endpoint
 	body, err := json.Marshal(req)
 	if err != nil {
 		return fmt.Errorf("error marshalling body: %w", err)

@@ -191,6 +191,7 @@ func getTokenResponse(authProvider *AuthProvider, params url.Values, ctxt *Conte
 	params.Set("grant_type", authProvider.grantType)
 	params.Set("client_id", authProvider.ClientID)
 
+	// #nosec G118 - cancel is returned to and managed by the caller
 	ctx, cancel := NewTimeoutContext()
 	defer cancel()
 

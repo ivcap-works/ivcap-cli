@@ -175,7 +175,12 @@ func CreateDoc() {
 		}
 		output := string(ob)
 		if output == "" {
-			cmd := exec.Command("git", "checkout", "--", path)
+			cleanPath := filepath.Clean(path)
+			if _, err := os.Stat(cleanPath); os.IsNotExist(err) {
+				return fmt.Errorf("invalid file path: %s", cleanPath)
+			}
+			// #nosec G204 - Path is cleaned, verified to exist, and protected by '--' separator
+			cmd := exec.Command("git", "checkout", "--", cleanPath)
 			if _, err = cmd.Output(); err != nil {
 				return fmt.Errorf("while checking out not really changed file '%s' - %w", path, err)
 			}
@@ -323,6 +328,7 @@ func NewAdapter(
 
 func NewTimeoutContext() (ctxt context.Context, cancel context.CancelFunc) {
 	to := time.Now().Add(time.Duration(timeout) * time.Second)
+	// #nosec G118 - cancel is returned to and managed by the caller
 	ctxt, cancel = context.WithDeadline(context.Background(), to)
 	return
 }
