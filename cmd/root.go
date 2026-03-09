@@ -57,6 +57,8 @@ var (
 	accessTokenProvided bool
 	timeout             int
 	debug               bool
+	agentContextFlag    bool
+	agentHelpFlag       bool
 )
 
 var logger *log.Logger
@@ -97,7 +99,19 @@ var rootCmd = &cobra.Command{
 	Short: "A command line tool to interact with a IVCAP deployment",
 	Long: `A command line tool to to more conveniently interact with the
 API exposed by a specific IVCAP deployment.`,
+	RunE: func(cmd *cobra.Command, _ []string) error {
+		// Root command invoked without a subcommand.
+		// Allow a single-shot agent entrypoint for retrieving embedded guidance.
+		if agentContextFlag || agentHelpFlag {
+			return runAgentContext(cmd)
+		}
+		return cmd.Help()
+	},
 }
+
+const agentSupportGroupID = "agent-support"
+const coreCommandsGroupID = "core-commands"
+const generalSupportGroupID = "general-support"
 
 func Execute(version string) {
 	rootCmd.Version = version
@@ -180,6 +194,33 @@ const DEFAULT_SERVICE_TIMEOUT_IN_SECONDS = 30
 func init() {
 	cobra.OnInitialize(initConfig)
 
+	// Group agent-facing commands separately in `ivcap --help` output.
+	rootCmd.AddGroup(
+		&cobra.Group{ID: coreCommandsGroupID, Title: "Commands:"},
+		&cobra.Group{ID: agentSupportGroupID, Title: "Agent support commands:"},
+		&cobra.Group{ID: generalSupportGroupID, Title: "General support commands:"},
+	)
+
+	// Ensure the primary (human) commands appear first in `ivcap --help`.
+	// Any top-level command without an explicit GroupID is considered a core
+	// command and placed into the `core-commands` group.
+	defaultHelpFunc := rootCmd.HelpFunc()
+	rootCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		if cmd == rootCmd {
+			for _, c := range rootCmd.Commands() {
+				switch c.Name() {
+				case "help", "completion":
+					c.GroupID = generalSupportGroupID
+				default:
+					if c.GroupID == "" {
+						c.GroupID = coreCommandsGroupID
+					}
+				}
+			}
+		}
+		defaultHelpFunc(cmd, args)
+	})
+
 	rootCmd.PersistentFlags().StringVar(&contextName, "context", "", "Context (deployment) to use")
 	rootCmd.PersistentFlags().StringVar(&accessTokenF, "access-token", "",
 		fmt.Sprintf("Access token to use for authentication with API server [%s]", ACCESS_TOKEN_ENV))
@@ -188,6 +229,11 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&outputFormat, "output", "o", "", "Set format for displaying output [json, yaml]")
 	rootCmd.PersistentFlags().BoolVar(&silent, "silent", false, "Do not show any progress information")
 	rootCmd.PersistentFlags().BoolVar(&noHistory, "no-history", false, "Do not store history")
+	rootCmd.PersistentFlags().BoolVar(&agentContextFlag, "agent-context", false, "Print embedded agent context guidance and exit")
+	rootCmd.PersistentFlags().BoolVar(&agentHelpFlag, "agent-help", false, "Alias for --agent-context")
+	// Keep agent retrieval available, but avoid cluttering human `--help` flag output.
+	cobra.CheckErr(rootCmd.PersistentFlags().MarkHidden("agent-context"))
+	cobra.CheckErr(rootCmd.PersistentFlags().MarkHidden("agent-help"))
 }
 
 // initConfig reads in config file and ENV variables if set.

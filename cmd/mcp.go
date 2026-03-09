@@ -39,8 +39,9 @@ var (
 	mcpPort    int
 
 	mcpCmd = &cobra.Command{
-		Use:   "mcp",
-		Short: "Start an MCP server for all tools on an IVCAP platform",
+		Use:     "mcp",
+		Short:   "Start an MCP server for accessing all tools on an IVCAP platform",
+		GroupID: agentSupportGroupID,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s := server.NewMCPServer("IVCAP MCP Server", "1.0.0")

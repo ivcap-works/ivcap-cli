@@ -1,17 +1,27 @@
-## ivcap mcp
+## ivcap agent-context
 
-Start an MCP server for accessing all tools on an IVCAP platform
+Print embedded agent context guidance (markdown)
+
+### Synopsis
+
+Prints agent-oriented operational guidance embedded into this CLI release.
+
+This is intended to be stable and offline-friendly for LLM/agent tooling.
+
+Examples:
+  ivcap --agent-context
+  ivcap --output json --agent-context
+  ivcap agent-context
+
 
 ```
-ivcap mcp [flags]
+ivcap agent-context [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help                 help for mcp
-      --port int             optional port to open for SSE connection to MCP server (default -1)
-  -s, --tool-schema string   the schema URN used for describing MCP tools (default "urn:sd-core:schema.ai-tool.1")
+  -h, --help   help for agent-context
 ```
 
 ### Options inherited from parent commands
