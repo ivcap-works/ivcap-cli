@@ -24,6 +24,7 @@ import (
 type ListRequest struct {
 	Limit     int
 	Page      *string
+	Search    *string
 	Filter    *string
 	OrderBy   *string
 	OrderDesc bool
@@ -42,6 +43,9 @@ func createListPath(cmd *ListRequest, path string) (*url.URL, error) {
 	}
 	if cmd.Page != nil {
 		query.Set("page", *cmd.Page)
+	}
+	if cmd.Search != nil {
+		query.Set("search", *cmd.Search)
 	}
 	if cmd.Filter != nil {
 		query.Set("filter", *cmd.Filter)
