@@ -34,7 +34,7 @@ install-dangerously: build-dangerously
 
 build-docs:
 	go -C doc build -ldflags ${LD_FLAGS} create-docs.go
-	rm -f doc/*.md doc/*.3
+	rm -f doc/*.md doc/*.1 doc/*.3
 	doc/create-docs
 	rm -f doc/create-docs
 

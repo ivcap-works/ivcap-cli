@@ -6,21 +6,19 @@
 # you may remove this if you don't need go generate
 # - go generate ./...
 builds:
-  - binary: ivcap
+  - id: ivcap
+    binary: ivcap
     env:
       - CGO_ENABLED=0
     goos:
       - linux
       - windows
       - darwin
-# archives:
-#   - name_template: >-
-#       {{ .ProjectName }}_
-#       {{ .Tag }}_
-#       {{- title .Os }}_
-#       {{- if eq .Arch "amd64" }}x86_64
-#       {{- else if eq .Arch "386" }}i386
-#       {{- else }}{{ .Arch }}{{ end }}
+archives:
+  - builds:
+      - ivcap  # refers to the build id
+    files:
+      - doc/*.1
 brews:
   - name: ivcap
     homepage: "https://github.com/ivcap-works/ivcap-cli"
@@ -30,7 +28,9 @@ brews:
     commit_author:
       name: maxott
       email: max.ott@data61.csiro.au
-
+    install: |
+      bin.install "ivcap"
+      man1.install Dir["doc/*.1"]
 checksum:
   name_template: "checksums.txt"
 snapshot:

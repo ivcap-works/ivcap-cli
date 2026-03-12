@@ -33,7 +33,7 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(orderCmd)
+	// rootCmd.AddCommand(orderCmd)
 
 	// LIST
 	orderCmd.AddCommand(listOrderCmd)

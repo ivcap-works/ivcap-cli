@@ -131,8 +131,10 @@ func CreateDoc() {
 		logger.Fatal("while creating markdown docs", log.Error(err))
 	}
 	header := &doc.GenManHeader{
-		Title:   "IVCAP",
-		Section: "3",
+		Title: "IVCAP",
+		// Man section: 1 = general commands, 8 = admin commands, 3 = library calls.
+		// This is a human-facing CLI, so section 1 is the most appropriate.
+		Section: "1",
 	}
 	err = doc.GenManTree(rootCmd, header, "./doc")
 	if err != nil {
@@ -152,7 +154,7 @@ func CreateDoc() {
 			return nil // Skip directories
 		}
 		ext := filepath.Ext(path)
-		if ext != ".3" && ext != ".md" {
+		if ext != ".1" && ext != ".3" && ext != ".md" {
 			return nil
 		}
 
