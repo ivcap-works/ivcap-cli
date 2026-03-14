@@ -46,6 +46,7 @@ var (
 	// common, but not global flags
 	limit     int
 	page      string
+	search    string
 	filter    string
 	orderBy   string
 	orderDesc bool
@@ -82,10 +83,16 @@ func addListFlags(cmd *cobra.Command) {
 	fs := cmd.Flags()
 	fs.IntVarP(&limit, "limit", "l", DEF_LIMIT, "max number of records to be returned")
 	fs.StringVarP(&page, "page", "p", "", "page cursor")
+	fs.StringVar(&search, "search", "", "search list")
 	fs.StringVar(&filter, "filter", "", "filter list (e.g. \"name~=Fred\")")
 	fs.StringVar(&orderBy, "order-by", "", "feature to order list by (e.g. \"created-at,status\")")
 	fs.BoolVar(&orderDesc, "order-desc", false, "if set, order in descending order")
 	fs.StringVar(&atTime, "at-time", "", "query state at this time in the past")
+}
+
+func addLimitFlag(cmd *cobra.Command) {
+	fs := cmd.Flags()
+	fs.IntVarP(&limit, "limit", "l", DEF_LIMIT, "max number of records to be returned")
 }
 
 func addFlags(cmd *cobra.Command, names []Flag) {
@@ -175,6 +182,9 @@ func createListRequest() (req *sdk.ListRequest) {
 	}
 	if filter != "" {
 		req.Filter = &filter
+	}
+	if search != "" {
+		req.Search = &search
 	}
 	if orderBy != "" {
 		req.OrderBy = &orderBy

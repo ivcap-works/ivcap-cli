@@ -35,6 +35,10 @@ func init() {
 	serviceCmd.AddCommand(listServiceCmd)
 	addListFlags(listServiceCmd)
 
+	// SEARCH (helper around LIST)
+	serviceCmd.AddCommand(searchServiceCmd)
+	addLimitFlag(searchServiceCmd)
+
 	// READ
 	serviceCmd.AddCommand(readServiceCmd)
 
@@ -67,6 +71,37 @@ var (
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			req := createListRequest()
+			if res, err := sdk.ListServicesRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
+				switch outputFormat {
+				case "json":
+					return a.ReplyPrinter(res, false)
+				case "yaml":
+					return a.ReplyPrinter(res, true)
+				default:
+					var list sdk.ServiceListResponseBody
+					if err = res.AsType(&list); err != nil {
+						return err
+					}
+					printServiceTable(&list, false)
+				}
+				return nil
+			} else {
+				return err
+			}
+		},
+	}
+
+	searchServiceCmd = &cobra.Command{
+		Use:   "search <query>",
+		Short: "Search existing services",
+		Long:  "Convenience helper around 'service list --search'. The <query> is formed by joining all remaining arguments with spaces.",
+		Args:  cobra.MinimumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			q := strings.Join(args, " ")
+			req := &sdk.ListRequest{Limit: DEF_LIMIT, Search: &q}
+			if limit > 0 {
+				req.Limit = limit
+			}
 			if res, err := sdk.ListServicesRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
 				switch outputFormat {
 				case "json":

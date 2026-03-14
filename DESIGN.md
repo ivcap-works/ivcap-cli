@@ -176,7 +176,7 @@ From the repo root:
 go run ./doc/create-docs.go
 ```
 
-This produces `doc/ivcap_*.md` and `doc/ivcap-*.3` files.
+This produces `doc/ivcap_*.md` and `doc/ivcap-*.1` files.
 
 ### 7) Add tests (where practical)
 
