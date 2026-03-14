@@ -29,6 +29,21 @@ brew install ivcap
 
 ## Usage <a name="usage"></a>
 
+### Agent / automation usage
+
+This CLI is also frequently used by AI agents and automation.
+
+- See [`AGENTS.md`](./AGENTS.md) for agent operating rules.
+- See [`skills/CONTEXT.md`](./skills/CONTEXT.md) for agent-oriented usage patterns.
+- Retrieve the version-matched agent context from the CLI (recommended):
+  - `ivcap --agent-context`
+  - `ivcap --output json --agent-context`
+  - `ivcap agent-context`
+- Skill docs are embedded into the CLI for offline, version-matched access:
+  - `ivcap skills list`
+  - `ivcap skills show <skill-name>`
+  - (for programmatic usage) `ivcap --output json skills list|show ...`
+
 ```
 % ivcap
 A command line tool to to more conveniently interact with the

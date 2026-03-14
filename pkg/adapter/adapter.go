@@ -312,6 +312,7 @@ func doWithRetry(client *http.Client, req *http.Request, respHandler ResponseHan
 	)
 
 	e := backoff.Retry(func() error {
+		// #nosec G704 - URL is constructed from validated user configuration
 		resp, err = client.Do(req)
 		if err != nil {
 			return fmt.Errorf("failed to call http request: %w", err)
