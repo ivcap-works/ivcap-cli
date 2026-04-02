@@ -63,8 +63,23 @@ var (
 	mcpPort    int
 
 	mcpCmd = &cobra.Command{
-		Use:     "mcp",
-		Short:   "Start an MCP server for accessing all tools on an IVCAP platform",
+		Use:   "mcp",
+		Short: "Start an MCP server for accessing all tools on an IVCAP platform",
+		Long: `Start an MCP (Model Context Protocol) server.
+
+In addition to MCP Tools for calling platform services, this server also exposes
+the ivcap-cli release’s embedded agent skills via MCP Resources and Prompts
+("MCP-Provisioned Skills").
+
+Resources:
+  - skills://manifest         JSON manifest of available skills
+  - skills://catalog.json     JSON catalog (metadata + hashes; no bodies)
+  - skills://CONTEXT.md       General agent best-practices for ivcap-cli
+  - skills://{name}/SKILL.md  Skill playbook body (markdown)
+
+Prompts:
+  - use-ivcap-best-practices  Instructs an agent to load CONTEXT + relevant skills
+`,
 		GroupID: agentSupportGroupID,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -187,6 +202,7 @@ func newCLIMCPServer() *server.MCPServer {
 	addAspectSearchTool(s)
 	addAspectGetTool(s)
 	addAspectCreateTool(s)
+	addSkillsResourcesAndPrompts(s)
 	return s
 }
 

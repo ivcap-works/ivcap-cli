@@ -11,6 +11,8 @@ __IVCAP__ has an extensive REST API which is usually called directly from applic
   * [Job](#job)
   * [Artifact](#artifact)
   * [Package](#package)
+* [Agent / automation usage](#agent--automation-usage)
+  * [MCP-Provisioned Skills (Resources + Prompts)](#mcp-provisioned-skills-resources--prompts)
 * [Build from source](#build)
 
 ## Install Released Binaries<a name="install"></a>
@@ -29,20 +31,11 @@ brew install ivcap
 
 ## Usage <a name="usage"></a>
 
-### Agent / automation usage
+The first order of business is setting up a **context** for a specific IVCAP deployment.
+You can also configure multiple contexts, allowing the same `ivcap` CLI to interact
+with multiple IVCAP deployments (and switch between them).
 
-This CLI is also frequently used by AI agents and automation.
-
-- See [`AGENTS.md`](./AGENTS.md) for agent operating rules.
-- See [`skills/CONTEXT.md`](./skills/CONTEXT.md) for agent-oriented usage patterns.
-- Retrieve the version-matched agent context from the CLI (recommended):
-  - `ivcap --agent-context`
-  - `ivcap --output json --agent-context`
-  - `ivcap agent-context`
-- Skill docs are embedded into the CLI for offline, version-matched access:
-  - `ivcap skills list`
-  - `ivcap skills show <skill-name>`
-  - (for programmatic usage) `ivcap --output json skills list|show ...`
+This tool can also be used as a **local MCP server** (see [Agent / automation usage](#agent--automation-usage)).
 
 ```
 % ivcap
@@ -144,6 +137,10 @@ To list all available services:
 |    |                          | GeneOntology to answer biomedical questions.                     |
 +----+--------------------------+------------------------------------------------------------------+
 ```
+
+> **Note on `@…` IDs:** values like `@1` are **local history aliases** for the actual resource URNs returned by the platform.
+> You can typically reference `@1` in subsequent `ivcap ...` commands (within the same CLI history/session).
+> If you want the command outputs to show the **full URNs** (and avoid `@…` aliases), add `--no-history`.
 
 To get more details about a specific service
 
@@ -427,6 +424,56 @@ registry.kube-system.svc.cluster.local/0f0e3f57-80f7-4899-9b69-459af2efd789/pyth
 
 Follow this [link](./doc/ivcap_package.md) for more details about the `package` command.
 
+## Agent / automation usage
+
+This CLI is also frequently used by AI agents and automation.
+
+- See [`AGENTS.md`](./AGENTS.md) for agent operating rules.
+- See [`skills/CONTEXT.md`](./skills/CONTEXT.md) for agent-oriented usage patterns.
+- Retrieve the version-matched agent context from the CLI (recommended):
+  - `ivcap --agent-context`
+  - `ivcap --output json --agent-context`
+  - `ivcap agent-context`
+- Skill docs are embedded into the CLI for offline, version-matched access:
+  - `ivcap skills list`
+  - `ivcap skills show <skill-name>`
+  - (for programmatic usage) `ivcap --output json skills list|show ...`
+
+### MCP-Provisioned Skills (Resources + Prompts)
+
+When running the built-in MCP server (`ivcap mcp`), the CLI also exposes the
+embedded skill playbooks via MCP **Resources** and a setup **Prompt**.
+
+**Resources**
+- `skills://manifest` — JSON list of available skills (name → `skills://{name}/SKILL.md`)
+- `skills://catalog.json` — JSON catalog (metadata + SHA256; no markdown bodies)
+- `skills://CONTEXT.md` — general agent best-practices for `ivcap-cli`
+- `skills://{name}/SKILL.md` — the full markdown body of a specific skill
+
+**Prompt**
+- `use-ivcap-best-practices` — tells an agent to read `skills://CONTEXT.md`, then
+  discover and load the relevant `skills://{name}/SKILL.md` docs for the current task.
+
+#### Example JSON-RPC calls
+
+Read the skills manifest:
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"skills://manifest"}}
+```
+
+Read a specific skill body:
+
+```json
+{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"skills://ivcap-job-create/SKILL.md"}}
+```
+
+Get the setup prompt:
+
+```json
+{"jsonrpc":"2.0","id":3,"method":"prompts/get","params":{"name":"use-ivcap-best-practices"}}
+```
+
 ## Build from Source <a name="build"></a>
 
 ### Prerequisites
@@ -455,49 +502,6 @@ The prerequisite tools can be installed by running the make target:
 ```shell
 make install-tools
 ```
-
-----
-### Deprecated: Orders <a name="orders"></a>
-
-To place an order:
-
-```
-% ivcap orders create \
-     urn:ivcap:service:d939b74d... \
-     --name "Order for max" \
-     msg="Hi, how are you"
-Order 'urn:ivcap:order:81b204e8...' with status 'Pending' submitted.
-```
-
-To check on the status of an order:
-
-```
-% ivcap orders get urn:ivcap:order:81b204e8...
-
-         ID  urn:ivcap:order:f169f54d-ec8d-4d6a-af17-0c1c33625379
-       Name  urn:ibenthos:collection:indo_flores_0922:LB4 UQ PhotoTransect@256028
-     Status  succeeded
-    Ordered  6 months ago (01 Oct 23 17:26 AEDT)
-    Service  image-analysis-example (@15)
- Account ID  urn:ivcap:account:45a06508-5c3a-4678-8e6d-e6399bf27538
- Parameters  ┌─────────────────────────────────────────────────┐
-             │ images =  @1 (urn:ivcap:collection:508a2aba...) │
-             │  width =  100                                   │
-             │ height =  100                                   │
-             └─────────────────────────────────────────────────┘
-   Products  ┌────┬───────────────┬──────────────────┐
-             │ @2 │ result.png    │ image/png        │
-             │ @3 │ stats.json    │ application/json │
-             │ @4 │ thumbnail.png │ image/png        │
-             └────┴───────────────┴──────────────────┘
-   Metadata  ┌─────┬────────────────────────────────────────┐
-             │ @6  │ urn:ivcap:schema:order-uses-workflow.  │
-             │ @7  │ urn:ivcap:schema:order-uses-artifact.1 │
-             │ ...                                          │
-             └─────┴────────────────────────────────────────┘
-```
-
-Follow this [link](./doc/ivcap_order.md) for more details about the `order` command.
 
 ### Build & Install
 
