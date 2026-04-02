@@ -488,7 +488,7 @@ You will need the following installed:
 [addlicense]:    https://github.com/nokia/addlicense?tab=readme-ov-file#install-as-a-go-program
 
 - go version >= 1.22.5 (e.g. `snap install go --classic`)
-- [golangci-lint] (e.g. `curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.57.2`)
+- [golangci-lint] (e.g. `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`)
 - [gocritic] (e.g. `go install -v github.com/go-critic/go-critic/cmd/gocritic@latest`; you may also need to add `~/go/bin` to your `PATH`)
 - [staticcheck] (e.g. `go install honnef.co/go/tools/cmd/staticcheck@latest`)
 - [gosec] (e.g. `go install github.com/securego/gosec/v2/cmd/gosec@latest`)

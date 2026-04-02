@@ -88,8 +88,12 @@ movie:
 # Command existence check
 command_exists = command -v $(1) >/dev/null 2>&1
 
+# Verify required dev tools are installed (install missing ones)
+verify-tools: install-golangci-lint install-go-critic install-staticcheck install-gosec install-govulncheck install-addlicense
+	@echo "All required Go tools are installed successfully!"
+
 # Install Go tools
-install-tools: install-golangci-lint install-go-critic install-go-tools install-gosec install-govulncheck install-staticcheck install-addlicense
+install-tools: verify-tools install-go-tools
 	@echo "All Go tools installed successfully!"
 
 # Install golangci-lint
@@ -98,7 +102,7 @@ install-golangci-lint:
 		echo "golangci-lint is already installed."; \
 	else \
 		echo "Installing golangci-lint..."; \
-		curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(shell go env GOPATH)/bin; \
+		go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest; \
 	fi
 
 install-go-critic:
@@ -146,7 +150,7 @@ install-addlicense:
 		echo "addlicense is already installed."; \
 	else \
 		echo "Installing addlicense..."; \
-		go get -u github.com/nokia/addlicense; \
+		go install github.com/nokia/addlicense@latest; \
 	fi
 
 mcp-inspector:
