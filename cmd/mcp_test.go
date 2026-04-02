@@ -105,8 +105,8 @@ func TestMCPToolsList_InitiallyOnlyHasSelectTools(t *testing.T) {
 	if err := json.Unmarshal(b, &parsed); err != nil {
 		t.Fatalf("cannot unmarshal result: %v", err)
 	}
-	if len(parsed.Tools) != 3 {
-		t.Fatalf("expected 3 tools initially, got %d", len(parsed.Tools))
+	if len(parsed.Tools) != 6 {
+		t.Fatalf("expected 6 tools initially, got %d", len(parsed.Tools))
 	}
 	if parsed.Tools[0].Name != "select_tools" {
 		t.Fatalf("expected first tool to be select_tools, got %q", parsed.Tools[0].Name)
@@ -115,8 +115,8 @@ func TestMCPToolsList_InitiallyOnlyHasSelectTools(t *testing.T) {
 	for _, t := range parsed.Tools {
 		got[t.Name] = true
 	}
-	if !got["select_tools"] || !got["artifact_create"] || !got["artifact_get"] {
-		t.Fatalf("expected tools select_tools, artifact_create, artifact_get; got %+v", got)
+	if !got["select_tools"] || !got["artifact_create"] || !got["artifact_get"] || !got["aspect_search"] || !got["aspect_get"] || !got["aspect_create"] {
+		t.Fatalf("expected built-in tools select_tools, artifact_create, artifact_get, aspect_search, aspect_get, aspect_create; got %+v", got)
 	}
 }
 
@@ -166,7 +166,7 @@ func TestMCPToolsList_SelectToolsExpandsList(t *testing.T) {
 	selMsg := json.RawMessage(`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"select_tools","arguments":{"interest":"test"}}}`)
 	_ = s.HandleMessage(ctx, selMsg)
 
-	// List again, should now contain select_tools + artifact_create + artifact_get (built-in) + test_tool (via allowlist + tool filter)
+	// List again, should now contain built-ins + test_tool (via allowlist + tool filter)
 	listMsg := json.RawMessage(`{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}`)
 	out := s.HandleMessage(ctx, listMsg)
 	res, ok := out.(mcp.JSONRPCResponse)
@@ -183,15 +183,15 @@ func TestMCPToolsList_SelectToolsExpandsList(t *testing.T) {
 	if err := json.Unmarshal(b, &parsed); err != nil {
 		t.Fatalf("cannot unmarshal result: %v", err)
 	}
-	if len(parsed.Tools) != 4 {
-		t.Fatalf("expected 4 tools after select_tools, got %d", len(parsed.Tools))
+	if len(parsed.Tools) != 7 {
+		t.Fatalf("expected 7 tools after select_tools, got %d", len(parsed.Tools))
 	}
 	got := map[string]bool{}
 	for _, t := range parsed.Tools {
 		got[t.Name] = true
 	}
-	if !got["select_tools"] || !got["artifact_create"] || !got["artifact_get"] || !got["test_tool"] {
-		t.Fatalf("expected tools select_tools, artifact_create, artifact_get and test_tool, got %+v", got)
+	if !got["select_tools"] || !got["artifact_create"] || !got["artifact_get"] || !got["aspect_search"] || !got["aspect_get"] || !got["aspect_create"] || !got["test_tool"] {
+		t.Fatalf("expected built-ins plus test_tool, got %+v", got)
 	}
 }
 
@@ -341,8 +341,8 @@ func TestMCPToolsList_SelectToolsSortsByScore(t *testing.T) {
 	if err := json.Unmarshal(b, &parsed); err != nil {
 		t.Fatalf("cannot unmarshal result: %v", err)
 	}
-	if len(parsed.Tools) < 5 {
-		t.Fatalf("expected at least 5 tools (select_tools + artifact_create + artifact_get + 2 selected), got %d", len(parsed.Tools))
+	if len(parsed.Tools) < 8 {
+		t.Fatalf("expected at least 8 tools (select_tools + 5 built-ins + 2 selected), got %d", len(parsed.Tools))
 	}
 	if parsed.Tools[0].Name != "select_tools" {
 		t.Fatalf("expected first tool to be select_tools, got %q", parsed.Tools[0].Name)
@@ -353,10 +353,19 @@ func TestMCPToolsList_SelectToolsSortsByScore(t *testing.T) {
 	if parsed.Tools[2].Name != "artifact_get" {
 		t.Fatalf("expected third tool to be artifact_get, got %q", parsed.Tools[2].Name)
 	}
-	if parsed.Tools[3].Name != "tool_high" {
-		t.Fatalf("expected first selected tool to be tool_high (score 0.9), got %q", parsed.Tools[3].Name)
+	if parsed.Tools[3].Name != "aspect_search" {
+		t.Fatalf("expected fourth tool to be aspect_search, got %q", parsed.Tools[3].Name)
 	}
-	if parsed.Tools[4].Name != "tool_low" {
-		t.Fatalf("expected second selected tool to be tool_low (score 0.2), got %q", parsed.Tools[4].Name)
+	if parsed.Tools[4].Name != "aspect_get" {
+		t.Fatalf("expected fifth tool to be aspect_get, got %q", parsed.Tools[4].Name)
+	}
+	if parsed.Tools[5].Name != "aspect_create" {
+		t.Fatalf("expected sixth tool to be aspect_create, got %q", parsed.Tools[5].Name)
+	}
+	if parsed.Tools[6].Name != "tool_high" {
+		t.Fatalf("expected first selected tool to be tool_high (score 0.9), got %q", parsed.Tools[6].Name)
+	}
+	if parsed.Tools[7].Name != "tool_low" {
+		t.Fatalf("expected second selected tool to be tool_low (score 0.2), got %q", parsed.Tools[7].Name)
 	}
 }

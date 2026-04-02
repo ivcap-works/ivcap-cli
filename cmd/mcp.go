@@ -41,6 +41,8 @@ var errMCPLoginRequired = errors.New(mcpLoginRequiredMessage)
 // allow test stubbing
 var (
 	listAspectFn          = sdk.ListAspect
+	getAspectRawFn        = sdk.GetAspectRaw
+	addUpdateAspectFn     = sdk.AddUpdateAspect
 	listServicesRawFn     = sdk.ListServicesRaw
 	createServiceJobRawFn = sdk.CreateServiceJobRaw
 	createArtifactFn      = sdk.CreateArtifact
@@ -182,6 +184,9 @@ func newCLIMCPServer() *server.MCPServer {
 	// Always expose built-in tools that are implemented locally (not discovered from platform services).
 	addArtifactCreateTool(s)
 	addArtifactGetTool(s)
+	addAspectSearchTool(s)
+	addAspectGetTool(s)
+	addAspectCreateTool(s)
 	return s
 }
 
@@ -191,6 +196,9 @@ var builtInToolNames = map[string]bool{
 	"select_tools":    true,
 	"artifact_create": true,
 	"artifact_get":    true,
+	"aspect_search":   true,
+	"aspect_get":      true,
+	"aspect_create":   true,
 }
 
 type toolAllowlistKey struct{}
@@ -250,7 +258,7 @@ func filterToolsBySessionAllowlist(ctx context.Context, tools []mcp.Tool) []mcp.
 	sess := server.ClientSessionFromContext(ctx)
 	if sess == nil {
 		// Default: built-in tools only.
-		res := make([]mcp.Tool, 0, 2)
+		res := make([]mcp.Tool, 0, 6)
 		for _, t := range tools {
 			if builtInToolNames[t.Name] {
 				res = append(res, t)
@@ -288,11 +296,12 @@ func filterToolsBySessionAllowlist(ctx context.Context, tools []mcp.Tool) []mcp.
 	if selectTools != nil {
 		res = append(res, *selectTools)
 	}
-	if t, ok := toolMap["artifact_create"]; ok {
-		res = append(res, t)
-	}
-	if t, ok := toolMap["artifact_get"]; ok {
-		res = append(res, t)
+	// Keep stable order for built-ins after select_tools.
+	builtInOrder := []string{"artifact_create", "artifact_get", "aspect_search", "aspect_get", "aspect_create"}
+	for _, n := range builtInOrder {
+		if t, ok := toolMap[n]; ok {
+			res = append(res, t)
+		}
 	}
 	if allowed == nil {
 		return res
