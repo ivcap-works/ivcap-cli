@@ -105,11 +105,18 @@ func TestMCPToolsList_InitiallyOnlyHasSelectTools(t *testing.T) {
 	if err := json.Unmarshal(b, &parsed); err != nil {
 		t.Fatalf("cannot unmarshal result: %v", err)
 	}
-	if len(parsed.Tools) != 1 {
-		t.Fatalf("expected 1 tool initially, got %d", len(parsed.Tools))
+	if len(parsed.Tools) != 3 {
+		t.Fatalf("expected 3 tools initially, got %d", len(parsed.Tools))
 	}
 	if parsed.Tools[0].Name != "select_tools" {
-		t.Fatalf("expected initial tool to be select_tools, got %q", parsed.Tools[0].Name)
+		t.Fatalf("expected first tool to be select_tools, got %q", parsed.Tools[0].Name)
+	}
+	got := map[string]bool{}
+	for _, t := range parsed.Tools {
+		got[t.Name] = true
+	}
+	if !got["select_tools"] || !got["artifact_create"] || !got["artifact_get"] {
+		t.Fatalf("expected tools select_tools, artifact_create, artifact_get; got %+v", got)
 	}
 }
 
@@ -159,7 +166,7 @@ func TestMCPToolsList_SelectToolsExpandsList(t *testing.T) {
 	selMsg := json.RawMessage(`{"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":"select_tools","arguments":{"interest":"test"}}}`)
 	_ = s.HandleMessage(ctx, selMsg)
 
-	// List again, should now contain select_tools + test_tool (via allowlist + tool filter)
+	// List again, should now contain select_tools + artifact_create + artifact_get (built-in) + test_tool (via allowlist + tool filter)
 	listMsg := json.RawMessage(`{"jsonrpc":"2.0","id":3,"method":"tools/list","params":{}}`)
 	out := s.HandleMessage(ctx, listMsg)
 	res, ok := out.(mcp.JSONRPCResponse)
@@ -176,15 +183,15 @@ func TestMCPToolsList_SelectToolsExpandsList(t *testing.T) {
 	if err := json.Unmarshal(b, &parsed); err != nil {
 		t.Fatalf("cannot unmarshal result: %v", err)
 	}
-	if len(parsed.Tools) != 2 {
-		t.Fatalf("expected 2 tools after select_tools, got %d", len(parsed.Tools))
+	if len(parsed.Tools) != 4 {
+		t.Fatalf("expected 4 tools after select_tools, got %d", len(parsed.Tools))
 	}
 	got := map[string]bool{}
 	for _, t := range parsed.Tools {
 		got[t.Name] = true
 	}
-	if !got["select_tools"] || !got["test_tool"] {
-		t.Fatalf("expected tools select_tools and test_tool, got %+v", got)
+	if !got["select_tools"] || !got["artifact_create"] || !got["artifact_get"] || !got["test_tool"] {
+		t.Fatalf("expected tools select_tools, artifact_create, artifact_get and test_tool, got %+v", got)
 	}
 }
 
@@ -334,16 +341,22 @@ func TestMCPToolsList_SelectToolsSortsByScore(t *testing.T) {
 	if err := json.Unmarshal(b, &parsed); err != nil {
 		t.Fatalf("cannot unmarshal result: %v", err)
 	}
-	if len(parsed.Tools) < 3 {
-		t.Fatalf("expected at least 3 tools (select_tools + 2 selected), got %d", len(parsed.Tools))
+	if len(parsed.Tools) < 5 {
+		t.Fatalf("expected at least 5 tools (select_tools + artifact_create + artifact_get + 2 selected), got %d", len(parsed.Tools))
 	}
 	if parsed.Tools[0].Name != "select_tools" {
 		t.Fatalf("expected first tool to be select_tools, got %q", parsed.Tools[0].Name)
 	}
-	if parsed.Tools[1].Name != "tool_high" {
-		t.Fatalf("expected first selected tool to be tool_high (score 0.9), got %q", parsed.Tools[1].Name)
+	if parsed.Tools[1].Name != "artifact_create" {
+		t.Fatalf("expected second tool to be artifact_create, got %q", parsed.Tools[1].Name)
 	}
-	if parsed.Tools[2].Name != "tool_low" {
-		t.Fatalf("expected second selected tool to be tool_low (score 0.2), got %q", parsed.Tools[2].Name)
+	if parsed.Tools[2].Name != "artifact_get" {
+		t.Fatalf("expected third tool to be artifact_get, got %q", parsed.Tools[2].Name)
+	}
+	if parsed.Tools[3].Name != "tool_high" {
+		t.Fatalf("expected first selected tool to be tool_high (score 0.9), got %q", parsed.Tools[3].Name)
+	}
+	if parsed.Tools[4].Name != "tool_low" {
+		t.Fatalf("expected second selected tool to be tool_low (score 0.2), got %q", parsed.Tools[4].Name)
 	}
 }

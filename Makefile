@@ -27,7 +27,7 @@ install: addlicense check install-dangerously completion
 build-dangerously:
 	@echo "Building IVCAP-CLI..."
 	${GOPRIVATE_ENV_CMD} go mod tidy
-	go build -ldflags ${LD_FLAGS} ivcap.go
+	go build -ldflags ${LD_FLAGS} -o ivcap ivcap.go
 
 install-dangerously: build-dangerously
 	go install -ldflags ${LD_FLAGS} ivcap.go

@@ -43,6 +43,10 @@ var (
 	listAspectFn          = sdk.ListAspect
 	listServicesRawFn     = sdk.ListServicesRaw
 	createServiceJobRawFn = sdk.CreateServiceJobRaw
+	createArtifactFn      = sdk.CreateArtifact
+	uploadArtifactFn      = sdk.UploadArtifact
+	readArtifactFn        = sdk.ReadArtifact
+	readArtifactRawFn     = sdk.ReadArtifactRaw
 	createMCPAdapterFn    = createMCPAdapter
 )
 
@@ -175,7 +179,18 @@ func newCLIMCPServer() *server.MCPServer {
 
 	// Always expose a single built-in tool for discovery.
 	addToolDiscoveryTool(s, disco)
+	// Always expose built-in tools that are implemented locally (not discovered from platform services).
+	addArtifactCreateTool(s)
+	addArtifactGetTool(s)
 	return s
+}
+
+// builtInToolNames are always visible (independent of select_tools allowlisting).
+// Keep this list small and stable.
+var builtInToolNames = map[string]bool{
+	"select_tools":    true,
+	"artifact_create": true,
+	"artifact_get":    true,
 }
 
 type toolAllowlistKey struct{}
@@ -234,13 +249,24 @@ func filterToolsBySessionAllowlist(ctx context.Context, tools []mcp.Tool) []mcp.
 	// If there is no allowlist for the current session, behave as if only select_tools is allowed.
 	sess := server.ClientSessionFromContext(ctx)
 	if sess == nil {
-		// Default: only discovery tool.
+		// Default: built-in tools only.
+		res := make([]mcp.Tool, 0, 2)
 		for _, t := range tools {
-			if t.Name == "select_tools" {
-				return []mcp.Tool{t}
+			if builtInToolNames[t.Name] {
+				res = append(res, t)
 			}
 		}
-		return nil
+		// Keep stable order: select_tools first, then the rest alphabetically.
+		sort.Slice(res, func(i, j int) bool {
+			if res[i].Name == "select_tools" {
+				return true
+			}
+			if res[j].Name == "select_tools" {
+				return false
+			}
+			return res[i].Name < res[j].Name
+		})
+		return res
 	}
 	sessionID := sess.SessionID()
 	allowed := getSessionAllowlist(sessionID)
@@ -257,9 +283,16 @@ func filterToolsBySessionAllowlist(ctx context.Context, tools []mcp.Tool) []mcp.
 		}
 	}
 
-	res := make([]mcp.Tool, 0, 1+len(order))
+	res := make([]mcp.Tool, 0, 2+len(order))
+	// Always include built-ins.
 	if selectTools != nil {
 		res = append(res, *selectTools)
+	}
+	if t, ok := toolMap["artifact_create"]; ok {
+		res = append(res, t)
+	}
+	if t, ok := toolMap["artifact_get"]; ok {
+		res = append(res, t)
 	}
 	if allowed == nil {
 		return res
