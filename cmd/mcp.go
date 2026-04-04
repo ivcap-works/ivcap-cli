@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"os"
 	"sort"
-	"strings"
 	"sync"
 	"time"
 
@@ -34,7 +33,7 @@ import (
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 )
 
-const mcpLoginRequiredMessage = "Please run 'ivcap login' in your terminal to continue."
+const mcpLoginRequiredMessage = "please run 'ivcap login' in your terminal to continue"
 
 var errMCPLoginRequired = errors.New(mcpLoginRequiredMessage)
 
@@ -48,7 +47,6 @@ var (
 	createArtifactFn      = sdk.CreateArtifact
 	uploadArtifactFn      = sdk.UploadArtifact
 	readArtifactFn        = sdk.ReadArtifact
-	readArtifactRawFn     = sdk.ReadArtifactRaw
 	createMCPAdapterFn    = createMCPAdapter
 )
 
@@ -134,54 +132,6 @@ func (d *mcpDiscoveryState) setDiscoveredTools(tools map[string]mcpDiscoveredToo
 	d.discovered = tools
 }
 
-func (d *mcpDiscoveryState) listMatching(interest string) []mcpDiscoveredTool {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-	interest = normalizeInterest(interest)
-	res := make([]mcpDiscoveredTool, 0, len(d.discovered))
-	for _, t := range d.discovered {
-		// Very simple relevance filter: substring match against name + description.
-		// This keeps behavior deterministic and avoids calling a model.
-		name := normalizeInterest(t.tool.Name)
-		desc := normalizeInterest(t.tool.Description)
-		if interest == "" || containsAny(name, interest) || containsAny(desc, interest) {
-			res = append(res, t)
-		}
-	}
-	return res
-}
-
-func normalizeInterest(s string) string {
-	// keep it tiny: lower + trim.
-	// (No regex to keep dependencies minimal.)
-	for len(s) > 0 && (s[0] == ' ' || s[0] == '\n' || s[0] == '\t' || s[0] == '\r') {
-		s = s[1:]
-	}
-	for len(s) > 0 {
-		last := s[len(s)-1]
-		if last == ' ' || last == '\n' || last == '\t' || last == '\r' {
-			s = s[:len(s)-1]
-			continue
-		}
-		break
-	}
-	// to lower (ASCII only is fine for our tool names/descriptions)
-	b := []byte(s)
-	for i := range b {
-		if b[i] >= 'A' && b[i] <= 'Z' {
-			b[i] = b[i] + ('a' - 'A')
-		}
-	}
-	return string(b)
-}
-
-func containsAny(haystack, needle string) bool {
-	if needle == "" {
-		return false
-	}
-	return strings.Contains(haystack, needle)
-}
-
 func newCLIMCPServer() *server.MCPServer {
 	disco := newMCPDiscoveryState()
 	s := server.NewMCPServer(
@@ -216,8 +166,6 @@ var builtInToolNames = map[string]bool{
 	"aspect_get":      true,
 	"aspect_create":   true,
 }
-
-type toolAllowlistKey struct{}
 
 var (
 	sessionToolAllowlistsMu sync.RWMutex
@@ -256,12 +204,6 @@ func getSessionToolOrder(sessionID string) []string {
 	sessionToolAllowlistsMu.RLock()
 	defer sessionToolAllowlistsMu.RUnlock()
 	return sessionToolOrder[sessionID]
-}
-
-func getSessionToolScores(sessionID string) map[string]float64 {
-	sessionToolAllowlistsMu.RLock()
-	defer sessionToolAllowlistsMu.RUnlock()
-	return sessionToolScores[sessionID]
 }
 
 // filterToolsBySessionAllowlist ensures that tools/list only returns:
@@ -370,8 +312,6 @@ func parseTool(item map[string]any) (string, mcp.Tool, server.ToolHandlerFunc, s
 }
 
 // ---- Tool discovery / session exposure ----------------------------------------------------
-
-type discoveryStateKey struct{}
 
 func getDiscoveryState(s *server.MCPServer) *mcpDiscoveryState {
 	if s == nil {
@@ -734,11 +674,9 @@ func createMCPAdapter(timeoutSec int) (*a.Adapter, error) {
 		accessToken = accessTokenF
 	} else if envToken := os.Getenv(ACCESS_TOKEN_ENV); envToken != "" {
 		accessToken = envToken
-	} else {
+	} else if ctxt.AccessToken != "" && time.Now().Before(ctxt.AccessTokenExpiry) {
 		// Only use cached context token if it hasn't expired.
-		if ctxt.AccessToken != "" && time.Now().Before(ctxt.AccessTokenExpiry) {
-			accessToken = ctxt.AccessToken
-		}
+		accessToken = ctxt.AccessToken
 	}
 	if accessToken == "" {
 		return nil, errMCPLoginRequired
