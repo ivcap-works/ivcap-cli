@@ -53,7 +53,7 @@ func TestMCPResources_SkillsManifestAndSkillBody(t *testing.T) {
 	for _, r := range listed.Resources {
 		got[r.URI] = true
 	}
-	if !got["skills://manifest"] || !got["skills://catalog.json"] || !got["skills://CONTEXT.md"] {
+	if !got["skills://manifest"] || !got["skills://catalog.json"] || !got["skills://CONTEXT.md"] || !got["skills://SKILLS.md"] {
 		t.Fatalf("expected skills resources to be listed; got %+v", got)
 	}
 
@@ -136,6 +136,68 @@ func TestMCPResources_SkillsManifestAndSkillBody(t *testing.T) {
 	}
 	if len(skillRes.Contents[0].Text) < 4 || skillRes.Contents[0].Text[:3] != "---" {
 		t.Fatalf("expected skill markdown to start with YAML front-matter delimiter")
+	}
+
+	// resources/read skills index
+	readIndex := json.RawMessage(`{"jsonrpc":"2.0","id":5,"method":"resources/read","params":{"uri":"skills://SKILLS.md"}}`)
+	out = s.HandleMessage(ctx, readIndex)
+	resp, ok = out.(mcp.JSONRPCResponse)
+	if !ok {
+		t.Fatalf("expected JSONRPCResponse, got %T", out)
+	}
+	b, err = json.Marshal(resp.Result)
+	if err != nil {
+		t.Fatalf("cannot marshal result: %v", err)
+	}
+	var indexRes struct {
+		Contents []struct {
+			URI      string `json:"uri"`
+			MIMEType string `json:"mimeType"`
+			Text     string `json:"text"`
+		} `json:"contents"`
+	}
+	if err := json.Unmarshal(b, &indexRes); err != nil {
+		t.Fatalf("cannot unmarshal resources/read index result: %v", err)
+	}
+	if len(indexRes.Contents) != 1 {
+		t.Fatalf("expected 1 index content item, got %d", len(indexRes.Contents))
+	}
+	if indexRes.Contents[0].MIMEType != "text/markdown" {
+		t.Fatalf("expected text/markdown, got %q", indexRes.Contents[0].MIMEType)
+	}
+	if indexRes.Contents[0].Text == "" {
+		t.Fatalf("expected non-empty index markdown")
+	}
+
+	// resources/read a category SKILLS.md via file template
+	readCat := json.RawMessage(`{"jsonrpc":"2.0","id":6,"method":"resources/read","params":{"uri":"skills://file/service/SKILLS.md"}}`)
+	out = s.HandleMessage(ctx, readCat)
+	resp, ok = out.(mcp.JSONRPCResponse)
+	if !ok {
+		t.Fatalf("expected JSONRPCResponse, got %T", out)
+	}
+	b, err = json.Marshal(resp.Result)
+	if err != nil {
+		t.Fatalf("cannot marshal result: %v", err)
+	}
+	var catRes struct {
+		Contents []struct {
+			URI      string `json:"uri"`
+			MIMEType string `json:"mimeType"`
+			Text     string `json:"text"`
+		} `json:"contents"`
+	}
+	if err := json.Unmarshal(b, &catRes); err != nil {
+		t.Fatalf("cannot unmarshal resources/read category result: %v", err)
+	}
+	if len(catRes.Contents) != 1 {
+		t.Fatalf("expected 1 category content item, got %d", len(catRes.Contents))
+	}
+	if catRes.Contents[0].URI != "skills://file/service/SKILLS.md" {
+		t.Fatalf("unexpected category uri: %q", catRes.Contents[0].URI)
+	}
+	if catRes.Contents[0].Text == "" {
+		t.Fatalf("expected non-empty category markdown")
 	}
 }
 

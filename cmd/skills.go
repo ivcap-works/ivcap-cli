@@ -16,7 +16,9 @@ package cmd
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
+	"strings"
 
 	adpt "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 	"github.com/ivcap-works/ivcap-cli/pkg/skillsdoc"
@@ -83,14 +85,38 @@ var skillsShowCmd = &cobra.Command{
 	Short: "Show a skill doc (prints exact embedded SKILL.md content)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		name := args[0]
+		ref := args[0]
+		// support either a skill name (resolved from embedded *.SKILL.md docs)
+		// or a skills://file/... URI (reads an embedded markdown file directly).
+		if strings.HasPrefix(ref, "skills://file/") {
+			p := strings.TrimPrefix(ref, "skills://file/")
+			b, err := fs.ReadFile(asset.FS, p)
+			if err != nil {
+				return err
+			}
+			switch outputFormat {
+			case "json", "yaml":
+				payload, err := adpt.JsonPayloadFromAny(map[string]any{"uri": ref, "path": p, "content": string(b)}, logger)
+				if err != nil {
+					return err
+				}
+				return adpt.ReplyPrinter(payload, outputFormat == "yaml")
+			default:
+				fmt.Fprint(os.Stdout, string(b))
+				if len(b) == 0 || b[len(b)-1] != '\n' {
+					fmt.Fprint(os.Stdout, "\n")
+				}
+				return nil
+			}
+		}
+
 		docs, err := skillsdoc.LoadAllSkillDocs(asset.FS)
 		if err != nil {
 			return err
 		}
-		d := skillsdoc.FindByName(docs, name)
+		d := skillsdoc.FindByName(docs, ref)
 		if d == nil {
-			return fmt.Errorf("unknown skill '%s'", name)
+			return fmt.Errorf("unknown skill '%s'", ref)
 		}
 
 		switch outputFormat {

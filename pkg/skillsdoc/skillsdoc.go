@@ -104,7 +104,19 @@ func ParseSkillDoc(path string, content []byte) (*SkillDoc, error) {
 }
 
 func LoadAllSkillDocs(fsys fs.FS) ([]*SkillDoc, error) {
-	entries, err := fs.Glob(fsys, "*.SKILL.md")
+	var entries []string
+	err := fs.WalkDir(fsys, ".", func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if d.IsDir() {
+			return nil
+		}
+		if strings.HasSuffix(path, ".SKILL.md") {
+			entries = append(entries, path)
+		}
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -189,11 +201,9 @@ func validateHeadMatter(path string, hm *HeadMatter) error {
 		return fmt.Errorf("%s: missing required front-matter key 'requires.bins'", path)
 	}
 
-	// Recommend matching file basename (not strictly required, but helps avoid ambiguity)
-	base := strings.TrimSuffix(filepath.Base(path), ".SKILL.md")
-	if base != "" && base != hm.Name {
-		// Keep this as a hard error: it ensures stable lookups.
-		return fmt.Errorf("%s: front-matter name '%s' must match file base name '%s'", path, hm.Name, base)
-	}
+	// Recommend matching file basename (not strictly required, but helps avoid ambiguity).
+	// We allow mismatch because skill docs can live in subdirectories where the
+	// file name encodes hierarchy (e.g. `skills/service/ivcap-service-list.SKILL.md`).
+	// The authoritative identifier is the YAML front-matter `name`.
 	return nil
 }

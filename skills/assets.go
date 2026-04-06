@@ -29,5 +29,10 @@ import "embed"
 // Skill docs are intended to be cheap and reliable for agents to access at
 // runtime without any network call.
 //
-//go:embed *.SKILL.md CONTEXT.md
+// Embed the full skills tree (directories are embedded recursively).
+//
+// Note: go:embed does not support recursive globstars, so we embed directories
+// explicitly.
+//
+//go:embed CONTEXT.md SKILLS.md artifact service job datafabric nextflow
 var FS embed.FS

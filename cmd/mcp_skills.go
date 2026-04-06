@@ -33,6 +33,7 @@ const (
 	skillsManifestURI = "skills://manifest"
 	skillsCatalogURI  = "skills://catalog.json"
 	skillsContextURI  = "skills://CONTEXT.md"
+	skillsIndexURI    = "skills://SKILLS.md"
 )
 
 type skillsManifestItem struct {
@@ -127,6 +128,23 @@ func addSkillsResourcesAndPrompts(s *server.MCPServer) {
 		},
 	)
 
+	// Index: top-level skills tree overview.
+	s.AddResource(
+		mcp.NewResource(
+			skillsIndexURI,
+			"IVCAP skills index",
+			mcp.WithResourceDescription("Top-level index of the embedded skills tree (links to category indexes and skill docs)."),
+			mcp.WithMIMEType("text/markdown"),
+		),
+		func(ctx context.Context, req mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+			b, err := fs.ReadFile(asset.FS, "SKILLS.md")
+			if err != nil {
+				return nil, err
+			}
+			return []mcp.ResourceContents{mcp.TextResourceContents{URI: skillsIndexURI, MIMEType: "text/markdown", Text: string(b)}}, nil
+		},
+	)
+
 	// Skill bodies as a template. (Fetch full body only when needed.)
 	s.AddResourceTemplate(
 		mcp.NewResourceTemplate(
@@ -162,6 +180,41 @@ func addSkillsResourcesAndPrompts(s *server.MCPServer) {
 		},
 	)
 
+	// Any embedded markdown file.
+	// This is used for SKILLS.md indexes and reference docs.
+	s.AddResourceTemplate(
+		mcp.NewResourceTemplate(
+			"skills://file/{path}",
+			"IVCAP skills file",
+			mcp.WithTemplateDescription("Read an embedded markdown file from the skills tree. Example: skills://file/service/SKILLS.md"),
+			mcp.WithTemplateMIMEType("text/markdown"),
+		),
+		func(ctx context.Context, req mcp.ReadResourceRequest) ([]mcp.ResourceContents, error) {
+			if req.Params.Arguments == nil {
+				return nil, fmt.Errorf("missing arguments")
+			}
+			pathAny := req.Params.Arguments["path"]
+			p, _ := pathAny.(string)
+			p = strings.TrimPrefix(p, "/")
+			if p == "" {
+				return nil, fmt.Errorf("missing path")
+			}
+			if strings.Contains(p, "..") {
+				return nil, fmt.Errorf("invalid path")
+			}
+			b, err := fs.ReadFile(asset.FS, p)
+			if err != nil {
+				return nil, err
+			}
+			uri := fmt.Sprintf("skills://file/%s", p)
+			mime := "text/markdown"
+			if strings.HasSuffix(p, ".json") {
+				mime = "application/json"
+			}
+			return []mcp.ResourceContents{mcp.TextResourceContents{URI: uri, MIMEType: mime, Text: string(b)}}, nil
+		},
+	)
+
 	// ---- Prompts --------------------------------------------------------------------------
 
 	// Setup prompt: tells the agent how to self-load manifest + relevant skills for the session.
@@ -178,13 +231,19 @@ For this session, load and follow IVCAP agent best-practices and any relevant sk
 1) Read the general agent guidance:
    - resources/read uri="skills://CONTEXT.md"
 
+1b) Read the embedded skills tree index (helps you locate the right sub-skill):
+   - resources/read uri="skills://SKILLS.md"
+
 2) Discover available skills:
    - resources/read uri="skills://manifest"
 
 3) Choose the most relevant skill(s) for the user’s goal and read their bodies:
    - resources/read uri="skills://{name}/SKILL.md"
 
-4) Follow the instructions in those skill docs strictly (output json, headless auth, confirm mutations, etc.).
+4) For category overviews or reference docs, read files in the embedded skills tree:
+   - resources/read uri="skills://file/{path}"
+
+5) Follow the instructions in those skill docs strictly (output json, headless auth, confirm mutations, etc.).
 `)
 			return &mcp.GetPromptResult{
 				Description: "Load IVCAP agent context + relevant embedded skill playbooks",
