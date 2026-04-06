@@ -152,6 +152,8 @@ func newCLIMCPServer() *server.MCPServer {
 	addAspectSearchTool(s)
 	addAspectGetTool(s)
 	addAspectCreateTool(s)
+	addNextflowCreateTool(s)
+	addNextflowRunTool(s)
 	addSkillsResourcesAndPrompts(s)
 	return s
 }
@@ -165,6 +167,8 @@ var builtInToolNames = map[string]bool{
 	"aspect_search":   true,
 	"aspect_get":      true,
 	"aspect_create":   true,
+	"nextflow_create": true,
+	"nextflow_run":    true,
 }
 
 var (
@@ -255,7 +259,7 @@ func filterToolsBySessionAllowlist(ctx context.Context, tools []mcp.Tool) []mcp.
 		res = append(res, *selectTools)
 	}
 	// Keep stable order for built-ins after select_tools.
-	builtInOrder := []string{"artifact_create", "artifact_get", "aspect_search", "aspect_get", "aspect_create"}
+	builtInOrder := []string{"artifact_create", "artifact_get", "aspect_search", "aspect_get", "aspect_create", "nextflow_create", "nextflow_run"}
 	for _, n := range builtInOrder {
 		if t, ok := toolMap[n]; ok {
 			res = append(res, t)

@@ -37,6 +37,11 @@ with multiple IVCAP deployments (and switch between them).
 
 This tool can also be used as a **local MCP server** (see [Agent / automation usage](#agent--automation-usage)).
 
+Built-in MCP tools also include helpers for working with Nextflow services:
+
+- `nextflow_create`: assemble a Nextflow pipeline package `.tar.gz` from a list of sources (text/base64/url/artifact), upload it as an artifact, validate `ivcap-tool.yaml`, and publish/update the service description aspect.
+- `nextflow_run`: create a job for a Nextflow service from either an inline input payload or a request-aspect URN.
+
 ```
 % ivcap
 A command line tool to to more conveniently interact with the

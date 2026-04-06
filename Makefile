@@ -80,7 +80,7 @@ release: addlicense check build-docs
 
 addlicense:
 	# go install github.com/google/addlicense@latest
-	addlicense -v \
+	addlicense -s \
 		-c 'Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230' \
 		-l apache \
 		./**/*.go
