@@ -85,6 +85,12 @@ addlicense:
 		-l apache \
 		./**/*.go
 
+mcp-inspector:
+	npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server default-server
+
+mcp-inspector-sse:
+	npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server sse-8077
+
 tv:
 	gource -f --title "ivcap-cli" --seconds-per-day 0.1 --auto-skip-seconds 0.1 --bloom-intensity 0.05 \
 		--max-user-speed 500 --highlight-users --hide filenames,dirnames --highlight-dirs --multi-sampling
@@ -179,9 +185,3 @@ install-addlicense:
 		echo "Installing addlicense..."; \
 		GOBIN=$(GOBIN_DIR) go install github.com/nokia/addlicense@latest; \
 	fi
-
-mcp-inspector:
-	npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server default-server
-
-mcp-inspector-sse:
-	npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server sse-8077
