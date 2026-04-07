@@ -29,7 +29,16 @@ pipelines directly on an IVCAP platform. This approach:
 - Automatically uploads the pipeline archive as an IVCAP artifact
 - Creates/updates a service definition in the IVCAP Data Fabric
 - Enables direct job submission via `ivcap nextflow run`
-- Requires `ivcap.yaml` (simplified) or `ivcap-tool.yaml` (advanced) in the archive
+- Requires **one** tool manifest in the archive:
+  - `ivcap.yaml` (**simplified**, recommended; the CLI converts it to a full request schema)
+  - OR `ivcap-tool.yaml` (**advanced**; you provide the full `fn-schema` yourself)
+
+**How the internal commands behave (important):**
+- `ivcap nextflow create/update` look for `ivcap.yaml` **first**; if not present they fall back to `ivcap-tool.yaml`.
+- The file can be located anywhere in the tarball, but it must be **unique by basename** (do not include multiple `ivcap.yaml` files).
+- `ivcap nextflow run` is an alias for `ivcap job create`, i.e. it submits a job to a service using either:
+  - `-f job-params.json|yaml`, or
+  - `-a aspect-urn` (an aspect containing the request payload)
 
 **Key files required:**
 - `main.nf` — Nextflow workflow
@@ -102,17 +111,37 @@ pipeline/
 
 **This file is required when using `ivcap nextflow create`.**
 
-The `ivcap.yaml` file provides service metadata and defines the pipeline's parameters
-and sample table structure. It uses a simplified format that is automatically converted
-to the full `ivcap-tool.yaml` schema internally.
+The `ivcap.yaml` file provides service metadata and defines the pipeline’s **parameter model**
+and (optionally) its **sample table model**.
+
+When you include `ivcap.yaml`, the CLI will **auto-generate** the full service request schema
+internally (equivalent to authoring an `ivcap-tool.yaml` with a `fn-schema`).
+
+### How `ivcap nextflow create` uses ivcap.yaml
+
+The generated request payload has this overall shape:
+
+```yaml
+parameters: { ... }   # object with named parameters from `properties`
+samples:              # optional; only if you define `samples` in ivcap.yaml
+  - [ ... ]           # each row is an array/tuple in the exact column order of `samples`
+```
+
+So **your `ivcap.yaml` must be explicit and complete**:
+- The top-level `description` should be a detailed, multi-line description of the pipeline.
+- Every entry in `properties` needs a clear description (units, defaults, valid ranges).
+- If you use a sample table, every entry in `samples` must document that column.
+
+If you need full control over the JSON schema (advanced validation, nested structures,
+etc.), use `ivcap-tool.yaml` instead.
 
 ### Complete ivcap.yaml Template
 
 ```yaml
-$schema: "urn:ivcap:schema:service.1"
-id: "urn:ivcap:service:my-pipeline.1"
+$schema: "urn:ivcap:schema:service.1"  # optional; not currently validated by the CLI
+id: "urn:ivcap:service:my-pipeline.1"  # optional pipeline identifier/version
 name: "my-pipeline"
-service-id: ""  # Provided via --service-id flag in ivcap nextflow create
+service-id: ""  # optional; the service you deploy to is provided via `ivcap nextflow create --service-id ...`
 description: |
   Detailed multi-line description of what this pipeline does.
 
@@ -190,7 +219,7 @@ example:
 | `$schema` | No | Schema identifier (use `urn:ivcap:schema:service.1`) |
 | `id` | No | Unique identifier for this pipeline version |
 | `name` | **Yes** | Short name (used in service description) |
-| `service-id` | No | Leave empty; provided via `--service-id` flag |
+| `service-id` | No | Optional metadata; the deployed service URN is provided via `ivcap nextflow create --service-id ...` |
 | `description` | **Yes** | Detailed multi-line description of the pipeline |
 | `contact` | No | Contact information (name, email) |
 | `properties` | **Yes** | Array of parameter definitions |
@@ -222,6 +251,9 @@ Each entry in `samples` defines one column in the sample table:
 
 **Important:** Samples are submitted as an array of arrays (rows), where each row
 must have values in the exact order defined in the `samples` section.
+
+If you do **not** define `samples` in `ivcap.yaml`, then `samples` should be omitted
+from the job request.
 
 ### Writing Effective Descriptions
 
@@ -578,8 +610,8 @@ ivcap nextflow update \
 
 **What this does:**
 1. Uploads the pipeline archive as an IVCAP artifact
-2. Extracts and parses `ivcap.yaml` from the archive
-3. Converts it to the full service description schema
+2. Extracts and parses `ivcap.yaml` (preferred) or `ivcap-tool.yaml` (fallback) from the archive
+3. If using `ivcap.yaml`, generates the request schema (`fn-schema`) from `properties` + `samples`
 4. Creates/updates a Data Fabric aspect for the service
 5. Returns the service URN, artifact URN, and aspect record ID
 
@@ -695,7 +727,7 @@ process PROCESS_SAMPLES {
 | `-a URN` | Aspect URN containing job parameters |
 | `--watch` | Wait for job completion and display final status |
 | `--stream` | Stream job events (logs, progress) to stdout |
-| `--format` | Output format: `json` or `yaml` |
+| `--format` | **Input file** format when using `-f` (`json` or `yaml`) |
 
 **Pro tip:** Use `--watch --stream` together for real-time monitoring during development.
 
