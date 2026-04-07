@@ -24,6 +24,8 @@ import (
 	"testing"
 
 	yaml "gopkg.in/yaml.v2"
+
+	nf "github.com/ivcap-works/ivcap-cli/pkg/nextflow"
 )
 
 const testToolYAML = `{"$schema": "urn:sd-core:schema.ai-tool.1"}
@@ -83,7 +85,7 @@ samples:
 
 func TestExtractFileFromTarReader_FindsRootPath(t *testing.T) {
 	b := tarBytes(map[string]string{"ivcap-tool.yaml": testToolYAML})
-	got, found, err := extractFileFromTarReader(tar.NewReader(bytes.NewReader(b)), "ivcap-tool.yaml")
+	got, found, err := nf.ExtractFileFromTarReader(tar.NewReader(bytes.NewReader(b)), "ivcap-tool.yaml")
 	if err != nil {
 		t.Fatalf("extract error: %v", err)
 	}
@@ -97,7 +99,7 @@ func TestExtractFileFromTarReader_FindsRootPath(t *testing.T) {
 
 func TestExtractFileFromTarReader_FindsNestedByBaseName(t *testing.T) {
 	b := tarBytes(map[string]string{"nested/ivcap-tool.yaml": testToolYAML})
-	got, found, err := extractFileFromTarReader(tar.NewReader(bytes.NewReader(b)), "ivcap-tool.yaml")
+	got, found, err := nf.ExtractFileFromTarReader(tar.NewReader(bytes.NewReader(b)), "ivcap-tool.yaml")
 	if err != nil {
 		t.Fatalf("extract error: %v", err)
 	}
@@ -114,14 +116,14 @@ func TestExtractFileFromTarReader_ErrorsOnMultipleMatches(t *testing.T) {
 		"a/ivcap-tool.yaml": testToolYAML,
 		"b/ivcap-tool.yaml": testToolYAML,
 	})
-	_, _, err := extractFileFromTarReader(tar.NewReader(bytes.NewReader(b)), "ivcap-tool.yaml")
+	_, _, err := nf.ExtractFileFromTarReader(tar.NewReader(bytes.NewReader(b)), "ivcap-tool.yaml")
 	if err == nil {
 		t.Fatalf("expected error")
 	}
 }
 
 func TestNextflowToolHeader_YamlUnmarshal(t *testing.T) {
-	var h nextflowToolHeader
+	var h nf.ToolHeader
 	if err := yaml.Unmarshal([]byte(testToolYAML), &h); err != nil {
 		t.Fatalf("yaml unmarshal: %v", err)
 	}
@@ -143,17 +145,17 @@ func TestNextflowToolHeader_YamlUnmarshal(t *testing.T) {
 	if h.Contact == nil || h.Contact.Email != "mary.doe@acme.au" {
 		t.Fatalf("expected contact")
 	}
-	if err := validateFnSchema(h.FnSchema); err != nil {
+	if err := nf.ValidateFnSchema(h.FnSchema); err != nil {
 		t.Fatalf("expected fn-schema to be valid: %v", err)
 	}
 }
 
 func TestConvertSimpleToolToToolHeader_GeneratesFnSchema(t *testing.T) {
-	var s nextflowSimpleToolHeader
+	var s nf.SimpleToolHeader
 	if err := yaml.Unmarshal([]byte(testSimpleToolYAML), &s); err != nil {
 		t.Fatalf("yaml unmarshal: %v", err)
 	}
-	tool, err := convertSimpleToolToToolHeader(&s)
+	tool, err := nf.ConvertSimpleToolToToolHeader(&s)
 	if err != nil {
 		t.Fatalf("convert: %v", err)
 	}
@@ -166,7 +168,7 @@ func TestConvertSimpleToolToToolHeader_GeneratesFnSchema(t *testing.T) {
 	if tool.FnSchema == nil {
 		t.Fatalf("expected generated fn-schema")
 	}
-	if err := validateFnSchema(tool.FnSchema); err != nil {
+	if err := nf.ValidateFnSchema(tool.FnSchema); err != nil {
 		t.Fatalf("expected generated fn-schema to be valid: %v", err)
 	}
 
@@ -185,20 +187,20 @@ func TestConvertSimpleToolToToolHeader_GeneratesFnSchema(t *testing.T) {
 }
 
 func TestValidateFnSchema_AllowsNil(t *testing.T) {
-	if err := validateFnSchema(nil); err != nil {
+	if err := nf.ValidateFnSchema(nil); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
 func TestValidateFnSchema_RejectsMissingSchema(t *testing.T) {
-	err := validateFnSchema(map[string]any{"type": "object"})
+	err := nf.ValidateFnSchema(map[string]any{"type": "object"})
 	if err == nil {
 		t.Fatalf("expected error")
 	}
 }
 
 func TestValidateFnSchema_RejectsNonJsonSchemaURL(t *testing.T) {
-	err := validateFnSchema(map[string]any{"$schema": "urn:abc", "type": "object"})
+	err := nf.ValidateFnSchema(map[string]any{"$schema": "urn:abc", "type": "object"})
 	if err == nil {
 		t.Fatalf("expected error")
 	}
@@ -256,8 +258,8 @@ func TestNextflowUploadMeta_RoundTrip(t *testing.T) {
 	mt := st.ModTime().Unix()
 	aid := "urn:ivcap:artifact:123"
 
-	writeNextflowUploadMeta(archive, size, mt, aid)
-	got, ok := readNextflowUploadMeta(archive, size, mt)
+	nf.WriteUploadMeta(archive, size, mt, aid)
+	got, ok := nf.ReadUploadMeta(archive, size, mt)
 	if !ok {
 		t.Fatalf("expected ok")
 	}
@@ -267,7 +269,7 @@ func TestNextflowUploadMeta_RoundTrip(t *testing.T) {
 }
 
 func TestBuildNextflowServiceDescription_UsesToolAndPipelineURN(t *testing.T) {
-	tool := &nextflowToolHeader{
+	tool := &nf.ToolHeader{
 		Name:        "simple-rnaseq-pipeline",
 		Description: "desc",
 		Contact: &struct {
@@ -276,7 +278,7 @@ func TestBuildNextflowServiceDescription_UsesToolAndPipelineURN(t *testing.T) {
 		}{Name: "Mary Doe", Email: "mary.doe@acme.au"},
 		FnSchema: map[string]any{"$schema": "http://json-schema.org/draft-07/schema#", "type": "object"},
 	}
-	svc := buildNextflowServiceDescription(tool, "urn:ivcap:service:abc", "urn:ivcap:artifact:pipeline")
+	svc := nf.BuildServiceDescription(tool, "urn:ivcap:service:abc", "urn:ivcap:artifact:pipeline")
 	if svc.Schema != nextflowServiceSchema {
 		t.Fatalf("unexpected schema: %q", svc.Schema)
 	}
@@ -297,7 +299,7 @@ func TestPrintNextflowCreateOutput_RejectsUnknownFormat(t *testing.T) {
 	prev := nextflowCreateFormat
 	defer func() { nextflowCreateFormat = prev }()
 	nextflowCreateFormat = "toml"
-	out := &nextflowCreateOutput{OK: true, ServiceID: "s", PipelineArtifactURN: "a"}
+	out := &nf.CreateOutput{OK: true, ServiceID: "s", PipelineArtifactURN: "a"}
 	if err := printNextflowCreateOutput(out); err == nil {
 		t.Fatalf("expected error")
 	}

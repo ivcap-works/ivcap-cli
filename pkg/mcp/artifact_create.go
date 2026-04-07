@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package mcp
 
 import (
 	"archive/tar"
@@ -21,13 +21,8 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
-	"mime"
-	"net/http"
-	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -36,6 +31,7 @@ import (
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	nf "github.com/ivcap-works/ivcap-cli/pkg/nextflow"
 )
 
 // This file provides a built-in MCP tool to create an IVCAP artifact from
@@ -54,9 +50,6 @@ type mcpContentPart struct {
 		URL       string `json:"url,omitempty"`
 	} `json:"source,omitempty"`
 }
-
-// allow test stubbing
-var fetchURLBytesFn = fetchURLBytes
 
 type artifactCreateArgs struct {
 	// Optional display name stored in the artifact record
@@ -140,7 +133,7 @@ func addArtifactCreateTool(s *server.MCPServer) {
 
 	handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		b, err := a.JsonPayloadFromAny(args, logger)
+		b, err := a.JsonPayloadFromAny(args, srvCfg.Logger)
 		if err != nil {
 			return nil, err
 		}
@@ -152,15 +145,15 @@ func addArtifactCreateTool(s *server.MCPServer) {
 			return nil, fmt.Errorf("missing content")
 		}
 
-		adpt, err := createMCPAdapterFn(timeout)
+		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
 			return nil, err
 		}
-		ctxt, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+		ctxt, cancel := withTimeout(ctx)
 		defer cancel()
 
 		// Create payload (reader, mime, size) either from single part or tar.gz.
-		payload, mime, size, err := mcpContentToArtifactPayload(ctxt, parsed.Content)
+		payload, mimeType, size, err := mcpContentToArtifactPayload(ctxt, parsed.Content)
 		if err != nil {
 			return nil, err
 		}
@@ -171,10 +164,10 @@ func addArtifactCreateTool(s *server.MCPServer) {
 			Collection: parsed.Collection,
 			Policy:     parsed.Policy,
 		}
-		resp, err := createArtifactFn(ctxt, creq, mime, size, nil, adpt, logger)
+		resp, err := createArtifactFn(ctxt, creq, mimeType, size, nil, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, errMCPLoginRequired
+				return nil, ErrLoginRequired
 			}
 			return nil, err
 		}
@@ -186,17 +179,21 @@ func addArtifactCreateTool(s *server.MCPServer) {
 		if err != nil {
 			return nil, err
 		}
-		if err := uploadArtifactFn(ctxt, payload, size, 0, DEF_CHUNK_SIZE, p, adpt, true, logger); err != nil {
+		chunkSize := srvCfg.ChunkSize
+		if chunkSize == 0 {
+			chunkSize = 10000000
+		}
+		if err := uploadArtifactFn(ctxt, payload, size, 0, chunkSize, p, adpt, true, srvCfg.Logger); err != nil {
 			if isAuthFailure(err) {
-				return nil, errMCPLoginRequired
+				return nil, ErrLoginRequired
 			}
 			return nil, err
 		}
 
-		art, err := readArtifactFn(ctxt, &sdk.ReadArtifactRequest{Id: artifactID}, adpt, logger)
+		art, err := readArtifactFn(ctxt, &sdk.ReadArtifactRequest{Id: artifactID}, adpt, srvCfg.Logger)
 		if err != nil {
 			// Upload succeeded; still return minimal info.
-			return mcp.NewToolResultJSON(map[string]any{"id": artifactID, "mime_type": mime, "size": size})
+			return mcp.NewToolResultJSON(map[string]any{"id": artifactID, "mime_type": mimeType, "size": size})
 		}
 		return mcp.NewToolResultJSON(map[string]any{
 			"id":        artifactID,
@@ -212,11 +209,11 @@ func addArtifactCreateTool(s *server.MCPServer) {
 
 func mcpContentToArtifactPayload(ctx context.Context, parts []mcpContentPart) (io.Reader, string, int64, error) {
 	if len(parts) == 1 {
-		b, mime, err := mcpPartToBytes(ctx, parts[0])
+		b, mt, err := mcpPartToBytes(ctx, parts[0])
 		if err != nil {
 			return nil, "", 0, err
 		}
-		return bytes.NewReader(b), mime, int64(len(b)), nil
+		return bytes.NewReader(b), mt, int64(len(b)), nil
 	}
 	// Multi-part: tar.gz
 	b, err := tarGzFromParts(ctx, parts)
@@ -267,34 +264,6 @@ func mcpPartToBytes(ctx context.Context, p mcpContentPart) ([]byte, string, erro
 	}
 }
 
-func fetchURLBytes(ctx context.Context, u string) ([]byte, string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
-	if err != nil {
-		return nil, "", err
-	}
-	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode >= 300 {
-		return nil, "", fmt.Errorf("url fetch failed: %s", resp.Status)
-	}
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, "", err
-	}
-	mt := resp.Header.Get("Content-Type")
-	if mt != "" {
-		// drop parameters to keep deterministic
-		if m0, _, err := mime.ParseMediaType(mt); err == nil {
-			mt = m0
-		}
-	}
-	return b, mt, nil
-}
-
 type manifestEntry struct {
 	Path      string `json:"path"`
 	Type      string `json:"type"`
@@ -323,7 +292,7 @@ func tarGzFromParts(ctx context.Context, parts []mcpContentPart) ([]byte, error)
 		if name == "" {
 			name = defaultPartName(p, idx)
 		}
-		tarPath, err := sanitizeTarPath(name)
+		tarPath, err := nf.SanitizeTarPath(name)
 		if err != nil {
 			_ = tw.Close()
 			_ = gzw.Close()
@@ -427,32 +396,4 @@ func extFromMediaType(mt string) string {
 		return "txt"
 	}
 	return "bin"
-}
-
-func sanitizeTarPath(p string) (string, error) {
-	if p == "" {
-		return "", errors.New("empty name")
-	}
-	// Ensure unix separators in tar.
-	p = strings.ReplaceAll(p, "\\", "/")
-	// path.Clean uses forward slashes.
-	p = path.Clean(p)
-	// Remove any leading slashes.
-	p = strings.TrimPrefix(p, "/")
-	// Ensure not empty and not traversal.
-	if p == "." || p == "" {
-		return "", fmt.Errorf("invalid tar path: %q", p)
-	}
-	if strings.HasPrefix(p, "../") || p == ".." {
-		return "", fmt.Errorf("invalid tar path (traversal): %q", p)
-	}
-	// Windows drive letters, etc.
-	if vol := filepath.VolumeName(p); vol != "" {
-		return "", fmt.Errorf("invalid tar path (volume): %q", p)
-	}
-	// Disallow backtracking segments anywhere.
-	if strings.Contains("/"+p+"/", "/../") {
-		return "", fmt.Errorf("invalid tar path (traversal): %q", p)
-	}
-	return p, nil
 }

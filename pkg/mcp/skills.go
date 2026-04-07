@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package mcp
 
 import (
 	"context"
@@ -207,11 +207,11 @@ func addSkillsResourcesAndPrompts(s *server.MCPServer) {
 				return nil, err
 			}
 			uri := fmt.Sprintf("skills://file/%s", p)
-			mime := "text/markdown"
+			mimeType := "text/markdown"
 			if strings.HasSuffix(p, ".json") {
-				mime = "application/json"
+				mimeType = "application/json"
 			}
-			return []mcp.ResourceContents{mcp.TextResourceContents{URI: uri, MIMEType: mime, Text: string(b)}}, nil
+			return []mcp.ResourceContents{mcp.TextResourceContents{URI: uri, MIMEType: mimeType, Text: string(b)}}, nil
 		},
 	)
 

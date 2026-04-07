@@ -36,11 +36,7 @@ import (
 
 const JOB_SCHEMA = "urn:ivcap:schema:job.2"
 
-const CREATE_FROM_ASPECT = `{
-  "$schema": "urn:ivcap:schema:job.input.1",
-	"request-aspect": "%s",
-	"service": "%s"
-}`
+const CREATE_FROM_ASPECT = sdk.CreateFromAspectTemplate
 
 func init() {
 	rootCmd.AddCommand(jobCmd)

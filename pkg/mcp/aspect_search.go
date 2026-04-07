@@ -12,12 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package mcp
 
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -80,7 +79,7 @@ func addAspectSearchTool(s *server.MCPServer) {
 
 	handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		pyld, err := a.JsonPayloadFromAny(args, logger)
+		pyld, err := a.JsonPayloadFromAny(args, srvCfg.Logger)
 		if err != nil {
 			return nil, err
 		}
@@ -92,11 +91,11 @@ func addAspectSearchTool(s *server.MCPServer) {
 			return nil, fmt.Errorf("need at least one of entity, schema_prefix or page")
 		}
 
-		adpt, err := createMCPAdapterFn(timeout)
+		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
 			return nil, err
 		}
-		ctxt, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+		ctxt, cancel := withTimeout(ctx)
 		defer cancel()
 
 		sel := sdk.AspectSelector{
@@ -114,10 +113,10 @@ func addAspectSearchTool(s *server.MCPServer) {
 			sel.JsonFilter = &parsed.ContentPath
 		}
 
-		list, raw, err := listAspectFn(ctxt, sel, adpt, logger)
+		list, raw, err := listAspectFn(ctxt, sel, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, errMCPLoginRequired
+				return nil, ErrLoginRequired
 			}
 			return nil, err
 		}

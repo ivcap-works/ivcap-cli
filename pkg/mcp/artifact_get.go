@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package mcp
 
 import (
 	"archive/tar"
@@ -22,16 +22,12 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"net/http"
-	"net/url"
 	"path"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
-	log "go.uber.org/zap"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
@@ -41,9 +37,6 @@ type artifactGetArgs struct {
 	ID   string `json:"id"`
 	Path string `json:"path,omitempty"`
 }
-
-// allow test stubbing
-var downloadArtifactBytesFn = downloadArtifactBytes
 
 // A tiny in-process cache for the most recently accessed tar artifact.
 // Artifacts are assumed to be immutable, so caching by ID is safe.
@@ -80,7 +73,7 @@ func addArtifactGetTool(s *server.MCPServer) {
 
 	handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		pyld, err := a.JsonPayloadFromAny(args, logger)
+		pyld, err := a.JsonPayloadFromAny(args, srvCfg.Logger)
 		if err != nil {
 			return nil, err
 		}
@@ -92,33 +85,33 @@ func addArtifactGetTool(s *server.MCPServer) {
 			return nil, fmt.Errorf("missing id")
 		}
 
-		adpt, err := createMCPAdapterFn(timeout)
+		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
 			return nil, err
 		}
-		ctxt, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+		ctxt, cancel := withTimeout(ctx)
 		defer cancel()
 
-		art, err := readArtifactFn(ctxt, &sdk.ReadArtifactRequest{Id: parsed.ID}, adpt, logger)
+		art, err := readArtifactFn(ctxt, &sdk.ReadArtifactRequest{Id: parsed.ID}, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, errMCPLoginRequired
+				return nil, ErrLoginRequired
 			}
 			return nil, err
 		}
 		if art == nil || art.DataHref == nil {
 			return nil, fmt.Errorf("artifact has no data")
 		}
-		mime := safeString(art.MimeType)
+		mimeType := safeString(art.MimeType)
 		dataURL := *art.DataHref
 
 		// If caller asked for an internal tar path, attempt tar extraction.
 		if parsed.Path != "" {
-			b, _, err := getTarArtifactBytesCached(ctxt, parsed.ID, dataURL, mime, adpt)
+			b, _, err := getTarArtifactBytesCached(ctxt, parsed.ID, dataURL, mimeType, adpt)
 			if err != nil {
 				return nil, err
 			}
-			if !looksLikeTar(mime, b) {
+			if !looksLikeTar(mimeType, b) {
 				return nil, fmt.Errorf("artifact %q does not look like a tar/tar.gz, cannot use path", parsed.ID)
 			}
 			inner, innerMime, err := extractFromTarAuto(b, parsed.Path)
@@ -132,69 +125,42 @@ func addArtifactGetTool(s *server.MCPServer) {
 		data, err := downloadArtifactBytesFn(ctxt, dataURL, adpt)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, errMCPLoginRequired
+				return nil, ErrLoginRequired
 			}
 			return nil, err
 		}
-		if mime == "" {
-			mime = "application/octet-stream"
+		if mimeType == "" {
+			mimeType = "application/octet-stream"
 		}
 		// Populate cache if it's a tar-ish type
-		maybeUpdateTarCache(parsed.ID, data, mime)
-		return toolResultBlob(data, mime)
+		maybeUpdateTarCache(parsed.ID, data, mimeType)
+		return toolResultBlob(data, mimeType)
 	}
 
 	s.AddTool(tool, handler)
 }
 
-func toolResultBlob(b []byte, mime string) (*mcp.CallToolResult, error) {
-	if mime == "" {
-		mime = "application/octet-stream"
+func toolResultBlob(b []byte, mimeType string) (*mcp.CallToolResult, error) {
+	if mimeType == "" {
+		mimeType = "application/octet-stream"
 	}
 	enc := base64.StdEncoding.EncodeToString(b)
 	// Use embedded resource so clients can render as a blob.
 	res := mcp.BlobResourceContents{
 		URI:      "urn:ivcap:artifact:data",
-		MIMEType: mime,
+		MIMEType: mimeType,
 		Blob:     enc,
 	}
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{mcp.NewEmbeddedResource(res)},
 		StructuredContent: map[string]any{
-			"mime_type": mime,
+			"mime_type": mimeType,
 			"size":      len(b),
 		},
 	}, nil
 }
 
-func downloadArtifactBytes(ctx context.Context, dataHref string, adpt *a.Adapter) ([]byte, error) {
-	u, err := url.ParseRequestURI(dataHref)
-	if err != nil {
-		return nil, err
-	}
-	endpointPath := u.Path
-	if u.RawQuery != "" {
-		endpointPath = endpointPath + "?" + u.RawQuery
-	}
-	var out []byte
-	handler := func(resp *http.Response, p string, logger *log.Logger) error {
-		if resp.StatusCode >= 300 {
-			return a.ProcessErrorResponse(resp, p, nil, logger)
-		}
-		b, err := io.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		out = b
-		return nil
-	}
-	if err := (*adpt).GetWithHandler(ctx, endpointPath, nil, handler, logger); err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func getTarArtifactBytesCached(ctx context.Context, artifactID, dataHref, mime string, adpt *a.Adapter) ([]byte, string, error) {
+func getTarArtifactBytesCached(ctx context.Context, artifactID, dataHref, mimeType string, adpt *a.Adapter) ([]byte, string, error) {
 	lastTarCache.mu.Lock()
 	if lastTarCache.artifact == artifactID && lastTarCache.raw != nil {
 		b := lastTarCache.raw
@@ -208,26 +174,26 @@ func getTarArtifactBytesCached(ctx context.Context, artifactID, dataHref, mime s
 	if err != nil {
 		return nil, "", err
 	}
-	if mime == "" {
-		mime = "application/octet-stream"
+	if mimeType == "" {
+		mimeType = "application/octet-stream"
 	}
-	maybeUpdateTarCache(artifactID, data, mime)
-	return data, mime, nil
+	maybeUpdateTarCache(artifactID, data, mimeType)
+	return data, mimeType, nil
 }
 
-func maybeUpdateTarCache(artifactID string, data []byte, mime string) {
-	if !looksLikeTar(mime, data) {
+func maybeUpdateTarCache(artifactID string, data []byte, mimeType string) {
+	if !looksLikeTar(mimeType, data) {
 		return
 	}
 	lastTarCache.mu.Lock()
 	defer lastTarCache.mu.Unlock()
 	lastTarCache.artifact = artifactID
 	lastTarCache.raw = data
-	lastTarCache.mediaType = mime
+	lastTarCache.mediaType = mimeType
 }
 
-func looksLikeTar(mime string, data []byte) bool {
-	mt := strings.ToLower(mime)
+func looksLikeTar(mimeType string, data []byte) bool {
+	mt := strings.ToLower(mimeType)
 	if strings.Contains(mt, "tar") || strings.Contains(mt, "gzip") || strings.Contains(mt, "tgz") {
 		return true
 	}
@@ -259,9 +225,12 @@ func extractFromTarReader(tr *tar.Reader, innerPath string) ([]byte, string, err
 		h, err := tr.Next()
 		if err != nil {
 			if err == io.EOF {
-				break
+				return nil, "", fmt.Errorf("file %q not found in tar", innerPath)
 			}
 			return nil, "", err
+		}
+		if h == nil {
+			continue
 		}
 		name := path.Clean(strings.TrimPrefix(h.Name, "/"))
 		if name == innerPath {
@@ -272,5 +241,4 @@ func extractFromTarReader(tr *tar.Reader, innerPath string) ([]byte, string, err
 			return b, "application/octet-stream", nil
 		}
 	}
-	return nil, "", fmt.Errorf("path %q not found in tar", innerPath)
 }

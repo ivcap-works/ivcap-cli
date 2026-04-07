@@ -12,33 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package cmd
+package mcp
 
 import (
-	"archive/tar"
 	"bytes"
-	"compress/gzip"
 	"context"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"path"
-	"strings"
-	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
-
-	yaml "gopkg.in/yaml.v2"
+	nf "github.com/ivcap-works/ivcap-cli/pkg/nextflow"
 )
 
 // Built-in MCP tools for Nextflow service creation + job run.
-
-// allow test stubbing
-var extractFileFromTarBytesFn = extractFileFromTarBytes
 
 type nextflowSource struct {
 	// Path inside the assembled archive.
@@ -56,6 +45,28 @@ type nextflowSource struct {
 	ArtifactPath string `json:"artifact_path,omitempty"`
 	// Optional mime type for manifest.
 	MediaType string `json:"media_type,omitempty"`
+}
+
+// Map MCP structs to pkg/nextflow structs.
+func toPkgSources(in []nextflowSource) []nf.Source {
+	out := make([]nf.Source, 0, len(in))
+	for _, s := range in {
+		out = append(out, nf.Source{
+			Path:         s.Path,
+			Type:         s.Type,
+			Text:         s.Text,
+			Base64:       s.Base64,
+			URL:          s.URL,
+			ArtifactID:   s.ArtifactID,
+			ArtifactPath: s.ArtifactPath,
+			MediaType:    s.MediaType,
+		})
+	}
+	return out
+}
+
+func tarGzFromSourcesForMCP(ctx context.Context, sources []nextflowSource, adpt *a.Adapter) ([]byte, string, error) {
+	return nf.TarGzFromSources(ctx, toPkgSources(sources), adpt, srvCfg.Logger, fetchURLBytesFn, downloadArtifactBytesFn)
 }
 
 type nextflowCreateArgs struct {
@@ -132,7 +143,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 
 	handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		b, err := a.JsonPayloadFromAny(args, logger)
+		b, err := a.JsonPayloadFromAny(args, srvCfg.Logger)
 		if err != nil {
 			return nil, err
 		}
@@ -147,27 +158,27 @@ func addNextflowCreateTool(s *server.MCPServer) {
 			return nil, fmt.Errorf("missing sources")
 		}
 
-		adpt, err := createMCPAdapterFn(timeout)
+		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
 			return nil, err
 		}
-		ctxt, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+		ctxt, cancel := withTimeout(ctx)
 		defer cancel()
 
 		// Assemble package tar.gz.
-		pkgBytes, manifest, err := tarGzFromNextflowSources(ctxt, parsed.Sources, adpt)
+		pkgBytes, manifest, err := tarGzFromSourcesForMCP(ctxt, parsed.Sources, adpt)
 		if err != nil {
 			return nil, err
 		}
 
 		// Validate that archive contains a tool description. Prefer ivcap.yaml if present,
 		// falling back to ivcap-tool.yaml.
-		toolHdr, foundPath, err := loadNextflowToolHeaderFromArchiveBytes(pkgBytes)
+		toolHdr, foundPath, err := nf.LoadToolHeaderFromArchiveBytes(pkgBytes)
 		if err != nil {
 			return nil, err
 		}
 		if toolHdr == nil {
-			return nil, fmt.Errorf("neither %q nor %q found in assembled archive", nextflowSimpleToolFileName, nextflowToolFileName)
+			return nil, fmt.Errorf("neither %q nor %q found in assembled archive", nf.SimpleToolFileName, nf.ToolFileName)
 		}
 
 		artifactName := parsed.Name
@@ -179,7 +190,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		}
 
 		// Create + upload artifact.
-		mime := "application/gzip"
+		mimeType := "application/gzip"
 		size := int64(len(pkgBytes))
 		creq := &sdk.CreateArtifactRequest{
 			Name:       artifactName,
@@ -188,10 +199,10 @@ func addNextflowCreateTool(s *server.MCPServer) {
 			Policy:     parsed.Policy,
 			Meta:       map[string]string{"ivcap.nextflow.manifest": manifest},
 		}
-		resp, err := createArtifactFn(ctxt, creq, mime, size, nil, adpt, logger)
+		resp, err := createArtifactFn(ctxt, creq, mimeType, size, nil, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, errMCPLoginRequired
+				return nil, ErrLoginRequired
 			}
 			return nil, err
 		}
@@ -203,19 +214,23 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		if err != nil {
 			return nil, err
 		}
-		if err := uploadArtifactFn(ctxt, bytes.NewReader(pkgBytes), size, 0, DEF_CHUNK_SIZE, p, adpt, true, logger); err != nil {
+		chunkSize := srvCfg.ChunkSize
+		if chunkSize == 0 {
+			chunkSize = 10000000
+		}
+		if err := uploadArtifactFn(ctxt, bytes.NewReader(pkgBytes), size, 0, chunkSize, p, adpt, true, srvCfg.Logger); err != nil {
 			if isAuthFailure(err) {
-				return nil, errMCPLoginRequired
+				return nil, ErrLoginRequired
 			}
 			return nil, err
 		}
 
 		// Publish service description aspect (same logic as `ivcap nextflow create`).
-		svc := buildNextflowServiceDescription(toolHdr, parsed.ServiceID, artifactID)
-		aspectID, err := upsertServiceDescriptionAspect(ctxt, parsed.ServiceID, svc)
+		svc := nf.BuildServiceDescription(toolHdr, parsed.ServiceID, artifactID)
+		aspectID, err := nf.UpsertServiceDescriptionAspect(ctxt, parsed.ServiceID, svc, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, errMCPLoginRequired
+				return nil, ErrLoginRequired
 			}
 			return nil, err
 		}
@@ -257,7 +272,7 @@ func addNextflowRunTool(s *server.MCPServer) {
 
 	handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
-		b, err := a.JsonPayloadFromAny(args, logger)
+		b, err := a.JsonPayloadFromAny(args, srvCfg.Logger)
 		if err != nil {
 			return nil, err
 		}
@@ -275,32 +290,32 @@ func addNextflowRunTool(s *server.MCPServer) {
 			return nil, fmt.Errorf("provide only one of input or aspect_urn")
 		}
 
-		adpt, err := createMCPAdapterFn(timeout)
+		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
 			return nil, err
 		}
-		ctxt, cancel := context.WithTimeout(ctx, time.Duration(timeout)*time.Second)
+		ctxt, cancel := withTimeout(ctx)
 		defer cancel()
 
 		var pyld a.Payload
 		if parsed.Input != nil {
 			// Use raw args conversion to preserve types.
-			jp, err := a.JsonPayloadFromAny(parsed.Input, logger)
+			jp, err := a.JsonPayloadFromAny(parsed.Input, srvCfg.Logger)
 			if err != nil {
 				return nil, err
 			}
 			pyld = jp
 		} else {
-			j := fmt.Sprintf(CREATE_FROM_ASPECT, parsed.AspectURN, parsed.ServiceID)
+			j := fmt.Sprintf(sdk.CreateFromAspectTemplate, parsed.AspectURN, parsed.ServiceID)
 			if pyld, err = a.LoadPayloadFromBytes([]byte(j), false); err != nil {
 				return nil, err
 			}
 		}
 
-		res, jobCreate, err := createServiceJobRawFn(ctxt, parsed.ServiceID, pyld, 0, adpt, logger)
+		res, jobCreate, err := createServiceJobRawFn(ctxt, parsed.ServiceID, pyld, 0, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, errMCPLoginRequired
+				return nil, ErrLoginRequired
 			}
 			return nil, err
 		}
@@ -333,212 +348,4 @@ func addNextflowRunTool(s *server.MCPServer) {
 	}
 
 	s.AddTool(tool, handler)
-}
-
-// --- Pipeline tar assembly helpers -------------------------------------------------
-
-type nextflowManifestEntry struct {
-	Path      string `json:"path"`
-	Type      string `json:"type"`
-	MediaType string `json:"media_type,omitempty"`
-	Source    string `json:"source,omitempty"`
-	Size      int    `json:"size"`
-}
-
-func tarGzFromNextflowSources(ctx context.Context, sources []nextflowSource, adpt *a.Adapter) ([]byte, string, error) {
-	var buf bytes.Buffer
-	gzw := gzip.NewWriter(&buf)
-	tw := tar.NewWriter(gzw)
-	defer func() {
-		// best effort; ignore close errors here (returned earlier)
-		_ = tw.Close()
-		_ = gzw.Close()
-	}()
-
-	used := map[string]bool{}
-	manifest := make([]nextflowManifestEntry, 0, len(sources))
-
-	for i, src := range sources {
-		if strings.TrimSpace(src.Path) == "" {
-			return nil, "", fmt.Errorf("sources[%d].path is required", i)
-		}
-		tarPath, err := sanitizeTarPath(src.Path)
-		if err != nil {
-			return nil, "", fmt.Errorf("invalid sources[%d].path: %w", i, err)
-		}
-		if tarPath == "MANIFEST.json" {
-			return nil, "", fmt.Errorf("sources[%d].path cannot be MANIFEST.json", i)
-		}
-		if used[tarPath] {
-			return nil, "", fmt.Errorf("duplicate path %q", tarPath)
-		}
-		used[tarPath] = true
-
-		data, mt, sourceDesc, err := nextflowSourceToBytes(ctx, src, adpt)
-		if err != nil {
-			return nil, "", err
-		}
-		if mt == "" {
-			mt = src.MediaType
-		}
-
-		hdr := &tar.Header{Name: tarPath, Mode: 0o644, Size: int64(len(data)), ModTime: time.Now()}
-		if err := tw.WriteHeader(hdr); err != nil {
-			return nil, "", err
-		}
-		if _, err := tw.Write(data); err != nil {
-			return nil, "", err
-		}
-
-		manifest = append(manifest, nextflowManifestEntry{Path: tarPath, Type: src.Type, MediaType: mt, Source: sourceDesc, Size: len(data)})
-	}
-
-	mb, err := json.MarshalIndent(map[string]any{"files": manifest}, "", "  ")
-	if err != nil {
-		return nil, "", err
-	}
-	if err := tw.WriteHeader(&tar.Header{Name: "MANIFEST.json", Mode: 0o644, Size: int64(len(mb)), ModTime: time.Now()}); err != nil {
-		return nil, "", err
-	}
-	if _, err := tw.Write(mb); err != nil {
-		return nil, "", err
-	}
-
-	if err := tw.Close(); err != nil {
-		return nil, "", err
-	}
-	if err := gzw.Close(); err != nil {
-		return nil, "", err
-	}
-	// manifest is returned also as a compact JSON string, so callers can store it in artifact meta.
-	compact, _ := json.Marshal(map[string]any{"files": manifest})
-	return buf.Bytes(), string(compact), nil
-}
-
-func nextflowSourceToBytes(ctx context.Context, src nextflowSource, adpt *a.Adapter) ([]byte, string, string, error) {
-	switch src.Type {
-	case "text":
-		return []byte(src.Text), "text/plain; charset=utf-8", "text", nil
-	case "base64":
-		decoded, err := base64.StdEncoding.DecodeString(src.Base64)
-		if err != nil {
-			return nil, "", "", fmt.Errorf("invalid base64 for %q: %w", src.Path, err)
-		}
-		mt := src.MediaType
-		if mt == "" {
-			mt = "application/octet-stream"
-		}
-		return decoded, mt, "base64", nil
-	case "url":
-		if src.URL == "" {
-			return nil, "", "", fmt.Errorf("url source for %q missing url", src.Path)
-		}
-		b, mt, err := fetchURLBytesFn(ctx, src.URL)
-		if err != nil {
-			return nil, "", "", err
-		}
-		if src.MediaType != "" {
-			mt = src.MediaType
-		}
-		if mt == "" {
-			mt = "application/octet-stream"
-		}
-		return b, mt, "url:" + src.URL, nil
-	case "artifact":
-		if src.ArtifactID == "" {
-			return nil, "", "", fmt.Errorf("artifact source for %q missing artifact_id", src.Path)
-		}
-		// Use same logic as artifact_get to optionally extract a file from a tar artifact.
-		art, err := readArtifactFn(ctx, &sdk.ReadArtifactRequest{Id: src.ArtifactID}, adpt, logger)
-		if err != nil {
-			if isAuthFailure(err) {
-				return nil, "", "", errMCPLoginRequired
-			}
-			return nil, "", "", err
-		}
-		if art == nil || art.DataHref == nil {
-			return nil, "", "", fmt.Errorf("artifact %q has no data", src.ArtifactID)
-		}
-		mime := safeString(art.MimeType)
-		dataURL := *art.DataHref
-		data, err := downloadArtifactBytesFn(ctx, dataURL, adpt)
-		if err != nil {
-			if isAuthFailure(err) {
-				return nil, "", "", errMCPLoginRequired
-			}
-			return nil, "", "", err
-		}
-		if src.ArtifactPath != "" {
-			inner, innerMT, err := extractFromTarAuto(data, src.ArtifactPath)
-			if err != nil {
-				return nil, "", "", err
-			}
-			if src.MediaType != "" {
-				innerMT = src.MediaType
-			}
-			return inner, innerMT, fmt.Sprintf("artifact:%s#%s", src.ArtifactID, path.Clean(strings.TrimPrefix(src.ArtifactPath, "/"))), nil
-		}
-		if src.MediaType != "" {
-			mime = src.MediaType
-		}
-		if mime == "" {
-			mime = "application/octet-stream"
-		}
-		return data, mime, "artifact:" + src.ArtifactID, nil
-	default:
-		return nil, "", "", fmt.Errorf("unsupported source type %q for %q", src.Type, src.Path)
-	}
-}
-
-func extractFileFromTarBytes(archive []byte, fileName string) ([]byte, string, error) {
-	fileName = path.Clean(strings.TrimPrefix(fileName, "/"))
-	if fileName == "." || fileName == "" {
-		return nil, "", fmt.Errorf("invalid target name: %q", fileName)
-	}
-
-	// Try gzip first (magic bytes).
-	if len(archive) > 2 && archive[0] == 0x1f && archive[1] == 0x8b {
-		gzr, err := gzip.NewReader(bytes.NewReader(archive))
-		if err != nil {
-			return nil, "", err
-		}
-		defer gzr.Close()
-		return extractFileFromTarReader(tar.NewReader(gzr), fileName)
-	}
-	return extractFileFromTarReader(tar.NewReader(bytes.NewReader(archive)), fileName)
-}
-
-func loadNextflowToolHeaderFromArchiveBytes(archive []byte) (*nextflowToolHeader, string, error) {
-	// Prefer simplified ivcap.yaml.
-	if b, foundPath, err := extractFileFromTarBytesFn(archive, nextflowSimpleToolFileName); err != nil {
-		return nil, "", err
-	} else if b != nil {
-		var simple nextflowSimpleToolHeader
-		dec := yaml.NewDecoder(bytes.NewReader(b))
-		if err := dec.Decode(&simple); err != nil {
-			return nil, "", fmt.Errorf("while parsing %s extracted from %s: %w", foundPath, "assembled-archive", err)
-		}
-		tool, err := convertSimpleToolToToolHeader(&simple)
-		if err != nil {
-			return nil, "", fmt.Errorf("invalid %s extracted from %s: %w", foundPath, "assembled-archive", err)
-		}
-		return tool, foundPath, nil
-	}
-
-	// Fallback to ivcap-tool.yaml.
-	if toolYAML, foundPath, err := extractFileFromTarBytesFn(archive, nextflowToolFileName); err != nil {
-		return nil, "", err
-	} else if toolYAML != nil {
-		var toolHdr nextflowToolHeader
-		dec := yaml.NewDecoder(bytes.NewReader(toolYAML))
-		if err := dec.Decode(&toolHdr); err != nil {
-			return nil, "", fmt.Errorf("while parsing %s extracted from %s: %w", foundPath, "assembled-archive", err)
-		}
-		if err := validateFnSchema(toolHdr.FnSchema); err != nil {
-			return nil, "", fmt.Errorf("invalid fn-schema in %s: %w", foundPath, err)
-		}
-		return &toolHdr, foundPath, nil
-	}
-
-	return nil, "", nil
 }
