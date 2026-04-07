@@ -131,3 +131,43 @@ func TestMCPToolsList_InitiallyHasBuiltins(t *testing.T) {
 		t.Fatalf("expected built-in tools; got %+v", got)
 	}
 }
+
+func TestMCPInitialize_ReportsConfiguredVersion(t *testing.T) {
+	s := NewServer(Config{
+		Logger:     zap.NewNop(),
+		Version:    "v9.8.7|abcdef0|2026-04-07",
+		ToolSchema: "urn:sd-core:schema.ai-tool.1",
+		TimeoutSec: 1,
+		CreateAdapter: func(timeoutSec int) (*a.Adapter, error) {
+			return nil, nil
+		},
+	})
+
+	sess := server.NewInProcessSession("test", nil)
+	ctx := s.WithContext(context.Background(), sess)
+
+	initMsg := json.RawMessage(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"0"}}}`)
+	out := s.HandleMessage(ctx, initMsg)
+
+	res, ok := out.(mcp.JSONRPCResponse)
+	if !ok {
+		t.Fatalf("expected JSONRPCResponse, got %T", out)
+	}
+
+	b, err := json.Marshal(res.Result)
+	if err != nil {
+		t.Fatalf("cannot marshal result: %v", err)
+	}
+	var parsed struct {
+		ServerInfo struct {
+			Name    string `json:"name"`
+			Version string `json:"version"`
+		} `json:"serverInfo"`
+	}
+	if err := json.Unmarshal(b, &parsed); err != nil {
+		t.Fatalf("cannot unmarshal result: %v", err)
+	}
+	if parsed.ServerInfo.Version != "v9.8.7|abcdef0|2026-04-07" {
+		t.Fatalf("expected server version %q, got %q", "v9.8.7|abcdef0|2026-04-07", parsed.ServerInfo.Version)
+	}
+}

@@ -50,11 +50,6 @@ func init() {
 	nextflowRunCmd.Flags().BoolVar(&nextflowRunStreamFlag, "stream", false, "if set, print job related events to stdout")
 }
 
-const (
-	nextflowServiceSchema        = nf.ServiceSchema
-	nextflowServiceControllerURN = nf.ServiceControllerURN
-)
-
 var nextflowServiceID string
 var nextflowCreateFormat string
 var nextflowRunAspectURN string

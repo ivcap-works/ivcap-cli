@@ -39,6 +39,10 @@ var ErrLoginRequired = errors.New(LoginRequiredMessage)
 type Config struct {
 	Logger *log.Logger
 
+	// Version is reported to MCP clients as the server's version (serverInfo.version).
+	// The CLI should set this to match the ivcap-cli build version.
+	Version string
+
 	// ToolSchema is the schema URN prefix used when discovering tool aspects.
 	ToolSchema string
 
@@ -57,9 +61,14 @@ func NewServer(cfg Config) *mcpserver.MCPServer {
 	srvCfg = cfg
 
 	disco := newMCPDiscoveryState()
+	ver := cfg.Version
+	if ver == "" {
+		ver = "dev"
+	}
+
 	s := mcpserver.NewMCPServer(
 		"IVCAP MCP Server",
-		"1.0.0",
+		ver,
 		// We control list_changed explicitly.
 		mcpserver.WithToolCapabilities(true),
 		// Only expose the built-in discovery tool by default.

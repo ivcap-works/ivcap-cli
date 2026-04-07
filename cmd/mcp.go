@@ -27,8 +27,6 @@ import (
 	mcppkg "github.com/ivcap-works/ivcap-cli/pkg/mcp"
 )
 
-const mcpLoginRequiredMessage = mcppkg.LoginRequiredMessage
-
 func init() {
 	rootCmd.AddCommand(mcpCmd)
 	mcpCmd.Flags().StringVarP(&toolSchema, "tool-schema", "s", "urn:sd-core:schema.ai-tool.1", "the schema URN used for describing MCP tools")
@@ -63,13 +61,12 @@ Prompts:
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s := mcppkg.NewServer(mcppkg.Config{
-				Logger:     logger,
-				ToolSchema: toolSchema,
-				TimeoutSec: timeout,
-				ChunkSize:  DEF_CHUNK_SIZE,
-				CreateAdapter: func(timeoutSec int) (*a.Adapter, error) {
-					return createMCPAdapter(timeoutSec)
-				},
+				Logger:        logger,
+				Version:       rootCmd.Version,
+				ToolSchema:    toolSchema,
+				TimeoutSec:    timeout,
+				ChunkSize:     DEF_CHUNK_SIZE,
+				CreateAdapter: createMCPAdapter,
 			})
 			if mcpPort > 0 {
 				logger.Info("MCP Proxy Server starting as SSE server...", log.Int("port", mcpPort))

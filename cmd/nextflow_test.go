@@ -279,13 +279,13 @@ func TestBuildNextflowServiceDescription_UsesToolAndPipelineURN(t *testing.T) {
 		FnSchema: map[string]any{"$schema": "http://json-schema.org/draft-07/schema#", "type": "object"},
 	}
 	svc := nf.BuildServiceDescription(tool, "urn:ivcap:service:abc", "urn:ivcap:artifact:pipeline")
-	if svc.Schema != nextflowServiceSchema {
+	if svc.Schema != nf.ServiceSchema {
 		t.Fatalf("unexpected schema: %q", svc.Schema)
 	}
 	if svc.ID != "urn:ivcap:service:abc" {
 		t.Fatalf("unexpected id: %q", svc.ID)
 	}
-	if svc.ControllerSchema != nextflowServiceControllerURN {
+	if svc.ControllerSchema != nf.ServiceControllerURN {
 		t.Fatalf("unexpected controller schema: %q", svc.ControllerSchema)
 	}
 	ctrl := svc.Controller.(map[string]any)
