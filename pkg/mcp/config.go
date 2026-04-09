@@ -71,6 +71,10 @@ func NewServer(cfg Config) *mcpserver.MCPServer {
 		ver,
 		// We control list_changed explicitly.
 		mcpserver.WithToolCapabilities(true),
+		// Enable resources + prompts so clients (e.g. Claude) can discover and load
+		// embedded skills via resources/list + resources/read, and see the setup prompt.
+		mcpserver.WithResourceCapabilities(false, false),
+		mcpserver.WithPromptCapabilities(false),
 		// Only expose the built-in discovery tool by default.
 		// After select_tools, we update the allowlist for this session.
 		mcpserver.WithToolFilter(filterToolsBySessionAllowlist),

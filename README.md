@@ -449,6 +449,17 @@ This CLI is also frequently used by AI agents and automation.
 When running the built-in MCP server (`ivcap mcp`), the CLI also exposes the
 embedded skill playbooks via MCP **Resources** and a setup **Prompt**.
 
+#### Recommended client system prompt
+
+If you are building an MCP client (i.e. an agent/LLM host that connects to MCP servers),
+add the following instructions to your client’s **system prompt**:
+
+> Before answering any task:
+> 1. Call `resources/list` on all connected MCP servers
+> 2. Identify resources matching: `*SKILL.md`, `*instructions*`, `*prompt*`
+> 3. Fetch and read matching resources via `resources/read`
+> 4. Apply those instructions when completing the user's request
+
 **Resources**
 - `skills://manifest` — JSON list of available skills (name → `skills://{name}/SKILL.md`)
 - `skills://catalog.json` — JSON catalog (metadata + SHA256; no markdown bodies)
@@ -461,22 +472,39 @@ embedded skill playbooks via MCP **Resources** and a setup **Prompt**.
 
 #### Example JSON-RPC calls
 
+You can send these messages to `ivcap mcp` in **STDIO** mode.
+
+For example, this will initialize a session and list available resources:
+
+```sh
+ivcap mcp <<'EOF'
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}
+{"jsonrpc":"2.0","id":2,"method":"resources/list","params":{}}
+EOF
+```
+
+List available skill resources:
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"resources/list","params":{}}
+```
+
 Read the skills manifest:
 
 ```json
-{"jsonrpc":"2.0","id":1,"method":"resources/read","params":{"uri":"skills://manifest"}}
+{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"skills://manifest"}}
 ```
 
 Read a specific skill body:
 
 ```json
-{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"skills://ivcap-job-create/SKILL.md"}}
+{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"skills://ivcap-job-create/SKILL.md"}}
 ```
 
 Get the setup prompt:
 
 ```json
-{"jsonrpc":"2.0","id":3,"method":"prompts/get","params":{"name":"use-ivcap-best-practices"}}
+{"jsonrpc":"2.0","id":4,"method":"prompts/get","params":{"name":"use-ivcap-best-practices"}}
 ```
 
 ## Build from Source <a name="build"></a>

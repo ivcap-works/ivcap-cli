@@ -171,3 +171,154 @@ func TestMCPInitialize_ReportsConfiguredVersion(t *testing.T) {
 		t.Fatalf("expected server version %q, got %q", "v9.8.7|abcdef0|2026-04-07", parsed.ServerInfo.Version)
 	}
 }
+
+func TestMCPResourcesListAndRead_ExposeSkills(t *testing.T) {
+	s := NewServer(Config{
+		Logger:     zap.NewNop(),
+		ToolSchema: "urn:sd-core:schema.ai-tool.1",
+		TimeoutSec: 1,
+		CreateAdapter: func(timeoutSec int) (*a.Adapter, error) {
+			return nil, nil
+		},
+	})
+
+	sess := server.NewInProcessSession("test", nil)
+	ctx := s.WithContext(context.Background(), sess)
+
+	// initialize session
+	initMsg := json.RawMessage(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"0"}}}`)
+	_ = s.HandleMessage(ctx, initMsg)
+
+	// list resources
+	listMsg := json.RawMessage(`{"jsonrpc":"2.0","id":2,"method":"resources/list","params":{}}`)
+	out := s.HandleMessage(ctx, listMsg)
+	res, ok := out.(mcp.JSONRPCResponse)
+	if !ok {
+		t.Fatalf("expected JSONRPCResponse, got %T", out)
+	}
+	b, err := json.Marshal(res.Result)
+	if err != nil {
+		t.Fatalf("cannot marshal result: %v", err)
+	}
+	var parsed struct {
+		Resources []mcp.Resource `json:"resources"`
+	}
+	if err := json.Unmarshal(b, &parsed); err != nil {
+		t.Fatalf("cannot unmarshal result: %v", err)
+	}
+	if len(parsed.Resources) == 0 {
+		t.Fatalf("expected at least one resource")
+	}
+	// ensure at least one of the fixed skill resources is present
+	found := false
+	for _, r := range parsed.Resources {
+		if r.URI == "skills://manifest" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected skills://manifest in resources list")
+	}
+
+	// read the manifest resource
+	readMsg := json.RawMessage(`{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"skills://manifest"}}`)
+	out = s.HandleMessage(ctx, readMsg)
+	readRes, ok := out.(mcp.JSONRPCResponse)
+	if !ok {
+		t.Fatalf("expected JSONRPCResponse, got %T", out)
+	}
+	bb, err := json.Marshal(readRes.Result)
+	if err != nil {
+		t.Fatalf("cannot marshal result: %v", err)
+	}
+	var readParsed struct {
+		Contents []struct {
+			URI      string `json:"uri"`
+			MIMEType string `json:"mimeType"`
+			Text     string `json:"text"`
+		} `json:"contents"`
+	}
+	if err := json.Unmarshal(bb, &readParsed); err != nil {
+		t.Fatalf("cannot unmarshal result: %v", err)
+	}
+	if len(readParsed.Contents) != 1 {
+		t.Fatalf("expected 1 content item, got %d", len(readParsed.Contents))
+	}
+	if readParsed.Contents[0].URI != "skills://manifest" {
+		t.Fatalf("expected URI skills://manifest, got %q", readParsed.Contents[0].URI)
+	}
+	if readParsed.Contents[0].MIMEType != "application/json" {
+		t.Fatalf("expected mimeType application/json, got %q", readParsed.Contents[0].MIMEType)
+	}
+	if readParsed.Contents[0].Text == "" {
+		t.Fatalf("expected manifest body")
+	}
+}
+
+func TestMCPPromptsListAndGet_ExposeSetupPrompt(t *testing.T) {
+	s := NewServer(Config{
+		Logger:     zap.NewNop(),
+		ToolSchema: "urn:sd-core:schema.ai-tool.1",
+		TimeoutSec: 1,
+		CreateAdapter: func(timeoutSec int) (*a.Adapter, error) {
+			return nil, nil
+		},
+	})
+
+	sess := server.NewInProcessSession("test", nil)
+	ctx := s.WithContext(context.Background(), sess)
+
+	initMsg := json.RawMessage(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"0"}}}`)
+	_ = s.HandleMessage(ctx, initMsg)
+
+	listMsg := json.RawMessage(`{"jsonrpc":"2.0","id":2,"method":"prompts/list","params":{}}`)
+	out := s.HandleMessage(ctx, listMsg)
+	res, ok := out.(mcp.JSONRPCResponse)
+	if !ok {
+		t.Fatalf("expected JSONRPCResponse, got %T", out)
+	}
+	b, err := json.Marshal(res.Result)
+	if err != nil {
+		t.Fatalf("cannot marshal result: %v", err)
+	}
+	var parsed struct {
+		Prompts []mcp.Prompt `json:"prompts"`
+	}
+	if err := json.Unmarshal(b, &parsed); err != nil {
+		t.Fatalf("cannot unmarshal result: %v", err)
+	}
+	found := false
+	for _, p := range parsed.Prompts {
+		if p.Name == "use-ivcap-best-practices" {
+			found = true
+			break
+		}
+	}
+	if !found {
+		t.Fatalf("expected use-ivcap-best-practices in prompts list")
+	}
+
+	getMsg := json.RawMessage(`{"jsonrpc":"2.0","id":3,"method":"prompts/get","params":{"name":"use-ivcap-best-practices"}}`)
+	out = s.HandleMessage(ctx, getMsg)
+	getRes, ok := out.(mcp.JSONRPCResponse)
+	if !ok {
+		t.Fatalf("expected JSONRPCResponse, got %T", out)
+	}
+	bb, err := json.Marshal(getRes.Result)
+	if err != nil {
+		t.Fatalf("cannot marshal result: %v", err)
+	}
+	var getParsed struct {
+		Messages []struct {
+			Role    string `json:"role"`
+			Content any    `json:"content"`
+		} `json:"messages"`
+	}
+	if err := json.Unmarshal(bb, &getParsed); err != nil {
+		t.Fatalf("cannot unmarshal result: %v", err)
+	}
+	if len(getParsed.Messages) == 0 {
+		t.Fatalf("expected prompt messages")
+	}
+}

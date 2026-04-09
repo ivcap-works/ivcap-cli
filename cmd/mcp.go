@@ -56,6 +56,14 @@ Resources:
 
 Prompts:
   - use-ivcap-best-practices  Instructs an agent to load CONTEXT + relevant skills
+
+Recommended MCP client system prompt:
+
+Before answering any task:
+1. Call resources/list on all connected MCP servers
+2. Identify resources matching: *SKILL.md, *instructions*, *prompt*
+3. Fetch and read matching resources via resources/read
+4. Apply those instructions when completing the user's request
 `,
 		GroupID: agentSupportGroupID,
 
