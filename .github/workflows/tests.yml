@@ -17,8 +17,6 @@ jobs:
   Tests:
     strategy:
       matrix:
-        go-version:
-          - 1.24.2
         platform:
           - ubuntu-latest
     runs-on: ${{ matrix.platform }}
@@ -28,7 +26,7 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: "${{ matrix.go-version }}"
+          go-version-file: go.mod
       - name: Run test
         run: go test -v ./...
       - name: Run test -race

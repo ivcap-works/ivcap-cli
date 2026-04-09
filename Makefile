@@ -56,7 +56,7 @@ check:
 	$(call tool_bin,golangci-lint) run --out-format line-number --tests=false ./...
 	$(call tool_bin,gocritic) check -checkTests=false ./...
 	$(call tool_bin,staticcheck) -tests=false ./...
-	$(call tool_bin,gosec) ./...
+	$(call tool_bin,gosec) $(GOSEC_FLAGS) ./...
 	@# govulncheck exit codes: 0=no vulns, 3=vulns found. Treat 3 as warning by default.
 	@code=0; \
 	$(call tool_bin,govulncheck) ./... || code=$$?; \
@@ -120,6 +120,10 @@ tool_exists = test -x "$(call tool_bin,$(1))"
 
 # govulncheck strict mode: set true to make `make check` fail when vulnerabilities are found.
 GOVULNCHECK_STRICT ?= false
+
+# gosec output can be very noisy (e.g. printing every file it checks). Use -terse by default
+# to keep output readable while still reporting issues.
+GOSEC_FLAGS ?= -terse
 
 # Verify required dev tools are installed (install missing ones)
 verify-tools: install-golangci-lint install-go-critic install-staticcheck install-gosec install-govulncheck install-addlicense

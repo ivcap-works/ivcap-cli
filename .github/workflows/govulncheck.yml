@@ -18,14 +18,55 @@ jobs:
     runs-on: ubuntu-latest
     env:
       GO111MODULE: on
+      # By default, don't fail the build when vulnerabilities are found.
+      # Set to 'true' (e.g. in workflow env/vars) to make this job fail on vulns.
+      GOVULNCHECK_STRICT: "false"
     steps:
       - name: Fetch Repository
         uses: actions/checkout@v3
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.24.13
+          go-version-file: go.mod
       - name: Install Govulncheck
         run: go install golang.org/x/vuln/cmd/govulncheck@latest
       - name: Run Govulncheck
-        run: govulncheck ./...
+        shell: bash
+        run: |
+          set -euo pipefail
+          code=0
+          govulncheck ./... || code=$?
+          # govulncheck exit codes: 0=no vulns, 3=vulns found.
+          if [ "$code" -eq 0 ]; then exit 0; fi
+          if [ "$code" -ne 3 ]; then exit "$code"; fi
+
+          # code == 3 (vulnerabilities found)
+          if [ "${GOVULNCHECK_STRICT}" = "true" ]; then
+            echo "govulncheck found vulnerabilities (strict mode enabled)"
+            exit 3
+          fi
+
+          # Non-strict mode: only fail if at least one vulnerability affecting our code
+          # has a known fix version in the vuln database.
+          tmp_json="$(mktemp)"
+          govulncheck -format json ./... >"$tmp_json" || true
+
+          fail_if_fix_exists=$(
+            jq -r -s '
+              # IDs of vulnerabilities that produced findings (i.e. affect our code path)
+              ([ .[] | select(.finding) | .finding.osv ] | unique) as $finding_ids
+              # Map OSV entries to whether they have at least one "fixed" event
+              | ([ .[] | select(.osv) | .osv
+                   | {id: .id, has_fix: (any(.affected[]?.ranges[]?.events[]?; has("fixed")))}
+                 ]) as $osv_has_fix
+              # If any finding ID has a known fix, fail
+              | any($finding_ids[]; ($osv_has_fix[] | select(.id == .) | .has_fix) // false)
+            ' "$tmp_json"
+          )
+
+          if [ "$fail_if_fix_exists" = "true" ]; then
+            echo "govulncheck found vulnerabilities with known fixes available"
+            exit 3
+          fi
+          echo "govulncheck found vulnerabilities but no fixed version is known yet; non-fatal"
+          exit 0

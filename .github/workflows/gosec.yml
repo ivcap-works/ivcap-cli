@@ -22,8 +22,8 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.24.2
+          go-version-file: go.mod
       - name: Install Gosec
         run: go install github.com/securego/gosec/v2/cmd/gosec@latest
       - name: Run Gosec
-        run: gosec ./...
+        run: gosec -terse ./...
