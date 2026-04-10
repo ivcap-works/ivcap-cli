@@ -11,6 +11,8 @@ __IVCAP__ has an extensive REST API which is usually called directly from applic
   * [Job](#job)
   * [Artifact](#artifact)
   * [Package](#package)
+* [Agent / automation usage](#agent--automation-usage)
+  * [MCP-Provisioned Skills (Resources + Prompts)](#mcp-provisioned-skills-resources--prompts)
 * [Build from source](#build)
 
 ## Install Released Binaries<a name="install"></a>
@@ -29,20 +31,16 @@ brew install ivcap
 
 ## Usage <a name="usage"></a>
 
-### Agent / automation usage
+The first order of business is setting up a **context** for a specific IVCAP deployment.
+You can also configure multiple contexts, allowing the same `ivcap` CLI to interact
+with multiple IVCAP deployments (and switch between them).
 
-This CLI is also frequently used by AI agents and automation.
+This tool can also be used as a **local MCP server** (see [Agent / automation usage](#agent--automation-usage)).
 
-- See [`AGENTS.md`](./AGENTS.md) for agent operating rules.
-- See [`skills/CONTEXT.md`](./skills/CONTEXT.md) for agent-oriented usage patterns.
-- Retrieve the version-matched agent context from the CLI (recommended):
-  - `ivcap --agent-context`
-  - `ivcap --output json --agent-context`
-  - `ivcap agent-context`
-- Skill docs are embedded into the CLI for offline, version-matched access:
-  - `ivcap skills list`
-  - `ivcap skills show <skill-name>`
-  - (for programmatic usage) `ivcap --output json skills list|show ...`
+Built-in MCP tools also include helpers for working with Nextflow services:
+
+- `nextflow_create`: assemble a Nextflow pipeline package `.tar.gz` from a list of sources (text/base64/url/artifact), upload it as an artifact, validate `ivcap-tool.yaml`, and publish/update the service description aspect.
+- `nextflow_run`: create a job for a Nextflow service from either an inline input payload or a request-aspect URN.
 
 ```
 % ivcap
@@ -144,6 +142,10 @@ To list all available services:
 |    |                          | GeneOntology to answer biomedical questions.                     |
 +----+--------------------------+------------------------------------------------------------------+
 ```
+
+> **Note on `@…` IDs:** values like `@1` are **local history aliases** for the actual resource URNs returned by the platform.
+> You can typically reference `@1` in subsequent `ivcap ...` commands (within the same CLI history/session).
+> If you want the command outputs to show the **full URNs** (and avoid `@…` aliases), add `--no-history`.
 
 To get more details about a specific service
 
@@ -427,6 +429,84 @@ registry.kube-system.svc.cluster.local/0f0e3f57-80f7-4899-9b69-459af2efd789/pyth
 
 Follow this [link](./doc/ivcap_package.md) for more details about the `package` command.
 
+## Agent / automation usage
+
+This CLI is also frequently used by AI agents and automation.
+
+- See [`AGENTS.md`](./AGENTS.md) for agent operating rules.
+- See [`skills/CONTEXT.md`](./skills/CONTEXT.md) for agent-oriented usage patterns.
+- Retrieve the version-matched agent context from the CLI (recommended):
+  - `ivcap --agent-context`
+  - `ivcap --output json --agent-context`
+  - `ivcap agent-context`
+- Skill docs are embedded into the CLI for offline, version-matched access:
+  - `ivcap skills list`
+  - `ivcap skills show <skill-name>`
+  - (for programmatic usage) `ivcap --output json skills list|show ...`
+
+### MCP-Provisioned Skills (Resources + Prompts)
+
+When running the built-in MCP server (`ivcap mcp`), the CLI also exposes the
+embedded skill playbooks via MCP **Resources** and a setup **Prompt**.
+
+#### Recommended client system prompt
+
+If you are building an MCP client (i.e. an agent/LLM host that connects to MCP servers),
+add the following instructions to your client’s **system prompt**:
+
+> Before answering any task:
+> 1. Call `resources/list` on all connected MCP servers
+> 2. Identify resources matching: `*SKILL.md`, `*instructions*`, `*prompt*`
+> 3. Fetch and read matching resources via `resources/read`
+> 4. Apply those instructions when completing the user's request
+
+**Resources**
+- `skills://manifest` — JSON list of available skills (name → `skills://{name}/SKILL.md`)
+- `skills://catalog.json` — JSON catalog (metadata + SHA256; no markdown bodies)
+- `skills://CONTEXT.md` — general agent best-practices for `ivcap-cli`
+- `skills://{name}/SKILL.md` — the full markdown body of a specific skill
+
+**Prompt**
+- `use-ivcap-best-practices` — tells an agent to read `skills://CONTEXT.md`, then
+  discover and load the relevant `skills://{name}/SKILL.md` docs for the current task.
+
+#### Example JSON-RPC calls
+
+You can send these messages to `ivcap mcp` in **STDIO** mode.
+
+For example, this will initialize a session and list available resources:
+
+```sh
+ivcap mcp <<'EOF'
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"smoke","version":"0"}}}
+{"jsonrpc":"2.0","id":2,"method":"resources/list","params":{}}
+EOF
+```
+
+List available skill resources:
+
+```json
+{"jsonrpc":"2.0","id":1,"method":"resources/list","params":{}}
+```
+
+Read the skills manifest:
+
+```json
+{"jsonrpc":"2.0","id":2,"method":"resources/read","params":{"uri":"skills://manifest"}}
+```
+
+Read a specific skill body:
+
+```json
+{"jsonrpc":"2.0","id":3,"method":"resources/read","params":{"uri":"skills://ivcap-job-create/SKILL.md"}}
+```
+
+Get the setup prompt:
+
+```json
+{"jsonrpc":"2.0","id":4,"method":"prompts/get","params":{"name":"use-ivcap-best-practices"}}
+```
+
 ## Build from Source <a name="build"></a>
 
 ### Prerequisites
@@ -441,7 +521,7 @@ You will need the following installed:
 [addlicense]:    https://github.com/nokia/addlicense?tab=readme-ov-file#install-as-a-go-program
 
 - go version >= 1.22.5 (e.g. `snap install go --classic`)
-- [golangci-lint] (e.g. `curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.57.2`)
+- [golangci-lint] (e.g. `go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest`)
 - [gocritic] (e.g. `go install -v github.com/go-critic/go-critic/cmd/gocritic@latest`; you may also need to add `~/go/bin` to your `PATH`)
 - [staticcheck] (e.g. `go install honnef.co/go/tools/cmd/staticcheck@latest`)
 - [gosec] (e.g. `go install github.com/securego/gosec/v2/cmd/gosec@latest`)
@@ -455,49 +535,6 @@ The prerequisite tools can be installed by running the make target:
 ```shell
 make install-tools
 ```
-
-----
-### Deprecated: Orders <a name="orders"></a>
-
-To place an order:
-
-```
-% ivcap orders create \
-     urn:ivcap:service:d939b74d... \
-     --name "Order for max" \
-     msg="Hi, how are you"
-Order 'urn:ivcap:order:81b204e8...' with status 'Pending' submitted.
-```
-
-To check on the status of an order:
-
-```
-% ivcap orders get urn:ivcap:order:81b204e8...
-
-         ID  urn:ivcap:order:f169f54d-ec8d-4d6a-af17-0c1c33625379
-       Name  urn:ibenthos:collection:indo_flores_0922:LB4 UQ PhotoTransect@256028
-     Status  succeeded
-    Ordered  6 months ago (01 Oct 23 17:26 AEDT)
-    Service  image-analysis-example (@15)
- Account ID  urn:ivcap:account:45a06508-5c3a-4678-8e6d-e6399bf27538
- Parameters  ┌─────────────────────────────────────────────────┐
-             │ images =  @1 (urn:ivcap:collection:508a2aba...) │
-             │  width =  100                                   │
-             │ height =  100                                   │
-             └─────────────────────────────────────────────────┘
-   Products  ┌────┬───────────────┬──────────────────┐
-             │ @2 │ result.png    │ image/png        │
-             │ @3 │ stats.json    │ application/json │
-             │ @4 │ thumbnail.png │ image/png        │
-             └────┴───────────────┴──────────────────┘
-   Metadata  ┌─────┬────────────────────────────────────────┐
-             │ @6  │ urn:ivcap:schema:order-uses-workflow.  │
-             │ @7  │ urn:ivcap:schema:order-uses-artifact.1 │
-             │ ...                                          │
-             └─────┴────────────────────────────────────────┘
-```
-
-Follow this [link](./doc/ivcap_order.md) for more details about the `order` command.
 
 ### Build & Install
 

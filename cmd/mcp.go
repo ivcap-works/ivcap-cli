@@ -1,4 +1,4 @@
-// Copyright 2025 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
+// Copyright 2025-2026 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,17 +15,16 @@
 package cmd
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
+	"os"
+	"time"
 
-	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 	"github.com/spf13/cobra"
 	log "go.uber.org/zap"
 
-	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	mcppkg "github.com/ivcap-works/ivcap-cli/pkg/mcp"
 )
 
 func init() {
@@ -39,15 +38,44 @@ var (
 	mcpPort    int
 
 	mcpCmd = &cobra.Command{
-		Use:     "mcp",
-		Short:   "Start an MCP server for accessing all tools on an IVCAP platform",
+		Use:   "mcp",
+		Short: "Start an MCP server for accessing all tools on an IVCAP platform",
+		Long: `Start an MCP (Model Context Protocol) server.
+
+In addition to MCP Tools for calling platform services, this server also exposes
+the ivcap-cli release’s embedded agent skills via MCP Resources and Prompts
+("MCP-Provisioned Skills").
+
+Resources:
+  - skills://manifest         JSON manifest of available skills
+  - skills://catalog.json     JSON catalog (metadata + hashes; no bodies)
+  - skills://CONTEXT.md       General agent best-practices for ivcap-cli
+  - skills://SKILLS.md        Top-level skills tree index
+  - skills://{name}/SKILL.md  Skill playbook body (markdown)
+  - skills://file/{path}      Any embedded markdown file (e.g. category SKILLS.md)
+
+Prompts:
+  - use-ivcap-best-practices  Instructs an agent to load CONTEXT + relevant skills
+
+Recommended MCP client system prompt:
+
+Before answering any task:
+1. Call resources/list on all connected MCP servers
+2. Identify resources matching: *SKILL.md, *instructions*, *prompt*
+3. Fetch and read matching resources via resources/read
+4. Apply those instructions when completing the user's request
+`,
 		GroupID: agentSupportGroupID,
 
 		RunE: func(cmd *cobra.Command, args []string) error {
-			s := server.NewMCPServer("IVCAP MCP Server", "1.0.0")
-			if err := addTools(s); err != nil {
-				cobra.CheckErr(fmt.Sprintf("Cannot add tools: %v", err))
-			}
+			s := mcppkg.NewServer(mcppkg.Config{
+				Logger:        logger,
+				Version:       rootCmd.Version,
+				ToolSchema:    toolSchema,
+				TimeoutSec:    timeout,
+				ChunkSize:     DEF_CHUNK_SIZE,
+				CreateAdapter: createMCPAdapter,
+			})
 			if mcpPort > 0 {
 				logger.Info("MCP Proxy Server starting as SSE server...", log.Int("port", mcpPort))
 				hs := server.NewSSEServer(s,
@@ -67,109 +95,33 @@ var (
 	}
 )
 
-func addTools(s *server.MCPServer) error {
-	selector := sdk.AspectSelector{
-		SchemaPrefix:   toolSchema,
-		IncludeContent: true,
-		ListRequest: sdk.ListRequest{
-			Limit: 50,
-		},
-	}
-	ctxt := context.Background()
-	if list, _, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger); err == nil {
-		for _, item := range list.Items {
-			if c, ok := item.Content.(map[string]any); ok {
-				if err2 := addTool(c, s); err2 != nil {
-					// only log errors here, so that one bad tool doesn't stop all the others from being added
-					logger.Warn("Cannot add tool", log.String("id", *item.ID), log.Error(err2))
-				}
-			} else {
-				return fmt.Errorf("unexpected content type for aspect '%s'", *item.ID)
-			}
-		}
-		return nil
-	} else {
-		return err
-	}
-}
-
-type ToolDefinition struct {
-	Name        string         `json:"name"`
-	Description string         `json:"description"`
-	Schema      map[string]any `json:"fn_schema"`
-}
-
-func addTool(item map[string]any, s *server.MCPServer) error {
-	var ok bool
-	var name, description, serviceID string
-	var schema map[string]any
-
-	if name, ok = item["name"].(string); !ok {
-		return fmt.Errorf("tool aspect missing 'name' field or not a string")
-	}
-	if description, ok = item["description"].(string); !ok {
-		return fmt.Errorf("tool aspect missing 'description' field or not a string")
-	}
-	if schema, ok = item["fn_schema"].(map[string]any); !ok {
-		return fmt.Errorf("tool aspect missing 'fn_schema' field or not an object")
-	}
-	if serviceID, ok = item["service-id"].(string); !ok {
-		return fmt.Errorf("tool aspect missing 'service-id' field or not a string")
-	}
-
-	handler := func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		return run_tool(ctx, serviceID, request)
-	}
-	tool := mcp.NewToolWithRawSchema(
-		name,
-		description,
-		MapToRaw(schema), // The Input Schema defined above
-	)
-	logger.Debug("Registering tool", log.String("name", name), log.String("service-id", serviceID))
-	s.AddTool(tool, handler)
-	return nil
-}
-
-func run_tool(ctx context.Context, serviceID string, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-	logger.Info("Calling service", log.String("service-id", serviceID), log.Reflect("params", request.Params))
-	args := request.Params.Arguments
-	pyld, err := a.JsonPayloadFromAny(args, logger)
+func createMCPAdapter(timeoutSec int) (*a.Adapter, error) {
+	ctxt, err := GetContextWithError("", true)
 	if err != nil {
 		return nil, err
 	}
-	res, jobCreate, err := sdk.CreateServiceJobRaw(ctx, serviceID, pyld, 0, CreateAdapter(true), logger)
+
+	accessToken := ""
+	if accessTokenF != "" {
+		accessToken = accessTokenF
+	} else if envToken := os.Getenv(ACCESS_TOKEN_ENV); envToken != "" {
+		accessToken = envToken
+	} else if ctxt.AccessToken != "" && time.Now().Before(ctxt.AccessTokenExpiry) {
+		// Only use cached context token if it hasn't expired.
+		accessToken = ctxt.AccessToken
+	}
+	if accessToken == "" {
+		return nil, mcppkg.ErrLoginRequired
+	}
+
+	url := ctxt.URL
+	var headers *map[string]string
+	if ctxt.Host != "" {
+		headers = &(map[string]string{"Host": ctxt.Host})
+	}
+	adp, err := NewAdapter(url, accessToken, timeoutSec, headers)
 	if err != nil {
 		return nil, err
 	}
-	if res.StatusCode() >= 300 {
-		return nil, fmt.Errorf("service call failed: %d", res.StatusCode())
-	}
-	var result map[string]interface{}
-	if jobCreate != nil {
-		_, res, err = watchJob(ctx, jobCreate.JobID, 100, 2)
-		if err != nil {
-			return nil, err
-		}
-		if o, err := res.AsObject(); err != nil {
-			return nil, err
-		} else {
-			var ok bool
-			if result, ok = o["result-content"].(map[string]any); !ok {
-				return nil, fmt.Errorf("unexpected result content from job")
-			}
-		}
-	} else {
-		if result, err = res.AsObject(); err != nil {
-			return nil, err
-		}
-	}
-	return mcp.NewToolResultJSON(result)
-}
-
-func MapToRaw(m map[string]any) json.RawMessage {
-	b, err := json.Marshal(m) // or json.MarshalIndent(m, "", "  ")
-	if err != nil {
-		cobra.CheckErr(fmt.Sprintf("Cannot convert map into json: %v", err))
-	}
-	return json.RawMessage(b)
+	return adp, nil
 }
