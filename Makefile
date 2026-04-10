@@ -52,13 +52,19 @@ test:
 	go test -v ./...
 
 check:
+	@echo "==> go vet"
 	go vet ./...
+	@echo "==> golangci-lint"
 	$(call tool_bin,golangci-lint) run --out-format line-number --tests=false ./...
+	@echo "==> gocritic"
 	$(call tool_bin,gocritic) check -checkTests=false ./...
+	@echo "==> staticcheck"
 	$(call tool_bin,staticcheck) -tests=false ./...
+	@echo "==> gosec"
 	$(call tool_bin,gosec) $(GOSEC_FLAGS) ./...
 	@# govulncheck exit codes: 0=no vulns, 3=vulns found. Treat 3 as warning by default.
 	@code=0; \
+	echo "==> govulncheck"; \
 	$(call tool_bin,govulncheck) ./... || code=$$?; \
 	if [ $$code -eq 0 ]; then exit 0; fi; \
 	if [ $$code -eq 3 ]; then \
