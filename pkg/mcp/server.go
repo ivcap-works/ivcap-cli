@@ -73,6 +73,9 @@ var builtInToolNames = map[string]bool{
 	"aspect_create":   true,
 	"nextflow_create": true,
 	"nextflow_run":    true,
+	"service_list":    true,
+	"service_get":     true,
+	"service_run":     true,
 }
 
 var (
@@ -163,7 +166,7 @@ func filterToolsBySessionAllowlist(ctx context.Context, tools []mcp.Tool) []mcp.
 		res = append(res, *selectTools)
 	}
 	// Keep stable order for built-ins after select_tools.
-	builtInOrder := []string{"artifact_create", "artifact_get", "aspect_search", "aspect_get", "aspect_create", "nextflow_create", "nextflow_run"}
+	builtInOrder := []string{"artifact_create", "artifact_get", "aspect_search", "aspect_get", "aspect_create", "service_list", "service_get", "service_run", "nextflow_create", "nextflow_run"}
 	for _, n := range builtInOrder {
 		if t, ok := toolMap[n]; ok {
 			res = append(res, t)
@@ -258,7 +261,7 @@ func addToolDiscoveryTool(s *server.MCPServer, disco *mcpDiscoveryState) {
 
 	tool := mcp.NewToolWithRawSchema(
 		"select_tools",
-		"Discover and expose relevant tools for your current interest. After calling this, re-run tools/list to see the selected tools.",
+		"Discover and expose relevant tools for your current interest. After calling this, you MUST re-run tools/list to see the newly exposed tools. If your MCP client cannot handle dynamic tool discovery (tools list_changed + re-list), you can instead call service_get to fetch tool-aspect content (including fn_schema) for a service id, then call service_run to execute that service with an input payload.",
 		MapToRaw(schema),
 	)
 

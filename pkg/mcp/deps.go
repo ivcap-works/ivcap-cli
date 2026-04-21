@@ -30,6 +30,7 @@ var (
 	getAspectRawFn        = sdk.GetAspectRaw
 	addUpdateAspectFn     = sdk.AddUpdateAspect
 	listServicesRawFn     = sdk.ListServicesRaw
+	readServiceRawFn      = sdk.ReadServiceRaw
 	createServiceJobRawFn = sdk.CreateServiceJobRaw
 	createArtifactFn      = sdk.CreateArtifact
 	uploadArtifactFn      = sdk.UploadArtifact

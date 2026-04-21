@@ -74,10 +74,12 @@ func TestMCPToolsList_Unauthorised_ReturnsLoginRequiredMessage(t *testing.T) {
 func TestMCPToolsList_InitiallyHasBuiltins(t *testing.T) {
 	old := listAspectFn
 	oldListServices := listServicesRawFn
+	oldReadService := readServiceRawFn
 	oldAdapter := srvCfg.CreateAdapter
 	t.Cleanup(func() {
 		listAspectFn = old
 		listServicesRawFn = oldListServices
+		readServiceRawFn = oldReadService
 		srvCfg.CreateAdapter = oldAdapter
 	})
 
@@ -87,6 +89,9 @@ func TestMCPToolsList_InitiallyHasBuiltins(t *testing.T) {
 		return &aspect.ListResponseBody{}, nil, nil
 	}
 	listServicesRawFn = func(ctxt context.Context, cmd *sdk.ListRequest, adpt *a.Adapter, logger *zap.Logger) (a.Payload, error) {
+		return nil, nil
+	}
+	readServiceRawFn = func(ctxt context.Context, cmd *sdk.ReadServiceRequest, adpt *a.Adapter, logger *zap.Logger) (a.Payload, error) {
 		return nil, nil
 	}
 
@@ -117,8 +122,8 @@ func TestMCPToolsList_InitiallyHasBuiltins(t *testing.T) {
 	if err := json.Unmarshal(b, &parsed); err != nil {
 		t.Fatalf("cannot unmarshal result: %v", err)
 	}
-	if len(parsed.Tools) != 8 {
-		t.Fatalf("expected 8 tools initially, got %d", len(parsed.Tools))
+	if len(parsed.Tools) != 11 {
+		t.Fatalf("expected 11 tools initially, got %d", len(parsed.Tools))
 	}
 	if parsed.Tools[0].Name != "select_tools" {
 		t.Fatalf("expected first tool to be select_tools, got %q", parsed.Tools[0].Name)
@@ -127,8 +132,90 @@ func TestMCPToolsList_InitiallyHasBuiltins(t *testing.T) {
 	for _, t0 := range parsed.Tools {
 		got[t0.Name] = true
 	}
-	if !got["select_tools"] || !got["artifact_create"] || !got["artifact_get"] || !got["aspect_search"] || !got["aspect_get"] || !got["aspect_create"] || !got["nextflow_create"] || !got["nextflow_run"] {
+	if !got["select_tools"] || !got["artifact_create"] || !got["artifact_get"] || !got["aspect_search"] || !got["aspect_get"] || !got["aspect_create"] || !got["service_list"] || !got["service_get"] || !got["service_run"] || !got["nextflow_create"] || !got["nextflow_run"] {
 		t.Fatalf("expected built-in tools; got %+v", got)
+	}
+}
+
+func TestMCPServiceGet_ReturnsToolAspectContentOnly(t *testing.T) {
+	oldGetAspect := getAspectRawFn
+	oldListAspect := listAspectFn
+	oldReadService := readServiceRawFn
+	oldAdapter := srvCfg.CreateAdapter
+	defer func() {
+		getAspectRawFn = oldGetAspect
+		listAspectFn = oldListAspect
+		readServiceRawFn = oldReadService
+		srvCfg.CreateAdapter = oldAdapter
+	}()
+
+	srvCfg.CreateAdapter = func(timeoutSec int) (*a.Adapter, error) { return nil, nil }
+
+	// service_get must not call the services endpoint.
+	readServiceRawFn = func(ctxt context.Context, cmd *sdk.ReadServiceRequest, adpt *a.Adapter, logger *zap.Logger) (a.Payload, error) {
+		t.Fatalf("service_get must not call service read endpoint")
+		return nil, nil
+	}
+	// service_get should also not use aspect_get (single record fetch).
+	getAspectRawFn = func(ctxt context.Context, recordID string, adpt *a.Adapter, logger *zap.Logger) (a.Payload, error) {
+		t.Fatalf("service_get must not call aspect_get")
+		return nil, nil
+	}
+	// It should list tool-aspect records but return only content.
+	listAspectFn = func(ctx context.Context, selector sdk.AspectSelector, adpt *a.Adapter, logger *zap.Logger) (*aspect.ListResponseBody, a.Payload, error) {
+		// Return one aspect with tool content.
+		return &aspect.ListResponseBody{Items: []*aspect.AspectListItemRTResponseBody{{Content: map[string]any{"name": "t", "description": "d", "fn_schema": map[string]any{"type": "object"}, "service-id": "svc-1"}}}}, nil, nil
+	}
+
+	s := NewServer(Config{Logger: zap.NewNop(), ToolSchema: "urn:sd-core:schema.ai-tool.1", TimeoutSec: 1, CreateAdapter: srvCfg.CreateAdapter})
+	msg := json.RawMessage(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"service_get","arguments":{"id":"svc-1"}}}`)
+	out := s.HandleMessage(context.Background(), msg)
+
+	res, ok := out.(mcp.JSONRPCResponse)
+	if !ok {
+		t.Fatalf("expected JSONRPCResponse, got %T", out)
+	}
+	b, err := json.Marshal(res.Result)
+	if err != nil {
+		t.Fatalf("cannot marshal result: %v", err)
+	}
+	var parsed struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+		IsError bool `json:"isError"`
+	}
+	if err := json.Unmarshal(b, &parsed); err != nil {
+		t.Fatalf("cannot unmarshal tool result: %v", err)
+	}
+	if parsed.IsError {
+		t.Fatalf("expected non-error result")
+	}
+	if len(parsed.Content) == 0 {
+		t.Fatalf("expected tool result content")
+	}
+	// Ensure returned JSON looks like a tool-aspect content object.
+	if parsed.Content[0].Type != "text" {
+		// mcp-go currently serializes JSON tool results as text.
+		return
+	}
+	if parsed.Content[0].Text == "" {
+		t.Fatalf("expected tool JSON")
+	}
+	var outObj map[string]any
+	if err := json.Unmarshal([]byte(parsed.Content[0].Text), &outObj); err != nil {
+		// If parsing fails, still fail test because we expect JSON.
+		t.Fatalf("expected JSON tool output: %v", err)
+	}
+	if _, ok := outObj["fn_schema"]; !ok {
+		t.Fatalf("expected 'fn_schema' in service_get output, got: %+v", outObj)
+	}
+	if _, ok := outObj["name"]; !ok {
+		t.Fatalf("expected 'name' in service_get output, got: %+v", outObj)
+	}
+	if _, ok := outObj["service_id"]; ok {
+		t.Fatalf("did not expect wrapper field 'service_id' in service_get output, got: %+v", outObj)
 	}
 }
 
