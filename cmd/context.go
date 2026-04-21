@@ -145,9 +145,10 @@ var getContextCmd = &cobra.Command{
 			param = args[0]
 		}
 		context := GetActiveContext()
-		if param == "name" {
+		switch param {
+		case "name":
 			fmt.Println(context.Name)
-		} else if param == "access-token" {
+		case "access-token":
 			if IsAuthorised() || refreshToken {
 				fmt.Println(getAccessToken(true))
 			} else {
@@ -157,13 +158,13 @@ var getContextCmd = &cobra.Command{
 				}
 				fmt.Print(at)
 			}
-		} else if param == "account-id" {
+		case "account-id":
 			fmt.Println(context.AccountID)
-		} else if param == "provider-id" {
+		case "provider-id":
 			fmt.Println(context.ProviderID)
-		} else if param == "url" {
+		case "url":
 			fmt.Println(context.URL)
-		} else if param == "all" {
+		case "all":
 			t := table.NewWriter()
 			t.SetOutputMirror(os.Stdout)
 			t.AppendRow(table.Row{"Name", context.Name})
@@ -186,7 +187,7 @@ var getContextCmd = &cobra.Command{
 			}
 
 			t.Render()
-		} else {
+		default:
 			cobra.CheckErr(fmt.Sprintf("unknown context parameter '%s'", param))
 		}
 	},

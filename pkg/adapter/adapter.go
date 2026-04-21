@@ -317,7 +317,7 @@ func doWithRetry(client *http.Client, req *http.Request, respHandler ResponseHan
 		if err != nil {
 			return fmt.Errorf("failed to call http request: %w", err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if respHandler != nil {
 			return respHandler(resp, endpoint, logger)

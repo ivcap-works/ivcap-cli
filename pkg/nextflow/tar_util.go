@@ -83,7 +83,7 @@ func ExtractFromTarAuto(data []byte, innerPath string) ([]byte, string, error) {
 		if err != nil {
 			return nil, "", err
 		}
-		defer gzr.Close()
+		defer func() { _ = gzr.Close() }()
 		b, _, err := ExtractFileFromTarReader(tar.NewReader(gzr), innerPath)
 		return b, "application/octet-stream", err
 	}

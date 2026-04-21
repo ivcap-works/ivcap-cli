@@ -103,7 +103,7 @@ func PushPackage(ctx context.Context, srcTagName string, forcePush, localImage b
 	if err != nil {
 		return nil, fmt.Errorf("failed to push image: %w", err)
 	}
-	defer pushResp.Close()
+	defer func() { _ = pushResp.Close() }()
 
 	if err = checkPushResponse(pushResp, srcTagName); err != nil {
 		fmt.Printf("\033[2K\r %s push failed, error: %s\n", srcTagName, err.Error())
@@ -151,7 +151,7 @@ func PullPackage(ctxt context.Context, tag string, adpt adapter.Adapter, logger 
 	if err != nil {
 		return fmt.Errorf("failed to push image: %w", err)
 	}
-	defer pullResp.Close()
+	defer func() { _ = pullResp.Close() }()
 
 	if err = checkPullResponse(pullResp, tag); err != nil {
 		fmt.Printf("\033[2K\r %s pull failed, error: %s\n", srcTag.TagStr(), err.Error())

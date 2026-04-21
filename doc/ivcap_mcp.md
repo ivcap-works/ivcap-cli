@@ -21,6 +21,20 @@ Resources:
 Prompts:
   - use-ivcap-best-practices  Instructs an agent to load CONTEXT + relevant skills
 
+Tool discovery workflow (important):
+  1) Call `tools/call` with name `select_tools` and an `interest` string.
+  2) After it returns, re-run `tools/list` to see the newly exposed tools.
+     (The server sends `tools/list_changed`, but some MCP clients do not support
+     dynamic updates; re-listing is the portable approach.)
+  3) If your MCP client cannot call newly discovered tools dynamically, use this fallback:
+     - Call `service_get` with the service id/URN to fetch its tool-aspect `content` (incl. `fn_schema`).
+     - Then call `service_run` with `service_id` + `input` to execute.
+
+Built-in tools (always available, no select_tools required):
+  - service_list              List services (lightweight)
+  - service_get               Get a service's tool-aspect content (schema urn:sd-core:schema.ai-tool.1); returns ONLY the aspect content object (no wrapper)
+  - service_run               Run any service by service_id + input payload, optionally waiting for result
+
 
 ```
 ivcap mcp [flags]

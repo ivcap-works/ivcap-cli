@@ -465,7 +465,7 @@ func GuessArchiveContentType(p string) string {
 	if err != nil {
 		return "application/octet-stream"
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 	buf := make([]byte, 512)
 	_, _ = f.Read(buf)
 	ct := http.DetectContentType(buf)
@@ -537,7 +537,7 @@ func ExtractFileFromTarPath(archivePath string, fileName string) (content []byte
 	if err != nil {
 		return nil, "", err
 	}
-	defer f.Close()
+	defer func() { _ = f.Close() }()
 
 	br := bufio.NewReader(f)
 	isGzip := archiveLooksGzip(archivePath, br)
@@ -549,7 +549,7 @@ func ExtractFileFromTarPath(archivePath string, fileName string) (content []byte
 		if err != nil {
 			return nil, "", err
 		}
-		defer gz.Close()
+		defer func() { _ = gz.Close() }()
 		r = gz
 	}
 	return ExtractFileFromTarReader(tar.NewReader(r), fileName)
@@ -568,7 +568,7 @@ func ExtractFileFromTarBytes(archive []byte, fileName string) ([]byte, string, e
 		if err != nil {
 			return nil, "", err
 		}
-		defer gzr.Close()
+		defer func() { _ = gzr.Close() }()
 		return ExtractFileFromTarReader(tar.NewReader(gzr), fileName)
 	}
 	return ExtractFileFromTarReader(tar.NewReader(bytes.NewReader(archive)), fileName)

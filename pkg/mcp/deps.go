@@ -30,6 +30,7 @@ var (
 	getAspectRawFn        = sdk.GetAspectRaw
 	addUpdateAspectFn     = sdk.AddUpdateAspect
 	listServicesRawFn     = sdk.ListServicesRaw
+	readServiceRawFn      = sdk.ReadServiceRaw //lint:ignore U1000 used in tests
 	createServiceJobRawFn = sdk.CreateServiceJobRaw
 	createArtifactFn      = sdk.CreateArtifact
 	uploadArtifactFn      = sdk.UploadArtifact

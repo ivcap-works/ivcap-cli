@@ -214,7 +214,7 @@ func extractFromTarAuto(data []byte, innerPath string) ([]byte, string, error) {
 		if err != nil {
 			return nil, "", err
 		}
-		defer gzr.Close()
+		defer func() { _ = gzr.Close() }()
 		return extractFromTarReader(tar.NewReader(gzr), innerPath)
 	}
 	return extractFromTarReader(tar.NewReader(bytes.NewReader(data)), innerPath)

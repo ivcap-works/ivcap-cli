@@ -656,7 +656,7 @@ func getFileHash(fileName string) string {
 		cobra.CheckErr(fmt.Sprintf("while opening data file '%s' - %v", fileName, err))
 		// never get here as cobra.CheckErr calls os.Exit
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	hash := md5.New() // #nosec G401
 	if _, err = io.Copy(hash, file); err != nil {

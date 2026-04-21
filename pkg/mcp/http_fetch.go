@@ -37,7 +37,7 @@ func fetchURLBytes(ctx context.Context, u string) ([]byte, string, error) {
 	if err != nil {
 		return nil, "", err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode >= 300 {
 		return nil, "", fmt.Errorf("url fetch failed: %s", resp.Status)
 	}

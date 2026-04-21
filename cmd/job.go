@@ -209,7 +209,7 @@ func watchJob(ctxt context.Context, jobID string, maxChecks int, wait int) (*sdk
 			status = *job.Status
 		}
 		tries += 1
-		done = tries >= maxChecks || !(status == "?" || status == "scheduled" || status == "executing")
+		done = tries >= maxChecks || (status != "?" && status != "scheduled" && status != "executing")
 		if done {
 			return job, pyld, nil
 		}
