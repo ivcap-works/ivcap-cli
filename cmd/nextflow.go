@@ -172,11 +172,19 @@ func printNextflowCreateOutput(out *nf.CreateOutput) error {
 	// Default output is human readable. `--format json|yaml` emits machine readable.
 	switch nextflowCreateFormat {
 	case "":
-		fmt.Fprintln(os.Stdout, "Nextflow service created successfully")
-		fmt.Fprintf(os.Stdout, "  service:  %s\n", out.ServiceID)
-		fmt.Fprintf(os.Stdout, "  pipeline: %s\n", out.PipelineArtifactURN)
+		if _, err := fmt.Fprintln(os.Stdout, "Nextflow service created successfully"); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(os.Stdout, "  service:  %s\n", out.ServiceID); err != nil {
+			return err
+		}
+		if _, err := fmt.Fprintf(os.Stdout, "  pipeline: %s\n", out.PipelineArtifactURN); err != nil {
+			return err
+		}
 		if out.ServiceAspectRecordID != "" {
-			fmt.Fprintf(os.Stdout, "  aspect:   %s\n", out.ServiceAspectRecordID)
+			if _, err := fmt.Fprintf(os.Stdout, "  aspect:   %s\n", out.ServiceAspectRecordID); err != nil {
+				return err
+			}
 		}
 		return nil
 	case "json":
@@ -184,14 +192,18 @@ func printNextflowCreateOutput(out *nf.CreateOutput) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(os.Stdout, string(b))
+		if _, err := fmt.Fprintln(os.Stdout, string(b)); err != nil {
+			return err
+		}
 		return nil
 	case "yaml":
 		b, err := yaml.Marshal(out)
 		if err != nil {
 			return err
 		}
-		fmt.Fprintln(os.Stdout, string(b))
+		if _, err := fmt.Fprintln(os.Stdout, string(b)); err != nil {
+			return err
+		}
 		return nil
 	default:
 		return fmt.Errorf("unsupported --format %q (expected json|yaml)", nextflowCreateFormat)

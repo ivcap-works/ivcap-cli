@@ -548,7 +548,7 @@ func waitForServiceJob(
 		if job != nil && job.Status != nil {
 			status = *job.Status
 		}
-		done := !(status == "?" || status == "scheduled" || status == "executing")
+		done := status != "?" && status != "scheduled" && status != "executing"
 		if done {
 			o, err := pyld.AsObject()
 			if err != nil {

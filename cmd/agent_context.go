@@ -66,9 +66,13 @@ func runAgentContext(cmd *cobra.Command) error {
 		}
 		return adpt.ReplyPrinter(payload, outputFormat == "yaml")
 	default:
-		fmt.Fprint(os.Stdout, doc.Content)
+		if _, err := fmt.Fprint(os.Stdout, doc.Content); err != nil {
+			return err
+		}
 		if len(doc.Content) == 0 || doc.Content[len(doc.Content)-1] != '\n' {
-			fmt.Fprint(os.Stdout, "\n")
+			if _, err := fmt.Fprint(os.Stdout, "\n"); err != nil {
+				return err
+			}
 		}
 		return nil
 	}

@@ -73,7 +73,9 @@ var skillsListCmd = &cobra.Command{
 			return adpt.ReplyPrinter(payload, outputFormat == "yaml")
 		default:
 			for _, s := range items {
-				fmt.Fprintf(os.Stdout, "%s\t%s\t%s\n", s.Name, s.Version, s.Description)
+				if _, err := fmt.Fprintf(os.Stdout, "%s\t%s\t%s\n", s.Name, s.Version, s.Description); err != nil {
+					return err
+				}
 			}
 			return nil
 		}
@@ -102,9 +104,13 @@ var skillsShowCmd = &cobra.Command{
 				}
 				return adpt.ReplyPrinter(payload, outputFormat == "yaml")
 			default:
-				fmt.Fprint(os.Stdout, string(b))
+				if _, err := fmt.Fprint(os.Stdout, string(b)); err != nil {
+					return err
+				}
 				if len(b) == 0 || b[len(b)-1] != '\n' {
-					fmt.Fprint(os.Stdout, "\n")
+					if _, err := fmt.Fprint(os.Stdout, "\n"); err != nil {
+						return err
+					}
 				}
 				return nil
 			}
@@ -127,9 +133,13 @@ var skillsShowCmd = &cobra.Command{
 			}
 			return adpt.ReplyPrinter(payload, outputFormat == "yaml")
 		default:
-			fmt.Fprint(os.Stdout, d.Content)
+			if _, err := fmt.Fprint(os.Stdout, d.Content); err != nil {
+				return err
+			}
 			if len(d.Content) == 0 || d.Content[len(d.Content)-1] != '\n' {
-				fmt.Fprint(os.Stdout, "\n")
+				if _, err := fmt.Fprint(os.Stdout, "\n"); err != nil {
+					return err
+				}
 			}
 			return nil
 		}

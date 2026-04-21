@@ -437,7 +437,7 @@ func printDequeueResponse(response a.Payload, filePath string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create file %s: %w", filePath, err)
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	_, err = file.Write(prettyJSON.Bytes())
 	if err != nil {
@@ -554,7 +554,7 @@ func helpTemplate(args map[string]string) string {
 	maxArgLen := getMaxLen(args)
 	for arg, desc := range args {
 		padding := strings.Repeat(" ", maxArgLen-len(arg))
-		argsStr.WriteString(fmt.Sprintf("  %s%s  %s\n", arg, padding, desc))
+		fmt.Fprintf(&argsStr, "  %s%s  %s\n", arg, padding, desc)
 	}
 
 	return fmt.Sprintf(`{{with .Long}}{{. | trimTrailingWhitespaces}}{{end}}

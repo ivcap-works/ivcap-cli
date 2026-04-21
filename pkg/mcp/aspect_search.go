@@ -107,7 +107,7 @@ func addAspectSearchTool(s *server.MCPServer) {
 			},
 		}
 		if parsed.Page != "" {
-			sel.ListRequest.Page = &parsed.Page
+			sel.Page = &parsed.Page
 		}
 		if parsed.ContentPath != "" {
 			sel.JsonFilter = &parsed.ContentPath
