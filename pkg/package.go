@@ -170,8 +170,10 @@ func getDockerRegistryHost(adpt adapter.Adapter) (string, error) {
 		return "", fmt.Errorf("failed to parse URL: %s, %w", apiSrvAddr, err)
 	}
 
-	// registry.develop.ivcap.net
-	return "registry." + u.Host, nil
+	host := strings.TrimPrefix(u.Host, "api.")
+
+	// registry.develop.ivcap.net or registry.sciansa.net
+	return "registry." + host, nil
 }
 
 func getDockerRegistryAuth(registrySrvHost string, adpt adapter.Adapter) (string, error) {
