@@ -54,6 +54,12 @@ type Config struct {
 
 	// CreateAdapter must return an authenticated adapter.
 	CreateAdapter func(timeoutSec int) (*a.Adapter, error)
+
+	// WithLogging enables JSON-RPC request/response logging to a file.
+	WithLogging bool
+
+	// LogDir specifies the directory for MCP log files (defaults to /tmp).
+	LogDir string
 }
 
 // NewServer constructs an MCP server exposing IVCAP tools.
@@ -91,6 +97,7 @@ func NewServer(cfg Config) *mcpserver.MCPServer {
 	addServiceListTool(s)
 	addServiceGetTool(s)
 	addServiceRunTool(s)
+	addJobStatusTool(s)
 	addNextflowCreateTool(s)
 	addNextflowRunTool(s)
 	addSkillsResourcesAndPrompts(s)

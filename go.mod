@@ -1,10 +1,6 @@
 module github.com/ivcap-works/ivcap-cli
 
-go 1.25.0
-
-// Ensure builds/tests use a Go patch release that includes the latest stdlib
-// security fixes, while still allowing newer local toolchains to be used.
-toolchain go1.26.2
+go 1.26.2
 
 require (
 	github.com/MicahParks/keyfunc v1.9.0

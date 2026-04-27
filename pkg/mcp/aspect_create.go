@@ -40,7 +40,7 @@ func addAspectCreateTool(s *server.MCPServer) {
 		"properties": map[string]any{
 			"entity": map[string]any{
 				"type":        "string",
-				"description": "Entity URN/ID to attach the aspect to.",
+				"description": "Entity URN/ID to attach the aspect to. For IVCAP system entities (urn:ivcap:service:*, urn:ivcap:artifact:*, urn:ivcap:job:*, urn:ivcap:aspect:*, urn:ivcap:queue:*), the URN must end with a valid UUID. Other entity formats are allowed without validation.",
 			},
 			"schema": map[string]any{
 				"type":        "string",
@@ -83,6 +83,11 @@ func addAspectCreateTool(s *server.MCPServer) {
 		}
 		if parsed.Body == nil {
 			return nil, fmt.Errorf("missing body")
+		}
+
+		// Validate entity URN format for IVCAP entities
+		if err := validateEntityURNFn(parsed.Entity); err != nil {
+			return nil, err
 		}
 
 		// Ensure $schema is present, matching CLI behavior.

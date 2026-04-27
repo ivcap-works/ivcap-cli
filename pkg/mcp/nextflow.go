@@ -88,8 +88,6 @@ type nextflowRunArgs struct {
 	Input map[string]any `json:"input,omitempty"`
 	// URN of aspect containing job parameters (alternative to inline input)
 	AspectURN string `json:"aspect_urn,omitempty"`
-	// If true, wait for job completion and return result-content.
-	Watch bool `json:"watch,omitempty"`
 }
 
 func addNextflowCreateTool(s *server.MCPServer) {
@@ -98,7 +96,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		"properties": map[string]any{
 			"service_id": map[string]any{
 				"type":        "string",
-				"description": "Service URN/ID for the Nextflow service definition to create/update.",
+				"description": "Service URN/ID for the Nextflow service definition to create/update. MUST be in format 'urn:ivcap:service:<uuid>' where <uuid> is a valid UUIDv5 that you generate. The caller is responsible for creating this service ID. (Note: This requirement may change in future versions to auto-generate service IDs.)",
 			},
 			"name": map[string]any{
 				"type":        "string",
@@ -259,14 +257,13 @@ func addNextflowRunTool(s *server.MCPServer) {
 			"service_id": map[string]any{"type": "string", "description": "Service URN/ID to run."},
 			"input":      map[string]any{"type": "object", "description": "Inline job input payload (JSON object)."},
 			"aspect_urn": map[string]any{"type": "string", "description": "Alternative to input: URN of an aspect containing job parameters."},
-			"watch":      map[string]any{"type": "boolean", "description": "If true, wait for completion and return the job result-content."},
 		},
 		"required": []any{"service_id"},
 	}
 
 	tool := mcp.NewToolWithRawSchema(
 		"nextflow_run",
-		"Run (create a job for) a Nextflow service. Provide either inline `input` or a `aspect_urn` referencing request parameters.",
+		"Run (create a job for) a Nextflow service. Provide either inline `input` or a `aspect_urn` referencing request parameters. Returns either: (1) Fast path: immediate result if job completes within 30s, or (2) Slow path: job metadata with job_id and polling instructions if still running. Use job_status tool to check long-running jobs. See skills://ivcap-service-long-running/SKILL.md for details.",
 		MapToRaw(schema),
 	)
 
@@ -323,20 +320,34 @@ func addNextflowRunTool(s *server.MCPServer) {
 			return nil, fmt.Errorf("service call failed: %d", res.StatusCode())
 		}
 
-		// Async job mode.
+		// Async job mode - always use optimistic wait with 30-second timeout
 		if jobCreate != nil {
-			if parsed.Watch {
-				out, err := waitForServiceJob(ctxt, parsed.ServiceID, jobCreate, adpt)
-				if err != nil {
-					return nil, err
-				}
-				// Attach job-id too.
+			waitResult, err := waitForServiceJobOptimistic(ctxt, parsed.ServiceID, jobCreate, adpt, 30)
+			if err != nil {
+				return nil, err
+			}
+
+			if waitResult.IsComplete {
+				// Fast path - job completed
 				return mcp.NewToolResultJSON(map[string]any{
-					"job_id": jobCreate.JobID,
-					"result": out,
+					"job_id": waitResult.JobID,
+					"status": waitResult.Status,
+					"result": waitResult.Result,
 				})
 			}
-			return mcp.NewToolResultJSON(map[string]any{"job_id": jobCreate.JobID})
+
+			// Slow path - job still running
+			pollAfter := estimatePollInterval(waitResult.Status)
+			return mcp.NewToolResultJSON(map[string]any{
+				"job_id":  waitResult.JobID,
+				"status":  waitResult.Status,
+				"message": waitResult.Message,
+				"_meta": map[string]any{
+					"job_id":             waitResult.JobID,
+					"status":             waitResult.Status,
+					"poll_after_seconds": pollAfter,
+				},
+			})
 		}
 
 		// Immediate response mode.

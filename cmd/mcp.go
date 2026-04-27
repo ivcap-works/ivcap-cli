@@ -31,11 +31,15 @@ func init() {
 	rootCmd.AddCommand(mcpCmd)
 	mcpCmd.Flags().StringVarP(&toolSchema, "tool-schema", "s", "urn:sd-core:schema.ai-tool.1", "the schema URN used for describing MCP tools")
 	mcpCmd.Flags().IntVar(&mcpPort, "port", -1, "optional port to open for SSE connection to MCP server")
+	mcpCmd.Flags().BoolVar(&mcpWithLogging, "with-logging", false, "enable JSON-RPC request/response logging to file")
+	mcpCmd.Flags().StringVar(&mcpLogDir, "log-dir", "/tmp", "directory for MCP log files")
 }
 
 var (
-	toolSchema string
-	mcpPort    int
+	toolSchema     string
+	mcpPort        int
+	mcpWithLogging bool
+	mcpLogDir      string
 
 	mcpCmd = &cobra.Command{
 		Use:   "mcp",
@@ -75,9 +79,14 @@ Before answering any task:
 				TimeoutSec:    timeout,
 				ChunkSize:     DEF_CHUNK_SIZE,
 				CreateAdapter: createMCPAdapter,
+				WithLogging:   mcpWithLogging,
+				LogDir:        mcpLogDir,
 			})
 			if mcpPort > 0 {
 				logger.Info("MCP Proxy Server starting as SSE server...", log.Int("port", mcpPort))
+				if mcpWithLogging {
+					logger.Warn("--with-logging is not yet supported for SSE mode, logging disabled")
+				}
 				hs := server.NewSSEServer(s,
 					server.WithSSEEndpoint("/mcp"),
 				)
@@ -86,8 +95,16 @@ Before answering any task:
 				}
 			} else {
 				logger.Info("MCP Proxy Server starting in STDIO mode...")
-				if err := server.ServeStdio(s); err != nil {
-					cobra.CheckErr(fmt.Sprintf("Server error: %v", err))
+				if mcpWithLogging {
+					logPath, err := mcppkg.ServeStdioWithLogging(s, mcpLogDir)
+					if err != nil {
+						cobra.CheckErr(fmt.Sprintf("Server error: %v", err))
+					}
+					logger.Info("MCP logging enabled", log.String("log-file", logPath))
+				} else {
+					if err := server.ServeStdio(s); err != nil {
+						cobra.CheckErr(fmt.Sprintf("Server error: %v", err))
+					}
 				}
 			}
 			return nil

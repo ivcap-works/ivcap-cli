@@ -29,6 +29,7 @@ var (
 	listAspectFn          = sdk.ListAspect
 	getAspectRawFn        = sdk.GetAspectRaw
 	addUpdateAspectFn     = sdk.AddUpdateAspect
+	validateEntityURNFn   = sdk.ValidateEntityURN
 	listServicesRawFn     = sdk.ListServicesRaw
 	readServiceRawFn      = sdk.ReadServiceRaw //lint:ignore U1000 used in tests
 	createServiceJobRawFn = sdk.CreateServiceJobRaw

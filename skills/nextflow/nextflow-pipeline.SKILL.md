@@ -29,13 +29,11 @@ pipelines directly on an IVCAP platform. This approach:
 - Automatically uploads the pipeline archive as an IVCAP artifact
 - Creates/updates a service definition in the IVCAP Data Fabric
 - Enables direct job submission via `ivcap nextflow run`
-- Requires **one** tool manifest in the archive:
-  - `ivcap.yaml` (**simplified**, recommended; the CLI converts it to a full request schema)
-  - OR `ivcap-tool.yaml` (**advanced**; you provide the full `fn-schema` yourself)
+- **Requires** an `ivcap.yaml` manifest file in the archive
 
 **How the internal commands behave (important):**
-- `ivcap nextflow create/update` look for `ivcap.yaml` **first**; if not present they fall back to `ivcap-tool.yaml`.
-- The file can be located anywhere in the tarball, but it must be **unique by basename** (do not include multiple `ivcap.yaml` files).
+- `ivcap nextflow create/update` require an `ivcap.yaml` file in the tarball
+- The file can be located anywhere in the tarball, but it must be **unique by basename** (do not include multiple `ivcap.yaml` files)
 - `ivcap nextflow run` is an alias for `ivcap job create`, i.e. it submits a job to a service using either:
   - `-f job-params.json|yaml`, or
   - `-a aspect-urn` (an aspect containing the request payload)
@@ -43,7 +41,7 @@ pipelines directly on an IVCAP platform. This approach:
 **Key files required:**
 - `main.nf` — Nextflow workflow
 - `nextflow.config` — Configuration
-- `ivcap.yaml` — Service metadata, parameters, and sample table (see Phase 2A)
+- `ivcap.yaml` — **Required** service metadata, parameters, and sample table (see Phase 2A)
 - `bin/` — Helper scripts
 
 ### Approach 2: Manual Deployment
@@ -114,8 +112,7 @@ pipeline/
 The `ivcap.yaml` file provides service metadata and defines the pipeline’s **parameter model**
 and (optionally) its **sample table model**.
 
-When you include `ivcap.yaml`, the CLI will **auto-generate** the full service request schema
-internally (equivalent to authoring an `ivcap-tool.yaml` with a `fn-schema`).
+The CLI will **auto-generate** the full service request schema from your `ivcap.yaml` definition.
 
 ### How `ivcap nextflow create` uses ivcap.yaml
 
@@ -132,16 +129,13 @@ So **your `ivcap.yaml` must be explicit and complete**:
 - Every entry in `properties` needs a clear description (units, defaults, valid ranges).
 - If you use a sample table, every entry in `samples` must document that column.
 
-If you need full control over the JSON schema (advanced validation, nested structures,
-etc.), use `ivcap-tool.yaml` instead.
-
 ### Complete ivcap.yaml Template
 
 ```yaml
-$schema: "urn:ivcap:schema:service.1"  # optional; not currently validated by the CLI
-id: "urn:ivcap:service:my-pipeline.1"  # optional pipeline identifier/version
-name: "my-pipeline"
-service-id: ""  # optional; the service you deploy to is provided via `ivcap nextflow create --service-id ...`
+$schema: urn:sd-core:schema.ai-tool.1
+id: urn:sd-core:nextflow:my-pipeline
+name: my-pipeline
+service-id: urn:ivcap:service:a98b81a8-9279-509f-9c0e-40d39e83058a
 description: |
   Detailed multi-line description of what this pipeline does.
 
@@ -153,31 +147,31 @@ description: |
   - Citations or references if applicable
 
 contact:
-  name: "Your Name"
-  email: "your.email@example.com"
+  name: Your Name
+  email: your.email@example.com
 
 # --- Parameters Section ---
 # Define all pipeline parameters here. Each parameter will be available in the
 # 'parameters' object when submitting a job.
 properties:
   - name: min_read_length
-    description: "Minimum read length to retain after quality filtering (bp)"
+    description: Minimum read length to retain after quality filtering (bp)
     type: integer
     optional: false
 
   - name: quality_threshold
-    description: "Phred quality score threshold for trimming"
+    description: Phred quality score threshold for trimming
     type: integer
     optional: true
 
   - name: reference_genome
-    description: "Reference genome IVCAP artifact URN"
+    description: Reference genome IVCAP artifact URN or external URL
     type: string
-    format: urn
+    format: uri
     optional: false
 
   - name: output_format
-    description: "Output file format"
+    description: Output file format
     type: string
     optional: true
 
@@ -186,40 +180,41 @@ properties:
 # of arrays (table format). Each inner array must match this field order.
 samples:
   - name: sample_id
-    description: "Unique identifier for this sample"
+    description: Unique identifier for this sample
     type: string
 
   - name: read1_urn
-    description: "Forward read FASTQ file (IVCAP artifact URN)"
+    description: Forward read FASTQ file (IVCAP artifact URN or external URL)
     type: string
-    format: urn
+    format: uri
 
   - name: read2_urn
-    description: "Reverse read FASTQ file (IVCAP artifact URN)"
+    description: Reverse read FASTQ file (IVCAP artifact URN or external URL)
     type: string
-    format: urn
+    format: uri
 
 # --- Example Request ---
 # Show a complete example job request. This helps users understand the expected format.
 example:
+  $schema: urn:ivcap:schema:my-pipeline.request.1
   parameters:
     min_read_length: 100
     quality_threshold: 20
-    reference_genome: "urn:ivcap:artifact:a1b2c3d4-..."
-    output_format: "bam"
+    reference_genome: https://example.com/reference.fa
+    output_format: bam
   samples:
-    - ["sample1", "urn:ivcap:artifact:read1-...", "urn:ivcap:artifact:read2-..."]
-    - ["sample2", "urn:ivcap:artifact:read1-...", "urn:ivcap:artifact:read2-..."]
+    - [sample1, https://example.com/sample1_R1.fastq.gz, https://example.com/sample1_R2.fastq.gz]
+    - [sample2, https://example.com/sample2_R1.fastq.gz, https://example.com/sample2_R2.fastq.gz]
 ```
 
 ### ivcap.yaml Field Reference
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `$schema` | No | Schema identifier (use `urn:ivcap:schema:service.1`) |
-| `id` | No | Unique identifier for this pipeline version |
+| `$schema` | **Yes** | Schema identifier (use `urn:sd-core:schema.ai-tool.1`) |
+| `id` | No | Unique identifier for this pipeline (e.g., `urn:sd-core:nextflow:my-pipeline`) |
 | `name` | **Yes** | Short name (used in service description) |
-| `service-id` | No | Optional metadata; the deployed service URN is provided via `ivcap nextflow create --service-id ...` |
+| `service-id` | **Yes** | Service URN in format `urn:ivcap:service:<uuid>` |
 | `description` | **Yes** | Detailed multi-line description of the pipeline |
 | `contact` | No | Contact information (name, email) |
 | `properties` | **Yes** | Array of parameter definitions |
@@ -278,8 +273,10 @@ from the job request.
 ### Example: Variant Calling Pipeline
 
 ```yaml
-$schema: "urn:ivcap:schema:service.1"
-name: "variant-calling-pipeline"
+$schema: urn:sd-core:schema.ai-tool.1
+id: urn:sd-core:nextflow:variant-calling-pipeline
+name: variant-calling-pipeline
+service-id: urn:ivcap:service:b1c2d3e4-5678-90ab-cdef-1234567890ab
 description: |
   Germline variant calling pipeline using GATK HaplotypeCaller.
 
@@ -303,67 +300,68 @@ description: |
   Reference: GATK Best Practices (Van der Auwera et al., 2013)
 
 contact:
-  name: "Bioinformatics Core"
-  email: "bioinfo@example.org"
+  name: Bioinformatics Core
+  email: bioinfo@example.org
 
 properties:
   - name: reference_genome
-    description: "Reference genome FASTA file (IVCAP artifact URN)"
+    description: Reference genome FASTA file (IVCAP artifact URN or external URL)
     type: string
-    format: urn
+    format: uri
     optional: false
 
   - name: known_sites_vcf
-    description: "Known variants VCF for base recalibration (dbSNP, 1000G)"
+    description: Known variants VCF for base recalibration (dbSNP, 1000G)
     type: string
-    format: urn
+    format: uri
     optional: false
 
   - name: min_mapping_quality
-    description: "Minimum mapping quality for reads to include (default: 20)"
+    description: Minimum mapping quality for reads to include (default 20)
     type: integer
     optional: true
 
   - name: min_base_quality
-    description: "Minimum base quality for variant calling (default: 10)"
+    description: Minimum base quality for variant calling (default 10)
     type: integer
     optional: true
 
   - name: ploidy
-    description: "Sample ploidy (default: 2 for diploid)"
+    description: Sample ploidy (default 2 for diploid)
     type: integer
     optional: true
 
 samples:
   - name: sample_id
-    description: "Sample identifier (alphanumeric, no spaces)"
+    description: Sample identifier (alphanumeric, no spaces)
     type: string
 
   - name: read1_fastq
-    description: "Forward read FASTQ (IVCAP artifact URN)"
+    description: Forward read FASTQ (IVCAP artifact URN or external URL)
     type: string
-    format: urn
+    format: uri
 
   - name: read2_fastq
-    description: "Reverse read FASTQ (IVCAP artifact URN)"
+    description: Reverse read FASTQ (IVCAP artifact URN or external URL)
     type: string
-    format: urn
+    format: uri
 
   - name: sample_group
-    description: "Sample group/batch identifier (for joint calling)"
+    description: Sample group/batch identifier (for joint calling)
     type: string
 
 example:
+  $schema: urn:ivcap:schema:variant-calling-pipeline.request.1
   parameters:
-    reference_genome: "urn:ivcap:artifact:hg38-ref-..."
-    known_sites_vcf: "urn:ivcap:artifact:dbsnp-..."
+    reference_genome: urn:ivcap:artifact:hg38-ref-...
+    known_sites_vcf: urn:ivcap:artifact:dbsnp-...
     min_mapping_quality: 20
     min_base_quality: 10
     ploidy: 2
   samples:
-    - ["SAMPLE001", "urn:ivcap:artifact:s1r1...", "urn:ivcap:artifact:s1r2...", "batch1"]
-    - ["SAMPLE002", "urn:ivcap:artifact:s2r1...", "urn:ivcap:artifact:s2r2...", "batch1"]
-    - ["SAMPLE003", "urn:ivcap:artifact:s3r1...", "urn:ivcap:artifact:s3r2...", "batch2"]
+    - [SAMPLE001, urn:ivcap:artifact:s1r1..., urn:ivcap:artifact:s1r2..., batch1]
+    - [SAMPLE002, urn:ivcap:artifact:s2r1..., urn:ivcap:artifact:s2r2..., batch1]
+    - [SAMPLE003, urn:ivcap:artifact:s3r1..., urn:ivcap:artifact:s3r2..., batch2]
 ```
 
 ---
@@ -592,26 +590,48 @@ The `--transform` renames the root dir inside the tar so it unpacks as
 If the researcher has an IVCAP deployment, use `ivcap nextflow create` to deploy
 the pipeline as a service.
 
+### Important: Service ID Requirement
+
+**You must generate a service ID** in the format `urn:ivcap:service:<uuid>` where `<uuid>` is a valid UUIDv5 that you create. The caller is responsible for generating this service ID before calling `ivcap nextflow create`.
+
+**Generate a UUIDv5 service ID** using a namespace and the pipeline name:
+```python
+import uuid
+
+# Generate UUIDv5 from pipeline name
+namespace = uuid.NAMESPACE_DNS  # or uuid.NAMESPACE_URL
+service_uuid = uuid.uuid5(namespace, "my-pipeline-name")
+service_id = f"urn:ivcap:service:{service_uuid}"
+print(service_id)
+# Example output: urn:ivcap:service:a98b81a8-9279-509f-9c0e-40d39e83058a
+```
+
+**Note:** This requirement for manual service ID generation may change in future versions to support auto-generation of service IDs.
+
 ### Step 1: Create/Update Service
 
 ```bash
+# IMPORTANT: Generate service ID first (UUIDv5)
+# Example: urn:ivcap:service:a98b81a8-9279-509f-9c0e-40d39e83058a
+
 # Create new service (first time)
+# The service-id MUST be in format 'urn:ivcap:service:<uuid>' where <uuid> is a valid UUID
 ivcap nextflow create \
-  --service-id "urn:ivcap:service:my-pipeline.1" \
+  --service-id "urn:ivcap:service:a98b81a8-9279-509f-9c0e-40d39e83058a" \
   -f /path/to/my-pipeline.tar.gz \
   --format json
 
 # Update existing service (subsequent deployments)
 ivcap nextflow update \
-  "urn:ivcap:service:my-pipeline.1" \
+  "urn:ivcap:service:a98b81a8-9279-509f-9c0e-40d39e83058a" \
   -f /path/to/my-pipeline.tar.gz \
   --format json
 ```
 
 **What this does:**
 1. Uploads the pipeline archive as an IVCAP artifact
-2. Extracts and parses `ivcap.yaml` (preferred) or `ivcap-tool.yaml` (fallback) from the archive
-3. If using `ivcap.yaml`, generates the request schema (`fn-schema`) from `properties` + `samples`
+2. Extracts and parses `ivcap.yaml` from the archive
+3. Generates the request schema (`fn-schema`) from `properties` + `samples` definitions
 4. Creates/updates a Data Fabric aspect for the service
 5. Returns the service URN, artifact URN, and aspect record ID
 

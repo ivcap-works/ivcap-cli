@@ -32,7 +32,6 @@ import (
 type serviceRunArgs struct {
 	ServiceID string         `json:"service_id"`
 	Input     map[string]any `json:"input,omitempty"`
-	Watch     bool           `json:"watch,omitempty"`
 }
 
 func addServiceRunTool(s *server.MCPServer) {
@@ -41,14 +40,13 @@ func addServiceRunTool(s *server.MCPServer) {
 		"properties": map[string]any{
 			"service_id": map[string]any{"type": "string", "description": "Service URN/ID to run."},
 			"input":      map[string]any{"type": "object", "description": "Inline job input payload (JSON object)."},
-			"watch":      map[string]any{"type": "boolean", "description": "If true, wait for completion and return the job result-content."},
 		},
 		"required": []any{"service_id"},
 	}
 
 	tool := mcp.NewToolWithRawSchema(
 		"service_run",
-		"Invoke any service by service_id and input payload, optionally waiting for the result.",
+		"Invoke any service by service_id and input payload. Returns either: (1) Fast path: immediate result if job completes within 30s, or (2) Slow path: job metadata with job_id and polling instructions if still running. Use job_status tool to check long-running jobs. See skills://ivcap-service-long-running/SKILL.md for details.",
 		MapToRaw(schema),
 	)
 
@@ -100,19 +98,34 @@ func addServiceRunTool(s *server.MCPServer) {
 			return nil, fmt.Errorf("service call failed: %d", res.StatusCode())
 		}
 
-		// Async job mode.
+		// Async job mode - always use optimistic wait with 30-second timeout
 		if jobCreate != nil {
-			if parsed.Watch {
-				out, err := waitForServiceJob(ctxt, parsed.ServiceID, jobCreate, adpt)
-				if err != nil {
-					return nil, err
-				}
+			waitResult, err := waitForServiceJobOptimistic(ctxt, parsed.ServiceID, jobCreate, adpt, 30)
+			if err != nil {
+				return nil, err
+			}
+
+			if waitResult.IsComplete {
+				// Fast path - job completed
 				return mcp.NewToolResultJSON(map[string]any{
-					"job_id": jobCreate.JobID,
-					"result": out,
+					"job_id": waitResult.JobID,
+					"status": waitResult.Status,
+					"result": waitResult.Result,
 				})
 			}
-			return mcp.NewToolResultJSON(map[string]any{"job_id": jobCreate.JobID})
+
+			// Slow path - job still running
+			pollAfter := estimatePollInterval(waitResult.Status)
+			return mcp.NewToolResultJSON(map[string]any{
+				"job_id":  waitResult.JobID,
+				"status":  waitResult.Status,
+				"message": waitResult.Message,
+				"_meta": map[string]any{
+					"job_id":             waitResult.JobID,
+					"status":             waitResult.Status,
+					"poll_after_seconds": pollAfter,
+				},
+			})
 		}
 
 		// Immediate response mode.
