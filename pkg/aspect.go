@@ -30,6 +30,11 @@ import (
 )
 
 func AddUpdateAspect(ctxt context.Context, isAdd bool, entity string, schema string, policy string, meta []byte, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	// Validate entity URN format for IVCAP entities
+	if err := ValidateEntityURN(entity); err != nil {
+		return nil, err
+	}
+
 	q := []string{}
 	if entity != "" {
 		q = append(q, fmt.Sprintf("entity=%s", url.QueryEscape(entity)))
