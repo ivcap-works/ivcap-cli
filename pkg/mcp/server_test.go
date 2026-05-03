@@ -62,12 +62,40 @@ func TestMCPToolsList_Unauthorised_ReturnsLoginRequiredMessage(t *testing.T) {
 	msg := json.RawMessage(`{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"aspect_get","arguments":{"id":"urn:ivcap:aspect:1"}}}`)
 	out := s.HandleMessage(context.Background(), msg)
 
-	errResp, ok := out.(mcp.JSONRPCError)
+	// Now we expect a successful response with isError: true instead of a JSON-RPC error
+	resp, ok := out.(mcp.JSONRPCResponse)
 	if !ok {
-		t.Fatalf("expected JSONRPCError, got %T", out)
+		t.Fatalf("expected JSONRPCResponse, got %T", out)
 	}
-	if errResp.Error.Message != LoginRequiredMessage {
-		t.Fatalf("expected message %q, got %q", LoginRequiredMessage, errResp.Error.Message)
+
+	// Parse the result to check for isError field
+	resultBytes, err := json.Marshal(resp.Result)
+	if err != nil {
+		t.Fatalf("failed to marshal result: %v", err)
+	}
+
+	var parsed struct {
+		Content []struct {
+			Type string `json:"type"`
+			Text string `json:"text"`
+		} `json:"content"`
+		IsError bool `json:"isError"`
+	}
+	if err := json.Unmarshal(resultBytes, &parsed); err != nil {
+		t.Fatalf("failed to unmarshal result: %v", err)
+	}
+
+	if !parsed.IsError {
+		t.Fatalf("expected isError: true, got false")
+	}
+
+	if len(parsed.Content) == 0 {
+		t.Fatalf("expected content in error result")
+	}
+
+	expectedMsg := "Authentication required. Your IVCAP session has expired. Please run 'ivcap login' in your terminal to refresh your credentials, then retry."
+	if parsed.Content[0].Text != expectedMsg {
+		t.Fatalf("expected message %q, got %q", expectedMsg, parsed.Content[0].Text)
 	}
 }
 

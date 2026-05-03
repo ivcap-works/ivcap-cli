@@ -67,6 +67,9 @@ func addJobStatusTool(s *server.MCPServer) {
 
 		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 		ctxt, cancel := withTimeout(ctx)
@@ -80,7 +83,7 @@ func addJobStatusTool(s *server.MCPServer) {
 		job, pyld, err := sdk.ReadServiceJob(ctxt, jobReq, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
+				return NewLoginRequiredResult(), nil
 			}
 			return nil, err
 		}

@@ -221,32 +221,40 @@ func addSkillsResourcesAndPrompts(s *server.MCPServer) {
 	s.AddPrompt(
 		mcp.NewPrompt(
 			"use-ivcap-best-practices",
-			mcp.WithPromptDescription("Setup prompt: instructs the agent to read IVCAP agent context + discover and apply relevant embedded skill playbooks via MCP resources."),
+			mcp.WithPromptDescription("Setup prompt: instructs the agent to read IVCAP agent context + discover and apply relevant embedded skill playbooks. Prefers MCP resources/read; falls back to tools if needed."),
 		),
 		func(ctx context.Context, req mcp.GetPromptRequest) (*mcp.GetPromptResult, error) {
 			text := strings.TrimSpace(`You are operating with ivcap-cli.
 
-For this session, load and follow IVCAP agent best-practices and any relevant skill playbooks provided by this MCP server:
+For this session, load and follow IVCAP agent best-practices and any relevant skill playbooks provided by this MCP server.
+
+**Preferred approach (if your MCP client exposes resources/read to you):**
 
 1) Read the general agent guidance:
    - resources/read uri="skills://CONTEXT.md"
 
-1b) Read the embedded skills tree index (helps you locate the right sub-skill):
+2) Read the embedded skills tree index:
    - resources/read uri="skills://SKILLS.md"
 
-2) Discover available skills:
+3) Discover available skills:
    - resources/read uri="skills://manifest"
 
-3) Choose the most relevant skill(s) for the user’s goal and read their bodies:
+4) Choose the most relevant skill(s) and read their bodies:
    - resources/read uri="skills://{name}/SKILL.md"
 
-4) For category overviews or reference docs, read files in the embedded skills tree:
-   - resources/read uri="skills://file/{path}"
+**Fallback approach (if resources/read is not available to you):**
 
-5) Follow the instructions in those skill docs strictly (output json, headless auth, confirm mutations, etc.).
-`)
+If your MCP client doesn't expose resources/read as a callable method, use these bridge tools instead:
+
+1) Discover available skills:
+   - tools/call name="list_skills"
+
+2) Read a specific skill:
+   - tools/call name="read_skill" arguments={"name": "skill-name"}
+
+**Either way:** Follow the instructions in those skill docs strictly (output json, headless auth, confirm mutations, etc.).`)
 			return &mcp.GetPromptResult{
-				Description: "Load IVCAP agent context + relevant embedded skill playbooks",
+				Description: "Load IVCAP agent context + relevant embedded skill playbooks (resources/read preferred, tools/call fallback)",
 				Messages: []mcp.PromptMessage{
 					mcp.NewPromptMessage(mcp.RoleUser, mcp.NewTextContent(text)),
 				},

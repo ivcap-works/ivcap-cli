@@ -117,7 +117,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 				"items": map[string]any{
 					"type": "object",
 					"properties": map[string]any{
-						"path":          map[string]any{"type": "string", "description": "Path in the assembled tar.gz (e.g. main.nf, nextflow.config, bin/script.sh, ivcap-tool.yaml)."},
+						"path":          map[string]any{"type": "string", "description": "Path in the assembled tar.gz (e.g. main.nf, nextflow.config, bin/script.sh, ivcap.yaml)."},
 						"type":          map[string]any{"type": "string", "enum": []any{"text", "base64", "url", "artifact"}},
 						"text":          map[string]any{"type": "string"},
 						"base64":        map[string]any{"type": "string"},
@@ -135,7 +135,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 
 	tool := mcp.NewToolWithRawSchema(
 		"nextflow_create",
-		"Assemble a Nextflow pipeline package (.tar.gz) from a list of sources, upload as an artifact, validate `ivcap-tool.yaml`, and publish/update the service description aspect for the given service.",
+		"Assemble a Nextflow pipeline package (.tar.gz) from a list of sources, upload as an artifact, validate `ivcap.yaml`, and publish/update the service description aspect for the given service. For pipeline development best practices: if your client supports resources/read, use skills://nextflow-build/SKILL.md and skills://nextflow-pipeline/SKILL.md; otherwise call the built-in read_skill tool (already available, no select_tools needed) with names 'nextflow-build' and 'nextflow-pipeline'.",
 		MapToRaw(schema),
 	)
 
@@ -158,6 +158,9 @@ func addNextflowCreateTool(s *server.MCPServer) {
 
 		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 		ctxt, cancel := withTimeout(ctx)
@@ -166,6 +169,9 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		// Assemble package tar.gz.
 		pkgBytes, manifest, err := tarGzFromSourcesForMCP(ctxt, parsed.Sources, adpt)
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 
@@ -173,6 +179,9 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		// falling back to ivcap-tool.yaml.
 		toolHdr, foundPath, err := nf.LoadToolHeaderFromArchiveBytes(pkgBytes)
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 		if toolHdr == nil {
@@ -200,7 +209,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		resp, err := createArtifactFn(ctxt, creq, mimeType, size, nil, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
+				return NewLoginRequiredResult(), nil
 			}
 			return nil, err
 		}
@@ -218,7 +227,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		}
 		if err := uploadArtifactFn(ctxt, bytes.NewReader(pkgBytes), size, 0, chunkSize, p, adpt, true, srvCfg.Logger); err != nil {
 			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
+				return NewLoginRequiredResult(), nil
 			}
 			return nil, err
 		}
@@ -228,7 +237,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		aspectID, err := nf.UpsertServiceDescriptionAspect(ctxt, parsed.ServiceID, svc, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
+				return NewLoginRequiredResult(), nil
 			}
 			return nil, err
 		}
@@ -263,7 +272,7 @@ func addNextflowRunTool(s *server.MCPServer) {
 
 	tool := mcp.NewToolWithRawSchema(
 		"nextflow_run",
-		"Run (create a job for) a Nextflow service. Provide either inline `input` or a `aspect_urn` referencing request parameters. Returns either: (1) Fast path: immediate result if job completes within 30s, or (2) Slow path: job metadata with job_id and polling instructions if still running. Use job_status tool to check long-running jobs. See skills://ivcap-service-long-running/SKILL.md for details.",
+		"Run (create a job for) a Nextflow service. Provide either inline `input` or a `aspect_urn` referencing request parameters. Returns either: (1) Fast path: immediate result if job completes within 30s, or (2) Slow path: job metadata with job_id and polling instructions if still running. Use job_status tool to check long-running jobs. For details on handling long-running jobs, read MCP resource: skills://ivcap-service-long-running/SKILL.md (use resources/read).",
 		MapToRaw(schema),
 	)
 
@@ -289,6 +298,9 @@ func addNextflowRunTool(s *server.MCPServer) {
 
 		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 		ctxt, cancel := withTimeout(ctx)
@@ -299,6 +311,9 @@ func addNextflowRunTool(s *server.MCPServer) {
 			// Use raw args conversion to preserve types.
 			jp, err := a.JsonPayloadFromAny(parsed.Input, srvCfg.Logger)
 			if err != nil {
+				if isAuthFailure(err) {
+					return NewLoginRequiredResult(), nil
+				}
 				return nil, err
 			}
 			pyld = jp
@@ -309,10 +324,19 @@ func addNextflowRunTool(s *server.MCPServer) {
 			}
 		}
 
+		// ╔══════════════════════════════════════════════════════════════════════════╗
+		// ║ TEMPORARY WORKAROUND - REMOVE WHEN IVCAP API NO LONGER REQUIRES $schema ║
+		// ╚══════════════════════════════════════════════════════════════════════════╝
+		// Ensure the payload has a $schema field (required by IVCAP API for now)
+		pyld, err = a.EnsureSchemaField(pyld)
+		if err != nil {
+			return nil, fmt.Errorf("failed to ensure $schema field: %w", err)
+		}
+
 		res, jobCreate, err := createServiceJobRawFn(ctxt, parsed.ServiceID, pyld, 0, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
+				return NewLoginRequiredResult(), nil
 			}
 			return nil, err
 		}

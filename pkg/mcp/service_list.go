@@ -65,6 +65,9 @@ func addServiceListTool(s *server.MCPServer) {
 
 		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 		ctxt, cancel := withTimeout(ctx)
@@ -78,7 +81,7 @@ func addServiceListTool(s *server.MCPServer) {
 		res, err := listServicesRawFn(ctxt, req0, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
+				return NewLoginRequiredResult(), nil
 			}
 			return nil, err
 		}

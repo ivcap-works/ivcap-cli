@@ -46,7 +46,7 @@ func addServiceRunTool(s *server.MCPServer) {
 
 	tool := mcp.NewToolWithRawSchema(
 		"service_run",
-		"Invoke any service by service_id and input payload. Returns either: (1) Fast path: immediate result if job completes within 30s, or (2) Slow path: job metadata with job_id and polling instructions if still running. Use job_status tool to check long-running jobs. See skills://ivcap-service-long-running/SKILL.md for details.",
+		"Invoke any service by service_id and input payload. Returns either: (1) Fast path: immediate result if job completes within 30s, or (2) Slow path: job metadata with job_id and polling instructions if still running. Use job_status tool to check long-running jobs. For details on handling long-running jobs, read MCP resource: skills://ivcap-service-long-running/SKILL.md (use resources/read).",
 		MapToRaw(schema),
 	)
 
@@ -66,6 +66,9 @@ func addServiceRunTool(s *server.MCPServer) {
 
 		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 		ctxt, cancel := withTimeout(ctx)
@@ -76,6 +79,9 @@ func addServiceRunTool(s *server.MCPServer) {
 			// Use raw args conversion to preserve types.
 			jp, err := a.JsonPayloadFromAny(parsed.Input, srvCfg.Logger)
 			if err != nil {
+				if isAuthFailure(err) {
+					return NewLoginRequiredResult(), nil
+				}
 				return nil, err
 			}
 			pyld = jp
@@ -90,7 +96,7 @@ func addServiceRunTool(s *server.MCPServer) {
 		res, jobCreate, err := createServiceJobRawFn(ctxt, parsed.ServiceID, pyld, 0, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
+				return NewLoginRequiredResult(), nil
 			}
 			return nil, err
 		}

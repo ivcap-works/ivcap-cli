@@ -16,8 +16,10 @@ package cmd
 
 import (
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -43,9 +45,10 @@ func init() {
 	nextflowUpdateCmd.Flags().StringVar(&nextflowCreateFormat, "format", "", "Output format for nextflow update result [json, yaml]")
 
 	// run is an alias for `ivcap job create`
-	addFileFlag(nextflowRunCmd, "Path to job input file")
+	addFileFlag(nextflowRunCmd, "Path to job input file (use '-' for stdin)")
 	addInputFormatFlag(nextflowRunCmd)
 	nextflowRunCmd.Flags().StringVarP(&nextflowRunAspectURN, "aspect", "a", "", "URN of aspect containing job parameters")
+	nextflowRunCmd.Flags().StringVarP(&nextflowRunSamplesheet, "samplesheet", "s", "", "Path to CSV samplesheet file (use '-' for stdin)")
 	nextflowRunCmd.Flags().BoolVar(&nextflowRunWatchFlag, "watch", false, "if set, watch the job until it is finished")
 	nextflowRunCmd.Flags().BoolVar(&nextflowRunStreamFlag, "stream", false, "if set, print job related events to stdout")
 }
@@ -55,6 +58,7 @@ var nextflowCreateFormat string
 var nextflowRunAspectURN string
 var nextflowRunWatchFlag bool
 var nextflowRunStreamFlag bool
+var nextflowRunSamplesheet string
 
 var (
 	nextflowCmd = &cobra.Command{
@@ -82,16 +86,24 @@ var (
 	}
 
 	nextflowRunCmd = &cobra.Command{
-		Use:   "run [flags] service-id -f job-input|- -a aspect-urn --watch --stream",
+		Use:   "run [flags] service-id [-f job-input|-] [-a aspect-urn] [-s|--samplesheet file.csv|-] [--watch] [--stream]",
 		Short: "Alias for 'ivcap job create'",
 		Long:  "Alias for 'ivcap job create' (creates a job for a given service ID with provided input).",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
 			serviceID := GetHistory(args[0])
-			if fileName == "" && nextflowRunAspectURN == "" {
-				cobra.CheckErr("Missing parameter file '-f job-file|-' or '-a aspectURN'")
+
+			// Validate that at least one input source is provided
+			if fileName == "" && nextflowRunAspectURN == "" && nextflowRunSamplesheet == "" {
+				cobra.CheckErr("Missing input: provide '-f job-file|-', '-a aspectURN', or '--samplesheet file.csv|-'")
 			}
+
+			// Validate that stdin is not used by both file and samplesheet
+			if fileName == "-" && nextflowRunSamplesheet == "-" {
+				cobra.CheckErr("Cannot use stdin ('-') for both --file and --samplesheet simultaneously")
+			}
+
 			var pyld a.Payload
 			if fileName != "" {
 				if pyld, err = payloadFromFile(fileName, inputFormat); err != nil {
@@ -104,6 +116,29 @@ var (
 					cobra.CheckErr(fmt.Sprintf("While reading job aspect '%s' - %v", nextflowRunAspectURN, err))
 				}
 			}
+
+			// Process samplesheet if provided
+			if nextflowRunSamplesheet != "" {
+				samples, err := parseSamplesheet(nextflowRunSamplesheet)
+				if err != nil {
+					cobra.CheckErr(fmt.Sprintf("While reading samplesheet '%s' - %v", nextflowRunSamplesheet, err))
+				}
+
+				// Merge samples into the payload
+				if pyld, err = mergeSamplesIntoPayload(pyld, samples); err != nil {
+					cobra.CheckErr(fmt.Sprintf("While merging samples into payload - %v", err))
+				}
+			}
+
+			// ╔══════════════════════════════════════════════════════════════════════════╗
+			// ║ TEMPORARY WORKAROUND - REMOVE WHEN IVCAP API NO LONGER REQUIRES $schema ║
+			// ╚══════════════════════════════════════════════════════════════════════════╝
+			// Ensure the payload has a $schema field (required by IVCAP API for now)
+			pyld, err = a.EnsureSchemaField(pyld)
+			if err != nil {
+				cobra.CheckErr(fmt.Sprintf("While ensuring $schema field - %v", err))
+			}
+
 			res, jobCreate, err := sdk.CreateServiceJobRaw(ctxt, serviceID, pyld, 0, CreateAdapter(true), logger)
 			if err != nil {
 				return err
@@ -208,4 +243,92 @@ func printNextflowCreateOutput(out *nf.CreateOutput) error {
 	default:
 		return fmt.Errorf("unsupported --format %q (expected json|yaml)", nextflowCreateFormat)
 	}
+}
+
+// parseSamplesheet reads a CSV file and converts it to a slice of maps.
+// The first line is treated as column headers, and subsequent lines become sample records.
+func parseSamplesheet(fileName string) ([]map[string]interface{}, error) {
+	var reader *os.File
+	var err error
+
+	if fileName == "-" {
+		reader = os.Stdin
+	} else {
+		// #nosec G304 - fileName is provided by user via CLI flag for intentional file access
+		reader, err = os.Open(fileName)
+		if err != nil {
+			return nil, fmt.Errorf("failed to open samplesheet: %w", err)
+		}
+		defer reader.Close()
+	}
+
+	// Create CSV reader
+	csvReader := csv.NewReader(reader)
+
+	// Read header row
+	headers, err := csvReader.Read()
+	if err != nil {
+		return nil, fmt.Errorf("failed to read CSV headers: %w", err)
+	}
+
+	if len(headers) == 0 {
+		return nil, fmt.Errorf("samplesheet must have at least one column")
+	}
+
+	// Read all records
+	var samples []map[string]interface{}
+	for {
+		record, err := csvReader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, fmt.Errorf("failed to read CSV record: %w", err)
+		}
+
+		// Convert record to map
+		sample := make(map[string]interface{})
+		for i, value := range record {
+			if i < len(headers) {
+				sample[headers[i]] = value
+			}
+		}
+		samples = append(samples, sample)
+	}
+
+	return samples, nil
+}
+
+// mergeSamplesIntoPayload merges the samples array into the payload under the 'samples' key.
+// If the payload is nil, creates a new one.
+func mergeSamplesIntoPayload(pyld a.Payload, samples []map[string]interface{}) (a.Payload, error) {
+	var payloadMap map[string]interface{}
+
+	if pyld != nil {
+		// Convert existing payload to map
+		obj, err := pyld.AsObject()
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert payload to object: %w", err)
+		}
+		payloadMap = obj
+	} else {
+		// Create new payload map
+		payloadMap = make(map[string]interface{})
+	}
+
+	// Add samples to the payload
+	payloadMap["samples"] = samples
+
+	// Convert back to JSON and create new payload
+	jsonBytes, err := json.Marshal(payloadMap)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal payload with samples: %w", err)
+	}
+
+	newPayload, err := a.LoadPayloadFromBytes(jsonBytes, false)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create payload from merged data: %w", err)
+	}
+
+	return newPayload, nil
 }

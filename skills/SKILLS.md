@@ -12,6 +12,10 @@ You can read these docs via:
 
 - General agent guidance: `skills://CONTEXT.md`
 
+## Reference documentation
+
+- Authentication lifecycle: `skills://file/references/auth.md`
+
 ## Skills tree
 
 ### Core CLI domains

@@ -236,3 +236,43 @@ func (p *payload) ContentType() string {
 func (p *payload) StatusCode() int {
 	return p.statusCode
 }
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║ TEMPORARY WORKAROUND - REMOVE WHEN IVCAP API NO LONGER REQUIRES $schema ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+//
+// EnsureSchemaField checks if the payload contains a top-level "$schema" field.
+// If not present, it injects "$schema": "urn:unknown:unknown".
+//
+// This is a temporary workaround until the IVCAP API no longer requires the
+// $schema field for job input payloads. Once the API is updated, this function
+// and all calls to it should be removed.
+//
+// Returns a new payload with the $schema field added if it was missing,
+// or the original payload if $schema was already present.
+func EnsureSchemaField(pyld Payload) (Payload, error) {
+	// Convert to object to check for $schema
+	obj, err := pyld.AsObject()
+	if err != nil {
+		return nil, err
+	}
+
+	// Check if $schema already exists
+	if _, hasSchema := obj["$schema"]; hasSchema {
+		return pyld, nil
+	}
+
+	// Add the temporary $schema field
+	obj["$schema"] = "urn:unknown:unknown"
+
+	// Convert back to JSON payload
+	body, err := json.Marshal(obj)
+	if err != nil {
+		return nil, err
+	}
+
+	return &payload{
+		body:        body,
+		contentType: "application/json",
+	}, nil
+}

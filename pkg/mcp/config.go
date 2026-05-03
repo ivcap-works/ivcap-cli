@@ -26,10 +26,22 @@ import (
 
 // LoginRequiredMessage is returned when an MCP tool invocation requires auth
 // but no usable access token is available.
-const LoginRequiredMessage = "please run 'ivcap login' in your terminal to continue"
+const LoginRequiredMessage = "please run 'ivcap context login' in your terminal to continue"
 
 // ErrLoginRequired is a sentinel error used to signal that authentication is required.
 var ErrLoginRequired = errors.New(LoginRequiredMessage)
+
+// NewLoginRequiredResult creates a CallToolResult with isError=true for authentication failures.
+// This returns a proper MCP tool result instead of a JSON-RPC error, providing a better
+// user experience for AI agents.
+func NewLoginRequiredResult() *mcpgo.CallToolResult {
+	return &mcpgo.CallToolResult{
+		Content: []mcpgo.Content{
+			mcpgo.NewTextContent("Authentication required. Your IVCAP session has expired. Please run 'ivcap context login' in your terminal to refresh your credentials, then retry."),
+		},
+		IsError: true,
+	}
+}
 
 // Config provides CLI-owned dependencies and settings to the MCP server.
 //
@@ -101,6 +113,7 @@ func NewServer(cfg Config) *mcpserver.MCPServer {
 	addNextflowCreateTool(s)
 	addNextflowRunTool(s)
 	addSkillsResourcesAndPrompts(s)
+	addSkillsBridgeTools(s) // Workaround for clients that don't expose resources/read to LLMs
 
 	// Ensure we surface a stable built-in list_changed method constant, even if unused.
 	_ = mcpgo.MethodNotificationToolsListChanged

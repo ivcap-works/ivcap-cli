@@ -141,7 +141,7 @@ func addFileFlag(cmd *cobra.Command, kind string) {
 	fs := cmd.Flags()
 	usage := kind
 	if usage == "" {
-		usage = "Path to input file"
+		usage = "Path to input file (use '-' for stdin)"
 	}
 	fs.StringVarP(&fileName, "file", "f", "", usage)
 }

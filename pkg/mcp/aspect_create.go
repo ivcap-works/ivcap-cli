@@ -101,6 +101,9 @@ func addAspectCreateTool(s *server.MCPServer) {
 
 		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 		ctxt, cancel := withTimeout(ctx)
@@ -109,7 +112,7 @@ func addAspectCreateTool(s *server.MCPServer) {
 		res, err := addUpdateAspectFn(ctxt, true, parsed.Entity, parsed.Schema, parsed.Policy, b, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
+				return NewLoginRequiredResult(), nil
 			}
 			return nil, err
 		}

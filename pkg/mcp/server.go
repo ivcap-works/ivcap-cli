@@ -77,6 +77,8 @@ var builtInToolNames = map[string]bool{
 	"service_get":     true,
 	"service_run":     true,
 	"job_status":      true,
+	"list_skills":     true,
+	"read_skill":      true,
 }
 
 var (
@@ -167,7 +169,7 @@ func filterToolsBySessionAllowlist(ctx context.Context, tools []mcp.Tool) []mcp.
 		res = append(res, *selectTools)
 	}
 	// Keep stable order for built-ins after select_tools.
-	builtInOrder := []string{"artifact_create", "artifact_get", "aspect_search", "aspect_get", "aspect_create", "service_list", "service_get", "service_run", "job_status", "nextflow_create", "nextflow_run"}
+	builtInOrder := []string{"artifact_create", "artifact_get", "aspect_search", "aspect_get", "aspect_create", "service_list", "service_get", "service_run", "job_status", "nextflow_create", "nextflow_run", "list_skills", "read_skill"}
 	for _, n := range builtInOrder {
 		if t, ok := toolMap[n]; ok {
 			res = append(res, t)
@@ -280,6 +282,9 @@ func addToolDiscoveryTool(s *server.MCPServer, disco *mcpDiscoveryState) {
 		// Use platform semantic search to find relevant services, then resolve their tool aspects.
 		matchingTools, toolScores, servicesFound, servicesWithoutTools, err := discoverToolsViaServiceSearch(ctx, interestVal, server.ServerFromContext(ctx))
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 		discoState.setDiscoveredTools(matchingTools)
@@ -382,6 +387,8 @@ func discoverToolsViaServiceSearch(ctx context.Context, interest string, s *serv
 	pyld, err := listServicesRawFn(ctx, req, adpt, srvCfg.Logger)
 	if err != nil {
 		if isAuthFailure(err) {
+			// Note: discoverToolsViaServiceSearch is called from select_tools handler,
+			// so we still return an error here which will be handled by the caller
 			return nil, nil, nil, nil, ErrLoginRequired
 		}
 		return nil, nil, nil, nil, err
@@ -497,12 +504,15 @@ func runTool(ctx context.Context, serviceID string, request mcp.CallToolRequest)
 	}
 	adpt, err := createAdapter(srvCfg.TimeoutSec)
 	if err != nil {
+		if isAuthFailure(err) {
+			return NewLoginRequiredResult(), nil
+		}
 		return nil, err
 	}
 	res, jobCreate, err := createServiceJobRawFn(ctx, serviceID, pyld, 0, adpt, srvCfg.Logger)
 	if err != nil {
 		if isAuthFailure(err) {
-			return nil, ErrLoginRequired
+			return NewLoginRequiredResult(), nil
 		}
 		return nil, err
 	}

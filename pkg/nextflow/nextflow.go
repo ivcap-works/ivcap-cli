@@ -110,7 +110,7 @@ type SimpleToolHeader struct {
 		Name  string `yaml:"name" json:"name"`
 		Email string `yaml:"email" json:"email"`
 	} `yaml:"contact" json:"contact"`
-	Properties []SimpleProperty `yaml:"properties" json:"properties"`
+	Parameters []SimpleProperty `yaml:"parameters" json:"parameters"`
 	Samples    []SimpleProperty `yaml:"samples" json:"samples"`
 	Example    map[string]any   `yaml:"example" json:"example"`
 }
@@ -236,10 +236,10 @@ func buildFnSchemaFromSimplifiedTool(simple *SimpleToolHeader) (map[string]any, 
 
 	paramProps := map[string]any{}
 	requiredParams := []any{}
-	for _, p := range simple.Properties {
+	for _, p := range simple.Parameters {
 		pn := strings.TrimSpace(p.Name)
 		if pn == "" {
-			return nil, fmt.Errorf("properties entry missing name")
+			return nil, fmt.Errorf("parameters entry missing name")
 		}
 		prop := map[string]any{}
 		if strings.TrimSpace(p.Type) != "" {
@@ -267,7 +267,7 @@ func buildFnSchemaFromSimplifiedTool(simple *SimpleToolHeader) (map[string]any, 
 		paramsObj["required"] = requiredParams
 	}
 
-	sampleItemSchemas := []any{}
+	sampleProps := map[string]any{}
 	for _, s := range simple.Samples {
 		sn := strings.TrimSpace(s.Name)
 		if sn == "" {
@@ -285,23 +285,21 @@ func buildFnSchemaFromSimplifiedTool(simple *SimpleToolHeader) (map[string]any, 
 		if strings.TrimSpace(s.Format) != "" {
 			it["format"] = strings.TrimSpace(s.Format)
 		}
-		sampleItemSchemas = append(sampleItemSchemas, it)
+		sampleProps[sn] = it
 	}
 
 	samplesSchema := map[string]any{
 		"type": "array",
 	}
-	if len(sampleItemSchemas) > 0 {
+	if len(sampleProps) > 0 {
 		samplesSchema["items"] = map[string]any{
-			"type":     "array",
-			"minItems": len(sampleItemSchemas),
-			"maxItems": len(sampleItemSchemas),
-			"items":    sampleItemSchemas,
+			"type":       "object",
+			"properties": sampleProps,
 		}
 	}
 
 	requiredTop := []any{"parameters"}
-	if len(sampleItemSchemas) > 0 {
+	if len(sampleProps) > 0 {
 		requiredTop = append(requiredTop, "samples")
 	}
 

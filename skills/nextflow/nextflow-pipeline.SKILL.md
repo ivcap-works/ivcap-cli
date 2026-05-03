@@ -64,6 +64,129 @@ final tar.gz. Keep explanations to one concept at a time.
 
 ---
 
+## ⚠️ CRITICAL: Container Requirements for IVCAP Execution
+
+**IVCAP Nextflow pipelines MUST use containers, NOT conda environments.**
+
+The IVCAP execution environment that launches Nextflow pipelines has **NO special Python libraries, bioinformatics tools, or conda installed**. It is a minimal runtime that only has Nextflow itself.
+
+### ❌ DO NOT USE (will fail on IVCAP):
+
+```groovy
+process ANALYZE {
+    conda 'conda-forge::biopython=1.83'
+    // ❌ This will FAIL - conda is not available in IVCAP execution environment
+
+    script:
+    """
+    python analyze.py
+    """
+}
+```
+
+### ✅ MUST USE (required for IVCAP):
+
+```groovy
+process ANALYZE {
+    container 'quay.io/biocontainers/biopython:1.83'
+    // ✅ This works - container has all dependencies pre-installed
+
+    script:
+    """
+    python analyze.py
+    """
+}
+```
+
+### Why This Matters
+
+When you run a pipeline on IVCAP:
+1. IVCAP launches a minimal Nextflow executor environment
+2. This environment has **only Nextflow** - no Python, R, conda, or bioinformatics tools
+3. Each process runs in its own container with all required dependencies
+4. Containers are pulled from registries (Docker Hub, Quay.io, etc.)
+
+### Finding Container Images
+
+Most bioinformatics tools have pre-built containers:
+- **BioContainers**: `quay.io/biocontainers/<tool>:<version>`
+  - Example: `quay.io/biocontainers/biopython:1.83`
+  - Search at: https://biocontainers.pro/
+- **Docker Hub**: `<organization>/<tool>:<version>`
+  - Example: `broadinstitute/gatk:4.3.0.0`
+- **Custom images**: Build and push your own if needed
+
+### Local Development vs IVCAP Deployment
+
+**For local development/testing** (not IVCAP), you can use:
+- Conda environments (`conda` directive)
+- Virtual environments (venv with `PATH` manipulation)
+- Locally installed tools
+
+**For IVCAP deployment** (production), you must use:
+- Container images (`container` directive)
+- All dependencies must be in the container
+
+### Migration Pattern: Conda → Container
+
+If you have a working local pipeline with conda:
+
+```groovy
+// Local development version (conda)
+process MY_PROCESS {
+    conda 'conda-forge::biopython=1.83 bioconda::samtools=1.15'
+    // ...
+}
+```
+
+Convert to container for IVCAP:
+
+```groovy
+// IVCAP version (container)
+process MY_PROCESS {
+    container 'quay.io/biocontainers/mulled-v2-<hash>'  // Contains both tools
+    // Or use separate containers per process
+    // container 'quay.io/biocontainers/biopython:1.83'
+    // ...
+}
+```
+
+**Note:** For multiple tools, use BioContainers' "mulled" images that combine multiple packages, or separate processes with individual containers.
+
+### Best Practice for IVCAP Pipelines
+
+**Every process that executes code must specify a container:**
+
+```groovy
+process QUALITY_CHECK {
+    container 'quay.io/biocontainers/fastqc:0.11.9--0'
+
+    input:
+    path reads
+
+    script:
+    """
+    fastqc ${reads}
+    """
+}
+
+process TRIM_READS {
+    container 'quay.io/biocontainers/trimmomatic:0.39--1'
+
+    input:
+    path reads
+
+    script:
+    """
+    trimmomatic SE ${reads} trimmed.fastq LEADING:3 TRAILING:3
+    """
+}
+```
+
+**This is mandatory for IVCAP execution - there are no exceptions.**
+
+---
+
 ## Phase 0 — Elicit Goals
 
 Before writing any code, establish:
@@ -121,7 +244,7 @@ The generated request payload has this overall shape:
 ```yaml
 parameters: { ... }   # object with named parameters from `properties`
 samples:              # optional; only if you define `samples` in ivcap.yaml
-  - [ ... ]           # each row is an array/tuple in the exact column order of `samples`
+  - { ... }           # array of objects with named properties from `samples`
 ```
 
 So **your `ivcap.yaml` must be explicit and complete**:
@@ -132,7 +255,7 @@ So **your `ivcap.yaml` must be explicit and complete**:
 ### Complete ivcap.yaml Template
 
 ```yaml
-$schema: urn:sd-core:schema.ai-tool.1
+$schema: urn:ivcap:schema.nextflow.pipeline.1
 id: urn:sd-core:nextflow:my-pipeline
 name: my-pipeline
 service-id: urn:ivcap:service:a98b81a8-9279-509f-9c0e-40d39e83058a
@@ -151,9 +274,9 @@ contact:
   email: your.email@example.com
 
 # --- Parameters Section ---
-# Define all pipeline parameters here. Each parameter will be available in the
+# Define all pipeline-level parameters here. These will be available in the
 # 'parameters' object when submitting a job.
-properties:
+parameters:
   - name: min_read_length
     description: Minimum read length to retain after quality filtering (bp)
     type: integer
@@ -176,8 +299,9 @@ properties:
     optional: true
 
 # --- Samples Section ---
-# Define the structure of each sample row. Samples are submitted as an array
-# of arrays (table format). Each inner array must match this field order.
+# Define the structure of each sample. Samples are submitted as an array of objects,
+# where each object represents one sample with named properties (not positional arrays).
+# This is typical for Nextflow pipelines where samples often come from CSV files.
 samples:
   - name: sample_id
     description: Unique identifier for this sample
@@ -203,22 +327,26 @@ example:
     reference_genome: https://example.com/reference.fa
     output_format: bam
   samples:
-    - [sample1, https://example.com/sample1_R1.fastq.gz, https://example.com/sample1_R2.fastq.gz]
-    - [sample2, https://example.com/sample2_R1.fastq.gz, https://example.com/sample2_R2.fastq.gz]
+    - sample_id: sample1
+      read1_urn: https://example.com/sample1_R1.fastq.gz
+      read2_urn: https://example.com/sample1_R2.fastq.gz
+    - sample_id: sample2
+      read1_urn: https://example.com/sample2_R1.fastq.gz
+      read2_urn: https://example.com/sample2_R2.fastq.gz
 ```
 
 ### ivcap.yaml Field Reference
 
 | Field | Required | Description |
 |-------|----------|-------------|
-| `$schema` | **Yes** | Schema identifier (use `urn:sd-core:schema.ai-tool.1`) |
+| `$schema` | **Yes** | Schema identifier (use `urn:ivcap:schema.nextflow.pipeline.1`) |
 | `id` | No | Unique identifier for this pipeline (e.g., `urn:sd-core:nextflow:my-pipeline`) |
 | `name` | **Yes** | Short name (used in service description) |
 | `service-id` | **Yes** | Service URN in format `urn:ivcap:service:<uuid>` |
 | `description` | **Yes** | Detailed multi-line description of the pipeline |
 | `contact` | No | Contact information (name, email) |
-| `properties` | **Yes** | Array of parameter definitions |
-| `samples` | No | Array of sample field definitions (for sample tables) |
+| `parameters` | **Yes** | Array of pipeline-level parameter definitions |
+| `samples` | No | Array of sample field definitions (defines structure of sample objects) |
 | `example` | No | Example request showing expected format |
 
 ### Parameter Definition Fields
@@ -244,8 +372,9 @@ Each entry in `samples` defines one column in the sample table:
 | `type` | No | JSON Schema type (default: `string`) |
 | `format` | No | Format hint: `urn` for IVCAP artifact references |
 
-**Important:** Samples are submitted as an array of arrays (rows), where each row
-must have values in the exact order defined in the `samples` section.
+**Important:** Samples are submitted as an array of objects, where each object
+has named properties matching the fields defined in the `samples` section.
+This mirrors how Nextflow typically processes sample data from CSV files.
 
 If you do **not** define `samples` in `ivcap.yaml`, then `samples` should be omitted
 from the job request.
@@ -273,7 +402,7 @@ from the job request.
 ### Example: Variant Calling Pipeline
 
 ```yaml
-$schema: urn:sd-core:schema.ai-tool.1
+$schema: urn:ivcap:schema.nextflow.pipeline.1
 id: urn:sd-core:nextflow:variant-calling-pipeline
 name: variant-calling-pipeline
 service-id: urn:ivcap:service:b1c2d3e4-5678-90ab-cdef-1234567890ab
@@ -303,7 +432,7 @@ contact:
   name: Bioinformatics Core
   email: bioinfo@example.org
 
-properties:
+parameters:
   - name: reference_genome
     description: Reference genome FASTA file (IVCAP artifact URN or external URL)
     type: string
@@ -359,9 +488,18 @@ example:
     min_base_quality: 10
     ploidy: 2
   samples:
-    - [SAMPLE001, urn:ivcap:artifact:s1r1..., urn:ivcap:artifact:s1r2..., batch1]
-    - [SAMPLE002, urn:ivcap:artifact:s2r1..., urn:ivcap:artifact:s2r2..., batch1]
-    - [SAMPLE003, urn:ivcap:artifact:s3r1..., urn:ivcap:artifact:s3r2..., batch2]
+    - sample_id: SAMPLE001
+      read1_fastq: urn:ivcap:artifact:s1r1...
+      read2_fastq: urn:ivcap:artifact:s1r2...
+      sample_group: batch1
+    - sample_id: SAMPLE002
+      read1_fastq: urn:ivcap:artifact:s2r1...
+      read2_fastq: urn:ivcap:artifact:s2r2...
+      sample_group: batch1
+    - sample_id: SAMPLE003
+      read1_fastq: urn:ivcap:artifact:s3r1...
+      read2_fastq: urn:ivcap:artifact:s3r2...
+      sample_group: batch2
 ```
 
 ---
@@ -524,7 +662,52 @@ raises `NameError`. This is a common trap when generating HTML with JS templates
 
 ---
 
-## Phase 5 — Write environment.yml (if using Conda)
+## Phase 5 — Specify Dependencies
+
+### For IVCAP Deployment: Use Containers (Required)
+
+**Every process must specify a `container` directive:**
+
+```groovy
+process ANALYZE_READS {
+    container 'quay.io/biocontainers/biopython:1.83'
+
+    input:
+    path reads
+
+    output:
+    path "analysis.txt"
+
+    script:
+    """
+    python analyze_reads.py ${reads}
+    """
+}
+
+process QUALITY_CHECK {
+    container 'quay.io/biocontainers/fastqc:0.11.9--0'
+
+    input:
+    path reads
+
+    output:
+    path "qc_report.html"
+
+    script:
+    """
+    fastqc ${reads}
+    """
+}
+```
+
+**Where to find containers:**
+- BioContainers: https://biocontainers.pro/
+- Docker Hub: https://hub.docker.com/
+- Search: `quay.io/biocontainers/<tool>:<version>`
+
+### For Local Development Only: environment.yml (Optional)
+
+**⚠️ This is ONLY for local testing, NOT for IVCAP deployment:**
 
 ```yaml
 name: pipeline-env
@@ -536,6 +719,8 @@ dependencies:
   - biopython=1.83    # adjust to your tools
   - pip
 ```
+
+**Important:** If you use conda for local development, you must convert to containers before deploying to IVCAP. See the "Container Requirements" section above for migration patterns.
 
 ---
 
@@ -663,8 +848,16 @@ ivcap nextflow run \
     "reference_genome": "urn:ivcap:artifact:ref-..."
   },
   "samples": [
-    ["sample1", "urn:ivcap:artifact:read1-...", "urn:ivcap:artifact:read2-..."],
-    ["sample2", "urn:ivcap:artifact:read1-...", "urn:ivcap:artifact:read2-..."]
+    {
+      "sample_id": "sample1",
+      "read1_urn": "urn:ivcap:artifact:read1-...",
+      "read2_urn": "urn:ivcap:artifact:read2-..."
+    },
+    {
+      "sample_id": "sample2",
+      "read1_urn": "urn:ivcap:artifact:read1-...",
+      "read2_urn": "urn:ivcap:artifact:read2-..."
+    }
   ]
 }
 ```
@@ -677,8 +870,12 @@ parameters:
   quality_threshold: 20
   reference_genome: "urn:ivcap:artifact:ref-..."
 samples:
-  - ["sample1", "urn:ivcap:artifact:read1-...", "urn:ivcap:artifact:read2-..."]
-  - ["sample2", "urn:ivcap:artifact:read1-...", "urn:ivcap:artifact:read2-..."]
+  - sample_id: sample1
+    read1_urn: "urn:ivcap:artifact:read1-..."
+    read2_urn: "urn:ivcap:artifact:read2-..."
+  - sample_id: sample2
+    read1_urn: "urn:ivcap:artifact:read1-..."
+    read2_urn: "urn:ivcap:artifact:read2-..."
 ```
 
 ### Step 3: Accessing Parameters in main.nf
@@ -702,10 +899,10 @@ if (params.containsKey('request_file')) {
 def minReadLength = jobParams?.parameters?.min_read_length ?: 100
 def refGenome = jobParams?.parameters?.reference_genome
 
-// Extract samples as channel
+// Extract samples as channel (samples are objects with named properties)
 def samplesData = jobParams?.samples ?: []
 def samplesChannel = Channel.fromList(samplesData)
-    .map { row -> tuple(row[0], file(row[1]), file(row[2])) }
+    .map { sample -> tuple(sample.sample_id, file(sample.read1_urn), file(sample.read2_urn)) }
 
 workflow {
     log.info "Pipeline: my-pipeline"

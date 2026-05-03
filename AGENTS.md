@@ -59,3 +59,27 @@ If invoking the CLI directly, prefer:
 ## Additional agent context
 - See `skills/CONTEXT.md` (or `ivcap --agent-context`) for operational guidance and patterns.
 - See `skills/` for higher-level workflow “skills” with examples.
+
+## MCP Resources vs Tools for Skills Access
+
+The MCP server exposes embedded skill playbooks via both **MCP Resources** and **bridge tools**:
+
+### Preferred: MCP Resources (if your client supports it)
+- `resources/read uri="skills://manifest"` - list available skills
+- `resources/read uri="skills://{name}/SKILL.md"` - read a skill document
+- `resources/read uri="skills://CONTEXT.md"` - agent best practices
+
+### Fallback: Bridge Tools (for clients that don't expose resources/read to LLMs)
+Many MCP clients (including Claude Desktop as of 2026-04) don't expose `resources/read` as a callable method to LLMs, even though the server correctly declares the capability. 
+
+**Use these tools as a workaround:**
+- `list_skills` - returns the same data as `skills://manifest`
+- `read_skill` - reads a skill by name (same as `skills://{name}/SKILL.md`)
+
+The `use-ivcap-best-practices` prompt automatically tries resources first, then falls back to tools.
+
+**Why this matters:**
+- Resources are the architecturally correct approach (context, not actions)
+- Tools work with current clients but waste tool slots
+- Both provide identical content
+- Use whichever your MCP client makes available to you
