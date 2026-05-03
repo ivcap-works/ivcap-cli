@@ -15,6 +15,7 @@
 package mcp
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -133,28 +134,76 @@ func (l *mcpLogger) close() error {
 }
 
 // loggingReader wraps an io.Reader to log all data read.
+// It buffers data until a complete newline-delimited JSON-RPC message is received.
 type loggingReader struct {
 	r      io.Reader
 	logger *mcpLogger
+	buffer bytes.Buffer
+	mu     sync.Mutex
 }
 
 func (lr *loggingReader) Read(p []byte) (n int, err error) {
 	n, err = lr.r.Read(p)
 	if n > 0 && lr.logger != nil {
-		lr.logger.logRequest(p[:n])
+		lr.mu.Lock()
+		// Append to buffer
+		lr.buffer.Write(p[:n])
+
+		// Process complete messages (newline-delimited)
+		data := lr.buffer.Bytes()
+		for {
+			idx := bytes.IndexByte(data, '\n')
+			if idx == -1 {
+				// No complete message yet
+				break
+			}
+			// Found a complete message
+			msg := data[:idx+1]
+			lr.logger.logRequest(msg)
+
+			// Remove processed message from buffer
+			data = data[idx+1:]
+			lr.buffer.Reset()
+			lr.buffer.Write(data)
+		}
+		lr.mu.Unlock()
 	}
 	return n, err
 }
 
 // loggingWriter wraps an io.Writer to log all data written.
+// It buffers data until a complete newline-delimited JSON-RPC message is sent.
 type loggingWriter struct {
 	w      io.Writer
 	logger *mcpLogger
+	buffer bytes.Buffer
+	mu     sync.Mutex
 }
 
 func (lw *loggingWriter) Write(p []byte) (n int, err error) {
 	if len(p) > 0 && lw.logger != nil {
-		lw.logger.logResponse(p)
+		lw.mu.Lock()
+		// Append to buffer
+		lw.buffer.Write(p)
+
+		// Process complete messages (newline-delimited)
+		data := lw.buffer.Bytes()
+		for {
+			idx := bytes.IndexByte(data, '\n')
+			if idx == -1 {
+				// No complete message yet
+				break
+			}
+			// Found a complete message
+			msg := data[:idx+1]
+			lw.logger.logResponse(msg)
+
+			// Remove processed message from buffer
+			data = data[idx+1:]
+			lw.buffer.Reset()
+			lw.buffer.Write(data)
+		}
+		lw.mu.Unlock()
 	}
 	return lw.w.Write(p)
 }

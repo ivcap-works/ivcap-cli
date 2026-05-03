@@ -21,11 +21,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
+	log "go.uber.org/zap"
 	yaml "gopkg.in/yaml.v2"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
@@ -46,8 +48,11 @@ func init() {
 	nextflowListPipelinesCmd.Flags().StringVarP(&nextflowPipelinesJsonFilter, "content-path", "c", "", "json path filter on pipeline's content ('$.name~=\".*rna.*\"')")
 
 	nextflowCmd.AddCommand(nextflowGetJobCmd)
+	nextflowCmd.AddCommand(nextflowJobResultCmd)
+	nextflowJobResultCmd.Flags().StringVarP(&nextflowResultFile, "file", "f", "", "Optional: extract and display specific file from result tar")
 	nextflowCmd.AddCommand(nextflowCreateCmd)
 	nextflowCmd.AddCommand(nextflowUpdateCmd)
+	nextflowCmd.AddCommand(nextflowRetractCmd)
 	nextflowCmd.AddCommand(nextflowRunCmd)
 	addFileFlag(nextflowCreateCmd, "Path to local tar/tgz containing ivcap.yaml or ivcap-tool.yaml")
 	nextflowCreateCmd.Flags().StringVar(&nextflowServiceID, "service-id", "", "Service ID/URN to use for generated service description")
@@ -74,6 +79,7 @@ var nextflowRunStreamFlag bool
 var nextflowRunSamplesheet string
 var nextflowJobsJsonFilter string
 var nextflowPipelinesJsonFilter string
+var nextflowResultFile string
 
 var (
 	nextflowCmd = &cobra.Command{
@@ -194,6 +200,31 @@ var (
 			jobID := GetHistory(args[0])
 			ctxt := context.Background()
 			return readDisplayJob(ctxt, jobID)
+		},
+	}
+
+	nextflowJobResultCmd = &cobra.Command{
+		Use:     "job-result [flags] job_id [-f filename]",
+		Aliases: []string{"result", "results"},
+		Short:   "List or extract files from a Nextflow job result artifact",
+		Long:    "Download and access the result artifact from a Nextflow job. Without -f, lists all files. With -f, extracts and displays the specified file.",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			jobID := GetHistory(args[0])
+			ctxt := context.Background()
+			return handleNextflowJobResult(ctxt, jobID, nextflowResultFile)
+		},
+	}
+
+	nextflowRetractCmd = &cobra.Command{
+		Use:   "retract service-id [flags]",
+		Short: "Retract the service aspect(s) created by 'nextflow create'",
+		Long:  "Query and retract the service description aspect(s) for a given service ID. This is the opposite of 'nextflow create'.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			serviceID := GetHistory(args[0])
+			ctxt := context.Background()
+			return retractNextflowService(ctxt, serviceID)
 		},
 	}
 
@@ -582,4 +613,257 @@ func truncateToLines(text string, maxLines int) string {
 	}
 
 	return result
+}
+
+// handleNextflowJobResult handles listing or extracting files from a Nextflow job result artifact
+func handleNextflowJobResult(ctxt context.Context, jobID string, filePath string) error {
+	adapter := CreateAdapter(true)
+
+	// Get the job to extract result artifact URN
+	job, _, err := readJob(ctxt, jobID)
+	if err != nil {
+		return fmt.Errorf("failed to read job: %w", err)
+	}
+
+	// Extract results_artifact_urn from result-content
+	var artifactURN string
+	if job.ResultContent != nil {
+		if contentMap, ok := job.ResultContent.(map[string]interface{}); ok {
+			if urn, ok := contentMap["results_artifact_urn"].(string); ok && urn != "" {
+				artifactURN = urn
+			}
+		}
+	}
+
+	if artifactURN == "" {
+		return fmt.Errorf("job '%s' has no result artifact (job may still be running or failed)", jobID)
+	}
+
+	// Try to load from nextflow cache first
+	var data []byte
+	cachedData, found := loadNextflowResultCache()
+	cachedArtifactID := getNextflowCachedArtifactID()
+
+	if found && cachedArtifactID == artifactURN {
+		logger.Debug("using cached nextflow result artifact", log.String("id", artifactURN))
+		data = cachedData
+	} else {
+		// Download the artifact
+		var mimeType string
+		data, mimeType, err = downloadTarArtifact(ctxt, artifactURN, adapter)
+		if err != nil {
+			return err
+		}
+
+		// Verify it's a tar file
+		if !isTarFile(mimeType, data) {
+			return fmt.Errorf("result artifact '%s' is not a tar or tar.gz file (mime-type: %s)", artifactURN, mimeType)
+		}
+
+		// Always cache nextflow results (replaces any previous cached nextflow result)
+		if err := saveNextflowResultCache(artifactURN, data); err != nil {
+			logger.Warn("failed to cache nextflow result artifact", log.Error(err))
+		}
+	}
+
+	// If no file specified, list the contents
+	if filePath == "" {
+		files, err := listTarFiles(data)
+		if err != nil {
+			return fmt.Errorf("failed to list tar contents: %w", err)
+		}
+		printNextflowResultTable(jobID, files)
+		return nil
+	}
+
+	// Resolve history tag if provided (e.g., @2 -> actual filename)
+	resolvedFilePath := GetHistory(filePath)
+
+	// Extract and display the specified file
+	fileData, err := extractFileFromTar(data, resolvedFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to extract file '%s': %w", filePath, err)
+	}
+
+	// Write to stdout
+	_, err = os.Stdout.Write(fileData)
+	return err
+}
+
+// printNextflowResultTable prints a table of Nextflow result files with history tags
+func printNextflowResultTable(jobID string, files []tarFileInfo) {
+	// Register job ID first to ensure it gets @1
+	jobHistory := MakeHistory(&jobID)
+
+	tw2 := table.NewWriter()
+	tw2.AppendHeader(table.Row{"File", "Size", "Mode"})
+	tw2.SetStyle(table.StyleLight)
+
+	rows := make([]table.Row, len(files))
+	for i, f := range files {
+		// Create history tag for the file name and combine with the actual filename
+		fileName := f.Name
+		fileHistory := MakeHistory(&fileName)
+		// Show both history tag and filename (e.g., "@2 results.tar.gz")
+		fileDisplay := fmt.Sprintf("%s %s", fileHistory, fileName)
+		rows[i] = table.Row{fileDisplay, safeBytes(&f.Size), f.Mode}
+	}
+	tw2.AppendRows(rows)
+
+	tw := table.NewWriter()
+	tw.SetStyle(table.StyleLight)
+	tw.Style().Options.SeparateColumns = false
+	tw.Style().Options.SeparateRows = false
+	tw.Style().Options.DrawBorder = false
+	tw.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, Align: text.AlignRight},
+	})
+
+	p := []table.Row{
+		{"Job ID", jobHistory},
+		{"", ""},
+		{"Files", tw2.Render()},
+	}
+	tw.AppendRows(p)
+
+	fmt.Printf("\n%s\n\n", tw.Render())
+}
+
+// getNextflowCachePath returns the path to the nextflow result cache file
+func getNextflowCachePath() (string, error) {
+	cacheDir, err := getTarCacheDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(cacheDir, "nextflow-result.cache"), nil
+}
+
+// getNextflowCacheMetaPath returns the path to the nextflow cache metadata file
+func getNextflowCacheMetaPath() (string, error) {
+	cacheDir, err := getTarCacheDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(cacheDir, "nextflow-result.meta"), nil
+}
+
+// saveNextflowResultCache saves a nextflow result artifact to the cache (replacing any existing one)
+func saveNextflowResultCache(artifactID string, data []byte) error {
+	cachePath, err := getNextflowCachePath()
+	if err != nil {
+		return err
+	}
+
+	metaPath, err := getNextflowCacheMetaPath()
+	if err != nil {
+		return err
+	}
+
+	cacheDir, err := getTarCacheDir()
+	if err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+		return fmt.Errorf("failed to create cache directory: %w", err)
+	}
+
+	// Write the artifact data
+	if err := os.WriteFile(cachePath, data, 0644); err != nil {
+		return fmt.Errorf("failed to write cache file: %w", err)
+	}
+
+	// Write metadata (artifact ID)
+	if err := os.WriteFile(metaPath, []byte(artifactID), 0644); err != nil {
+		return fmt.Errorf("failed to write cache metadata: %w", err)
+	}
+
+	logger.Debug("cached nextflow result artifact", log.String("id", artifactID), log.String("path", cachePath))
+	return nil
+}
+
+// loadNextflowResultCache loads the cached nextflow result artifact
+func loadNextflowResultCache() ([]byte, bool) {
+	cachePath, err := getNextflowCachePath()
+	if err != nil {
+		return nil, false
+	}
+
+	data, err := os.ReadFile(cachePath)
+	if err != nil {
+		return nil, false
+	}
+
+	return data, true
+}
+
+// getNextflowCachedArtifactID returns the artifact ID of the cached nextflow result
+func getNextflowCachedArtifactID() string {
+	metaPath, err := getNextflowCacheMetaPath()
+	if err != nil {
+		return ""
+	}
+
+	data, err := os.ReadFile(metaPath)
+	if err != nil {
+		return ""
+	}
+
+	return string(data)
+}
+
+// retractNextflowService queries for and retracts the service aspect(s) for a given service ID
+func retractNextflowService(ctxt context.Context, serviceID string) error {
+	if serviceID == "" {
+		return fmt.Errorf("missing service ID")
+	}
+
+	adapter := CreateAdapter(true)
+
+	// Query for service aspects with the given entity (service ID)
+	selector := sdk.AspectSelector{
+		Entity:         serviceID,
+		SchemaPrefix:   nf.ServiceSchema,
+		ListRequest:    sdk.ListRequest{Limit: 50},
+		IncludeContent: false,
+	}
+
+	list, _, err := sdk.ListAspect(ctxt, selector, adapter, logger)
+	if err != nil {
+		return fmt.Errorf("failed to query for service aspects: %w", err)
+	}
+
+	if len(list.Items) == 0 {
+		return fmt.Errorf("no service aspects found for service ID %s", serviceID)
+	}
+
+	// Retract all found aspects
+	retractedCount := 0
+	var retractErrors []string
+
+	for _, item := range list.Items {
+		if item.ID == nil {
+			continue
+		}
+		aspectID := *item.ID
+
+		if _, err := sdk.RetractAspect(ctxt, aspectID, adapter, logger); err != nil {
+			retractErrors = append(retractErrors, fmt.Sprintf("  - %s: %v", aspectID, err))
+		} else {
+			retractedCount++
+			if !silent {
+				fmt.Printf("Retracted aspect: %s\n", aspectID)
+			}
+		}
+	}
+
+	if len(retractErrors) > 0 {
+		return fmt.Errorf("failed to retract %d aspect(s):\n%s", len(retractErrors), strings.Join(retractErrors, "\n"))
+	}
+
+	if !silent {
+		fmt.Printf("\nSuccessfully retracted %d service aspect(s) for service %s\n", retractedCount, serviceID)
+	}
+
+	return nil
 }

@@ -234,6 +234,13 @@ func shouldReturnAsText(mimeType string, accept []string) bool {
 		if acceptType == "*/*" || acceptType == "text/*" {
 			return true
 		}
+
+		// Special case: CSV and TSV can be returned as text/plain since they are plain text
+		if acceptType == "text/plain" {
+			if mimeType == "text/csv" || mimeType == "text/tsv" {
+				return true
+			}
+		}
 	}
 
 	return false
@@ -373,6 +380,10 @@ func detectMimeType(filePath string, data []byte) string {
 		return "text/x-nextflow"
 	case ".config":
 		return "text/plain"
+	case ".csv":
+		return "text/csv"
+	case ".tsv":
+		return "text/tsv"
 	default:
 		return "application/octet-stream"
 	}

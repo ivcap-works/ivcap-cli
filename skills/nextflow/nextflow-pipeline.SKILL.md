@@ -948,6 +948,49 @@ process PROCESS_SAMPLES {
 
 **Pro tip:** Use `--watch --stream` together for real-time monitoring during development.
 
+### Accessing Pipeline Results (CSV, TSV, JSON Files)
+
+After a pipeline run completes successfully, you can fetch result files from the results artifact using the `artifact_get` MCP tool. Many Nextflow pipelines output tabular data as CSV or TSV files.
+
+**Important:** Always include the appropriate `"accept"` parameter to get text files as readable content instead of base64-encoded data.
+
+**Example: Fetching a CSV results file**
+```json
+{
+  "tool": "artifact_get",
+  "arguments": {
+    "id": "urn:ivcap:artifact:results-...",
+    "path": "results/differential_expression.csv",
+    "accept": ["text/csv"]
+  }
+}
+```
+
+**Example: Fetching a TSV file**
+```json
+{
+  "tool": "artifact_get",
+  "arguments": {
+    "id": "urn:ivcap:artifact:results-...",
+    "path": "analysis/gene_counts.tsv",
+    "accept": ["text/tsv"]
+  }
+}
+```
+
+**Supported accept formats:**
+- `"accept": ["text/plain"]` - For log files, plain text files (also accepts CSV and TSV as plain text)
+- `"accept": ["text/csv"]` - For CSV files specifically
+- `"accept": ["text/tsv"]` - For TSV files specifically
+- `"accept": ["text/*"]` - For any text-based format (universal fallback)
+- `"accept": ["application/json"]` - For JSON files
+
+**Important for MCP clients that cannot process base64:** If your client cannot handle base64-encoded blobs, **you must include an `accept` parameter** to get text files as readable content. Without the accept parameter, all files are returned as base64-encoded blobs regardless of their type.
+
+**Note:** If your client can only accept `text/plain`, CSV and TSV files will also be returned as plain text since they are text-based formats.
+
+**Without the accept parameter:** If your MCP client cannot process text content, the file will be returned as base64-encoded data, making it difficult to read and analyze directly.
+
 ---
 
 ## Phase 8B — Deliver Usage Instructions (Manual Deployment)

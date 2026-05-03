@@ -214,7 +214,86 @@ cat "./$JOB_UUID/.nextflow.log"
 }
 ```
 
-**Important:** When fetching log files (`.nextflow.log` or any text files) from artifacts using `artifact_get`, **always include `"accept": ["text/plain"]`** in the arguments. Without this, the MCP tool returns the content as base64-encoded data instead of plain text, making it difficult to read and analyze.
+**Important:** When fetching text files (`.nextflow.log`, `.csv`, `.tsv`, or any text files) from artifacts using `artifact_get`, **always include an appropriate `"accept"` parameter** in the arguments. Without this, the MCP tool returns the content as base64-encoded data instead of plain text, making it difficult to read and analyze.
+
+**Supported text formats:**
+- `"accept": ["text/plain"]` - For log files, plain text files (also accepts CSV and TSV as plain text)
+- `"accept": ["text/csv"]` - For CSV files specifically
+- `"accept": ["text/tsv"]` - For TSV files specifically
+- `"accept": ["text/*"]` - For any text-based format (universal fallback)
+- `"accept": ["application/json"]` - For JSON files
+
+**Important for MCP clients that cannot process base64:** If your client cannot handle base64-encoded blobs, **you must include an `accept` parameter** to get text files as readable content. Without the accept parameter, all files are returned as base64-encoded blobs regardless of their type.
+
+**Note:** If your client can only accept `text/plain`, CSV and TSV files will also be returned as plain text since they are text-based formats.
+
+#### Fetching Pipeline Results (CSV, TSV, JSON)
+
+Many Nextflow pipelines output tabular results as CSV or TSV files. When fetching these from the results artifact, use the appropriate accept parameter to get them as readable text instead of base64:
+
+**Example: Fetching a CSV results file**
+
+```json
+{
+  "tool": "artifact_get",
+  "arguments": {
+    "id": "urn:ivcap:artifact:4d8fcdff-273a-4498-936a-a92333935696",
+    "path": "9c1db38c-e180-4570-9874-e85db9bda90f/results/differential_expression.csv",
+    "accept": ["text/csv"]
+  }
+}
+```
+
+**Example: Fetching a TSV file**
+
+```json
+{
+  "tool": "artifact_get",
+  "arguments": {
+    "id": "urn:ivcap:artifact:results-...",
+    "path": "analysis/gene_counts.tsv",
+    "accept": ["text/tab-separated-values"]
+  }
+}
+```
+
+**Example: Fetching JSON results**
+
+```json
+{
+  "tool": "artifact_get",
+  "arguments": {
+    "id": "urn:ivcap:artifact:results-...",
+    "path": "metrics/quality_metrics.json",
+    "accept": ["application/json"]
+  }
+}
+```
+
+**Using text/* as universal fallback:**
+
+If you're unsure of the exact file type, use `"accept": ["text/*"]` to retrieve any text-based file format:
+
+```json
+{
+  "tool": "artifact_get",
+  "arguments": {
+    "id": "urn:ivcap:artifact:results-...",
+    "path": "output/results.txt",
+    "accept": ["text/*"]
+  }
+}
+```
+
+**What happens without accept parameter:**
+
+If you omit the `accept` parameter or your MCP client cannot process text content, the file will be returned as base64-encoded data, which looks like this:
+
+```
+Z2VuZV9pZCxsb2cyRm9sZENoYW5nZSxwdmFsdWUKR0VORTI1LDAuNSwwLjAwMQpHRU5F...
+```
+
+This makes it difficult to read and analyze the data directly. Always include the appropriate `accept` parameter for text files.
 
 **What's in the Nextflow log:**
 - Complete execution trace
