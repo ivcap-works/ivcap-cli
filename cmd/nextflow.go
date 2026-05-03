@@ -21,18 +21,31 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
+	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/jedib0t/go-pretty/v6/text"
 	"github.com/spf13/cobra"
 	yaml "gopkg.in/yaml.v2"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 	nf "github.com/ivcap-works/ivcap-cli/pkg/nextflow"
+	api "github.com/ivcap-works/ivcap-core-api/http/aspect"
 )
 
 func init() {
 	rootCmd.AddCommand(nextflowCmd)
 
+	nextflowCmd.AddCommand(nextflowListCmd)
+	addListFlags(nextflowListCmd)
+	nextflowListCmd.Flags().StringVarP(&nextflowJobsJsonFilter, "content-path", "c", "", "json path filter on job's content ('$.images[*] ? (@.size > 10000)')")
+
+	nextflowCmd.AddCommand(nextflowListPipelinesCmd)
+	addListFlags(nextflowListPipelinesCmd)
+	nextflowListPipelinesCmd.Flags().StringVarP(&nextflowPipelinesJsonFilter, "content-path", "c", "", "json path filter on pipeline's content ('$.name~=\".*rna.*\"')")
+
+	nextflowCmd.AddCommand(nextflowGetJobCmd)
 	nextflowCmd.AddCommand(nextflowCreateCmd)
 	nextflowCmd.AddCommand(nextflowUpdateCmd)
 	nextflowCmd.AddCommand(nextflowRunCmd)
@@ -59,11 +72,97 @@ var nextflowRunAspectURN string
 var nextflowRunWatchFlag bool
 var nextflowRunStreamFlag bool
 var nextflowRunSamplesheet string
+var nextflowJobsJsonFilter string
+var nextflowPipelinesJsonFilter string
 
 var (
 	nextflowCmd = &cobra.Command{
 		Use:   "nextflow",
 		Short: "Commands for working with Nextflow-based services",
+	}
+
+	nextflowListCmd = &cobra.Command{
+		Use:     "list-jobs",
+		Aliases: []string{"list-j", "jlist", "list-job", "list-runs"},
+		Short:   "List recent Nextflow jobs",
+		Long:    "List jobs that were created with Nextflow services (jobs with nextflow request schema)",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			lr := createListRequest()
+			if lr.OrderBy == nil {
+				rb := "requested-at"
+				lr.OrderBy = &rb
+			}
+
+			// Build JSON path filter to find jobs with nextflow.request.1 schema in content
+			nfFilter := `$.["in-content"]["$schema"] == "urn:ivcap:schema:nextflow.request.1"`
+			if nextflowJobsJsonFilter != "" {
+				// Combine filters if user provided additional filter
+				nfFilter = fmt.Sprintf("(%s) && (%s)", nfFilter, nextflowJobsJsonFilter)
+			}
+
+			selector := sdk.AspectSelector{
+				SchemaPrefix:   JOB_SCHEMA,
+				ListRequest:    *lr,
+				IncludeContent: true,
+				JsonFilter:     &nfFilter,
+			}
+
+			ctxt := context.Background()
+			if list, res, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger); err == nil {
+				switch outputFormat {
+				case "json":
+					return a.ReplyPrinter(res, false)
+				case "yaml":
+					return a.ReplyPrinter(res, true)
+				default:
+					printJobListTable(list, false)
+				}
+				return nil
+			} else {
+				return err
+			}
+		},
+	}
+
+	nextflowListPipelinesCmd = &cobra.Command{
+		Use:     "list-pipelines",
+		Aliases: []string{"list-p", "plist", "list-pipeline", "list-services"},
+		Short:   "List Nextflow pipeline services",
+		Long:    "List service definitions for Nextflow pipelines",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			lr := createListRequest()
+
+			// Use field-based filter to find services with nextflow controller schema
+			if lr.Filter == nil {
+				filterStr := "controller-schema~=urn:ivcap:schema.service.nextflow.1"
+				lr.Filter = &filterStr
+			} else {
+				// Combine with existing filter
+				combinedFilter := fmt.Sprintf("(%s) && (controller-schema~=urn:ivcap:schema.service.nextflow.1)", *lr.Filter)
+				lr.Filter = &combinedFilter
+			}
+
+			selector := sdk.AspectSelector{
+				SchemaPrefix:   "urn:ivcap:schema.service.2",
+				ListRequest:    *lr,
+				IncludeContent: true,
+			}
+
+			ctxt := context.Background()
+			if list, res, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger); err == nil {
+				switch outputFormat {
+				case "json":
+					return a.ReplyPrinter(res, false)
+				case "yaml":
+					return a.ReplyPrinter(res, true)
+				default:
+					printNextflowPipelinesTable(list, false)
+				}
+				return nil
+			} else {
+				return err
+			}
+		},
 	}
 
 	nextflowCreateCmd = &cobra.Command{
@@ -82,6 +181,19 @@ var (
 		RunE: func(cmd *cobra.Command, args []string) error {
 			serviceID := GetHistory(args[0])
 			return runNextflowCreateOrUpdate(context.Background(), serviceID)
+		},
+	}
+
+	nextflowGetJobCmd = &cobra.Command{
+		Use:     "get-job [flags] job_id",
+		Aliases: []string{"get", "get-run"},
+		Short:   "Get status or results of a Nextflow job",
+		Long:    "Fetch details about a single Nextflow job without needing the service/pipeline URN",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			jobID := GetHistory(args[0])
+			ctxt := context.Background()
+			return readDisplayJob(ctxt, jobID)
 		},
 	}
 
@@ -331,4 +443,143 @@ func mergeSamplesIntoPayload(pyld a.Payload, samples []map[string]interface{}) (
 	}
 
 	return newPayload, nil
+}
+
+// printNextflowPipelinesTable prints a table of Nextflow pipeline services
+func printNextflowPipelinesTable(list *api.ListResponseBody, wide bool) {
+	tw2 := table.NewWriter()
+	tw2.AppendHeader(table.Row{"ID", "Name", "Description"})
+	tw2.SetStyle(table.StyleLight)
+	tw2.Style().Options.SeparateRows = true // Add row separators
+	rows := make([]table.Row, len(list.Items))
+	for i, p := range list.Items {
+		c := p.Content.(map[string]any)
+
+		// Extract entity (service ID)
+		entity := safeString(p.Entity)
+
+		// Extract name
+		name := "???"
+		if n, ok := c["name"].(string); ok {
+			name = n
+		}
+
+		// Extract and truncate description to 3 lines, removing empty lines
+		description := ""
+		if d, ok := c["description"].(string); ok {
+			// Remove empty lines before truncating
+			cleanDesc := removeEmptyLines(d)
+			description = truncateToLines(cleanDesc, 3)
+		}
+
+		rows[i] = table.Row{MakeHistory(&entity), name, description}
+	}
+	tw2.AppendRows(rows)
+
+	tw := table.NewWriter()
+	tw.SetStyle(table.StyleLight)
+	tw.Style().Options.SeparateColumns = false
+	tw.Style().Options.SeparateRows = false
+	tw.Style().Options.DrawBorder = false
+	tw.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, Align: text.AlignRight},
+		{Number: 3, WidthMax: 60, WidthMaxEnforcer: WrapSoftSoft},
+	})
+
+	p := []table.Row{}
+	if list.AtTime != nil {
+		p = append(p, table.Row{"At Time", safeDate(list.AtTime, false)})
+	}
+	p = append(p, table.Row{"Pipelines", tw2.Render()})
+	p = addNextPageRow(findNextAspectPage(list.Links), p)
+	tw.AppendRows(p)
+
+	fmt.Printf("\n%s\n\n", tw.Render())
+}
+
+// removeEmptyLines removes empty or whitespace-only lines from text
+func removeEmptyLines(text string) string {
+	if text == "" {
+		return ""
+	}
+
+	lines := []string{}
+	currentLine := ""
+
+	for _, ch := range text {
+		if ch == '\n' {
+			trimmed := strings.TrimSpace(currentLine)
+			if trimmed != "" {
+				lines = append(lines, trimmed)
+			}
+			currentLine = ""
+		} else {
+			currentLine += string(ch)
+		}
+	}
+
+	// Add the last line if not empty
+	trimmed := strings.TrimSpace(currentLine)
+	if trimmed != "" {
+		lines = append(lines, trimmed)
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+// truncateToLines truncates text to a maximum number of lines, adding ellipsis if truncated
+func truncateToLines(text string, maxLines int) string {
+	if text == "" {
+		return ""
+	}
+
+	lines := []string{}
+	currentLine := ""
+
+	for _, ch := range text {
+		if ch == '\n' {
+			lines = append(lines, currentLine)
+			currentLine = ""
+			if len(lines) >= maxLines {
+				break
+			}
+		} else {
+			currentLine += string(ch)
+		}
+	}
+
+	// Add the last line if we haven't reached maxLines yet
+	if currentLine != "" && len(lines) < maxLines {
+		lines = append(lines, currentLine)
+	}
+
+	result := ""
+	for i, line := range lines {
+		if i > 0 {
+			result += "\n"
+		}
+		result += line
+	}
+
+	// Check if there's more content after maxLines
+	remainingText := text
+	for i := 0; i < len(lines); i++ {
+		idx := -1
+		if i == 0 {
+			idx = len(lines[i])
+		} else {
+			idx = len(lines[i]) + 1 // +1 for the newline
+		}
+		if idx < len(remainingText) {
+			remainingText = remainingText[idx:]
+		} else {
+			remainingText = ""
+		}
+	}
+
+	if remainingText != "" && len(remainingText) > 0 {
+		result += "..."
+	}
+
+	return result
 }

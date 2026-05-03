@@ -20,7 +20,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
-	"strings"
 	"time"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
@@ -336,51 +335,56 @@ func printJob(job *sdk.JobReadResponseBody, wide bool) {
 	tw.Style().Options.DrawBorder = false
 
 	rows := []table.Row{}
-	if job.Name != nil {
-		rows = append(rows, table.Row{"Name", safeString(job.Name)}, table.Row{"", ""})
-	}
-	id := fmt.Sprintf("%s (%s)", *job.ID, MakeHistory(job.ID))
-	var service string
-	// API should be updated to return service name as well
-	if job.Service != nil {
-		service = fmt.Sprintf("%s (%s)", *job.Service, MakeHistory(job.Service))
-	}
-	rows = append(rows,
-		table.Row{"ID", id},
-		table.Row{"Status", safeString(job.Status)},
-		table.Row{"Started At", safeDate(job.StartedAt, false)},
-	)
 
+	// Name at the top if available
+	if job.Name != nil {
+		rows = append(rows, table.Row{"Name", safeString(job.Name)})
+	}
+
+	// Status
+	rows = append(rows, table.Row{"Status", safeString(job.Status)})
+
+	// Result (extract results_artifact_urn from result-content if available, otherwise "-")
+	resultDisplay := "-"
+	if job.ResultContent != nil {
+		// Try to parse ResultContent as JSON and extract results_artifact_urn
+		if contentMap, ok := job.ResultContent.(map[string]interface{}); ok {
+			if artifactUrn, ok := contentMap["results_artifact_urn"].(string); ok && artifactUrn != "" {
+				resultDisplay = fmt.Sprintf("%s (%s)", artifactUrn, MakeHistory(&artifactUrn))
+			}
+		}
+	}
+	rows = append(rows, table.Row{"Result", resultDisplay})
+
+	// Empty line separator
+	rows = append(rows, table.Row{"", ""})
+
+	// ID
+	id := fmt.Sprintf("%s (%s)", *job.ID, MakeHistory(job.ID))
+	rows = append(rows, table.Row{"ID", id})
+
+	// Started At
+	rows = append(rows, table.Row{"Started At", safeDate(job.StartedAt, false)})
+
+	// Finished At (if available)
 	if job.FinishedAt != nil {
 		rows = append(rows,
 			table.Row{"Finished At", safeDate(job.FinishedAt, false)},
 		)
 	}
 
+	// Service
+	var service string
+	if job.Service != nil {
+		service = fmt.Sprintf("%s (%s)", *job.Service, MakeHistory(job.Service))
+	}
+	rows = append(rows, table.Row{"Service", service})
+
+	// Policy and Account
 	rows = append(rows,
-		table.Row{"Service", service},
 		table.Row{"Policy", safeString(job.Policy)},
 		table.Row{"Account", safeString(job.Account)},
 	)
-
-	if job.ResultContentType != nil {
-		ct := *job.ResultContentType
-		rows = append(rows,
-			table.Row{"", ""},
-			table.Row{"Result-Type", ct},
-		)
-
-		if ct == "application/json" || strings.HasPrefix(ct, "application/vnd.") {
-			content, err := a.ToString(job.ResultContent, false)
-			if err != nil {
-				fmt.Printf("ERROR: cannot print job result - %v\n", err)
-				return
-			}
-			rows = append(rows, table.Row{"Result", content})
-		} else {
-			rows = append(rows, table.Row{"Result", ".... cannot print"})
-		}
-	}
 
 	tw.AppendRows(rows)
 	tw.SetColumnConfigs([]table.ColumnConfig{
