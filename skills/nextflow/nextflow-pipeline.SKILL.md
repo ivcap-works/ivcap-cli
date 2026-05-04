@@ -1022,6 +1022,355 @@ nextflow run main.nf -resume
 
 ---
 
+## Phase 9 — Using MCP Tools for Pipeline Deployment
+
+When working within an agent/automation context, use MCP tools (`nextflow_create`, `nextflow_run`) instead of CLI commands. This section provides comprehensive guidance on MCP tool usage.
+
+### When to Use MCP Tools vs CLI
+
+#### Use MCP Tools When:
+- Deploying from within an agent/automation context
+- Building pipelines programmatically
+- Integrating with IVCAP Data Fabric aspects
+- Need structured job tracking and artifact management
+- Agent has access to MCP server
+
+#### Use CLI When:
+- Interactive terminal sessions
+- Manual deployment and testing
+- Shell scripts and CI/CD pipelines
+- Direct human control needed
+
+### MCP Tool Gotchas
+
+⚠️ **Critical differences from CLI workflow:**
+
+1. **Service ID generation is agent responsibility**
+   - Generate UUIDv5: `uuid.uuid5(uuid.NAMESPACE_DNS, "pipeline-name")`
+   - Format: `urn:ivcap:service:<uuid>`
+   - Do NOT use random UUIDs - use namespace-based for reproducibility
+
+2. **Two-step process is mandatory**
+   - Step 1: `nextflow_create()` deploys service
+   - Step 2: `nextflow_run()` submits jobs
+   - Cannot run before service exists
+
+3. **Sources must be fully formed**
+   - Each source needs: `{path, type, [text|base64|url|artifact_id]}`
+   - Do NOT omit the `type` field
+   - `path` must include directory (e.g., `bin/script.py` not just `script.py`)
+   - Use `type: "text"` for inline code, not `type: "url"` with local paths
+
+### Sources Parameter Format
+
+The `sources` array defines the pipeline package contents. Each source becomes a file in the tar.gz archive.
+
+#### Source Types
+
+**Type: text (for inline code)**
+```json
+{
+  "path": "main.nf",
+  "type": "text",
+  "text": "#!/usr/bin/env nextflow\nnextflow.enable.dsl = 2\n..."
+}
+```
+- Use for: Nextflow code, config files, Python scripts
+- ✅ Preferred for MCP tool usage
+- ❌ Do NOT use `type: "url"` with local file paths
+
+**Type: base64 (for binary files)**
+```json
+{
+  "path": "data/reference.fasta.gz",
+  "type": "base64",
+  "base64": "H4sIAAAAA...",
+  "media_type": "application/gzip"
+}
+```
+
+**Type: url (for external sources)**
+```json
+{
+  "path": "bin/download_data.sh",
+  "type": "url",
+  "url": "https://example.com/scripts/download.sh"
+}
+```
+
+**Type: artifact (for IVCAP artifacts)**
+```json
+{
+  "path": "ivcap.yaml",
+  "type": "artifact",
+  "artifact_id": "urn:ivcap:artifact:...",
+  "artifact_path": "pipeline/ivcap.yaml"
+}
+```
+
+#### Required Source Fields per Type
+
+| Type | path | type | Content Field | Optional |
+|------|------|------|---|---|
+| text | ✓ | ✓ | text | - |
+| base64 | ✓ | ✓ | base64 | media_type |
+| url | ✓ | ✓ | url | - |
+| artifact | ✓ | ✓ | artifact_id, artifact_path | - |
+
+#### Common Mistakes
+
+❌ **Wrong:** Omitting `type` field
+```json
+{"path": "main.nf", "text": "..."}  // Missing type!
+```
+
+✅ **Correct:**
+```json
+{"path": "main.nf", "type": "text", "text": "..."}
+```
+
+---
+
+❌ **Wrong:** Using `type: "url"` with local file paths
+```json
+{"path": "bin/script.py", "type": "url", "url": "file:///home/claude/..."}
+```
+
+✅ **Correct:** Inline content directly with `type: "text"`
+```json
+{"path": "bin/script.py", "type": "text", "text": "#!/usr/bin/env python3\n..."}
+```
+
+---
+
+❌ **Wrong:** Omitting directory in path
+```json
+{"path": "analyze.py", "type": "text", "text": "..."}  // Should be bin/analyze.py
+```
+
+✅ **Correct:** Full path with directory structure
+```json
+{"path": "bin/analyze.py", "type": "text", "text": "..."}
+```
+
+### MCP Tool Execution Flow
+
+```
+Agent/User
+    ↓
+Generate service ID (UUIDv5)
+    ↓
+Prepare sources array
+  - main.nf (type: text)
+  - nextflow.config (type: text)
+  - ivcap.yaml (type: text)
+  - bin/*.py (type: text)
+    ↓
+Call nextflow_create()
+  ✓ Pipeline artifact created
+  ✓ Service registered in Data Fabric
+  ✓ Returns: service_id, pipeline_artifact_urn
+    ↓
+Call nextflow_run()
+  ✓ Job submitted to service
+  ✓ Returns: job_id (if immediate)
+  ✓ Returns: job_id + polling instructions (if slow)
+    ↓
+Call job_status() in loop
+  ✓ Check execution progress
+  ✓ Wait for completion
+    ↓
+Call artifact_get()
+  ✓ Retrieve results from results_artifact_urn
+  ✓ Use accept: ["text/csv"] for text content
+    ↓
+Complete
+```
+
+### Handling Long-Running Jobs
+
+Most Nextflow pipelines complete within 30 seconds. If longer:
+
+#### Pattern 1: Immediate Result (Fast Path)
+```json
+Response from nextflow_run():
+{
+  "job_id": "urn:ivcap:job:...",
+  "status": "succeeded",
+  "result": {
+    "status": "succeeded",
+    "results_artifact_urn": "urn:ivcap:artifact:..."
+  }
+}
+```
+✓ Job completed immediately
+✓ Results are in `result.results_artifact_urn`
+
+#### Pattern 2: Polling Required (Slow Path)
+```json
+Response from nextflow_run():
+{
+  "job_id": "urn:ivcap:job:...",
+  "status": "executing",
+  "poll_after_seconds": 30,
+  "message": "Job still executing..."
+}
+```
+⏳ Job is running
+→ Call `job_status(job_id=...)` after 30 seconds
+→ Repeat until status is "succeeded" or "failed"
+
+#### Polling Code Pattern
+
+```python
+import time
+
+job_id = response["job_id"]
+poll_interval = response.get("poll_after_seconds", 30)
+
+while True:
+    status_response = job_status(job_id=job_id)
+    if status_response["status"] in ["succeeded", "failed"]:
+        break
+    print(f"Still running... checking again in {poll_interval}s")
+    time.sleep(poll_interval)
+    poll_interval = status_response.get("poll_after_seconds", 30)
+
+# Now get results
+results_urn = status_response["result"]["results_artifact_urn"]
+```
+
+#### Important Notes
+- ✅ Set appropriate `poll_after_seconds` (usually 30s)
+- ✅ Always check both `.status` and `.result.status`
+- ❌ Don't poll in tight loops (respect poll_after_seconds)
+- ❌ Don't assume immediate completion
+
+### Accessing Pipeline Results via MCP
+
+Results are stored in IVCAP artifacts. Use `artifact_get()` to retrieve them.
+
+#### Pattern: Fetch CSV Results
+```python
+# Get CSV with proper text formatting
+csv_content = artifact_get(
+    id="urn:ivcap:artifact:...",
+    path="/results/results.csv",
+    accept=["text/csv"]
+)
+
+# Parse
+import csv
+reader = csv.DictReader(csv_content.splitlines())
+for row in reader:
+    print(row)
+```
+
+#### Pattern: Fetch Text Report
+```python
+report = artifact_get(
+    id="urn:ivcap:artifact:...",
+    path="/results/report.txt",
+    accept=["text/plain"]
+)
+print(report)
+```
+
+#### Pattern: List Artifact Contents
+```python
+# Without path, returns full tar.gz (may be large)
+# Better: know expected paths from pipeline outputs
+```
+
+#### Critical: Use `accept` Parameter
+- ✅ `accept: ["text/csv"]` → Returns readable CSV
+- ✅ `accept: ["text/plain"]` → Returns readable text
+- ✅ `accept: ["text/*"]` → Returns any text format
+- ❌ Omit `accept` → Returns base64-encoded data (harder to parse)
+
+#### Results Artifact Structure
+Nextflow results artifact contains:
+```
+<job_uuid>/
+  results/
+    pipeline_report.html
+    pipeline_timeline.html
+    [your publishDir outputs]
+  .nextflow.log
+  work/
+    [Nextflow work directory]
+```
+
+### Debugging Failed Jobs
+
+#### Check Job Status
+```python
+response = job_status(job_id="urn:ivcap:job:...")
+print(response["result"]["status"])  # "succeeded" or "failed"
+results_urn = response["result"]["results_artifact_urn"]
+```
+
+#### Fetch Nextflow Log from Failed Job
+```python
+job_uuid = job_id.split(":")[-1]
+
+log_content = artifact_get(
+    id=results_urn,
+    path=f"{job_uuid}/.nextflow.log",
+    accept=["text/plain"]
+)
+
+# Look for errors
+if "ERROR" in log_content:
+    for line in log_content.split('\n'):
+        if "ERROR" in line:
+            print(line)
+```
+
+#### Common Failure Causes
+
+| Issue | Solution |
+|-------|----------|
+| Container image not found | Verify image exists: `docker manifest inspect <image>` |
+| Script file not found | Use `bin/script.py` path, not bare `script.py` |
+| Missing `ivcap.yaml` | Ensure ivcap.yaml is in sources with `path: "ivcap.yaml"` |
+| Malformed ivcap.yaml | Run YAML validator: `yaml.safe_load(ivcap_content)` |
+| Parameter type mismatch | Check parameter types in ivcap.yaml match input |
+
+### MCP Tools Quick Reference
+
+#### nextflow_create()
+| Parameter | Required | Type | Example |
+|-----------|----------|------|---------|
+| service_id | YES | string | `"urn:ivcap:service:fc51f603-1514-5dd0-a259-e7cb08970874"` |
+| sources | YES | array | `[{path: "main.nf", type: "text", text: "..."}]` |
+| name | NO | string | `"my-pipeline"` |
+| collection | NO | string | `"urn:ivcap:collection:..."` |
+
+#### nextflow_run()
+| Parameter | Required | Type | Example |
+|-----------|----------|------|---------|
+| service_id | YES | string | `"urn:ivcap:service:fc51f603..."` |
+| input | NO* | object | `{parameters: {top_variants: 30}}` |
+| aspect_urn | NO* | string | `"urn:ivcap:aspect:..."` |
+| watch | NO | boolean | `true` (wait for completion) |
+
+*Either input or aspect_urn required
+
+#### job_status()
+| Parameter | Required | Type | Example |
+|-----------|----------|------|---------|
+| job_id | YES | string | `"urn:ivcap:job:13a363f5..."` |
+
+#### artifact_get()
+| Parameter | Required | Type | Example |
+|-----------|----------|------|---------|
+| id | YES | string | `"urn:ivcap:artifact:99ce0551..."` |
+| path | NO | string | `"13a363f5.../results/output.csv"` |
+| accept | NO | array | `["text/csv"]` |
+
+---
+
 ## Common Errors Quick Reference
 
 See `skills://file/nextflow/references/troubleshooting.md` for full details.
