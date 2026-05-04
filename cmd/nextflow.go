@@ -595,7 +595,7 @@ func truncateToLines(text string, maxLines int) string {
 	// Check if there's more content after maxLines
 	remainingText := text
 	for i := 0; i < len(lines); i++ {
-		idx := -1
+		var idx int
 		if i == 0 {
 			idx = len(lines[i])
 		} else {
@@ -764,17 +764,17 @@ func saveNextflowResultCache(artifactID string, data []byte) error {
 		return err
 	}
 
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+	if err := os.MkdirAll(cacheDir, 0755); err != nil { // #nosec G301 -- cache directory under user's home
 		return fmt.Errorf("failed to create cache directory: %w", err)
 	}
 
 	// Write the artifact data
-	if err := os.WriteFile(cachePath, data, 0644); err != nil {
+	if err := os.WriteFile(cachePath, data, 0644); err != nil { // #nosec G306 -- cache file under user's home
 		return fmt.Errorf("failed to write cache file: %w", err)
 	}
 
 	// Write metadata (artifact ID)
-	if err := os.WriteFile(metaPath, []byte(artifactID), 0644); err != nil {
+	if err := os.WriteFile(metaPath, []byte(artifactID), 0644); err != nil { // #nosec G306 -- metadata file under user's home
 		return fmt.Errorf("failed to write cache metadata: %w", err)
 	}
 
@@ -789,7 +789,7 @@ func loadNextflowResultCache() ([]byte, bool) {
 		return nil, false
 	}
 
-	data, err := os.ReadFile(cachePath)
+	data, err := os.ReadFile(cachePath) // #nosec G304 -- cachePath is constructed from safe getNextflowCachePath
 	if err != nil {
 		return nil, false
 	}
@@ -804,7 +804,7 @@ func getNextflowCachedArtifactID() string {
 		return ""
 	}
 
-	data, err := os.ReadFile(metaPath)
+	data, err := os.ReadFile(metaPath) // #nosec G304 -- metaPath is constructed from safe getNextflowCacheMetaPath
 	if err != nil {
 		return ""
 	}

@@ -140,7 +140,7 @@ func handleArtifactBuildInit(ctx context.Context, args map[string]any) (*mcp.Cal
 
 	// Create staging directory
 	stagingDir := filepath.Join(os.TempDir(), "ivcap-artifact-build", sessionID)
-	if err := os.MkdirAll(stagingDir, 0755); err != nil {
+	if err := os.MkdirAll(stagingDir, 0755); err != nil { // #nosec G301 -- staging directory in temp
 		return nil, fmt.Errorf("failed to create staging directory: %w", err)
 	}
 
@@ -246,11 +246,11 @@ func handleArtifactBuildAdd(ctx context.Context, args map[string]any) (*mcp.Call
 
 		// Write content to staging directory
 		localPath := filepath.Join(session.StagingDir, sanitizedPath)
-		if err := os.MkdirAll(filepath.Dir(localPath), 0755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(localPath), 0755); err != nil { // #nosec G301 -- staging directory in temp
 			return nil, fmt.Errorf("failed to create directory for %q: %w", pathName, err)
 		}
 
-		if err := os.WriteFile(localPath, content, 0644); err != nil {
+		if err := os.WriteFile(localPath, content, 0644); err != nil { // #nosec G306 -- staging file in temp
 			return nil, fmt.Errorf("failed to write file %q: %w", pathName, err)
 		}
 
