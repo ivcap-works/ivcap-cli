@@ -36,8 +36,7 @@ import (
 )
 
 var (
-	useCache    bool
-	listTarOnly bool
+	useCache bool
 
 	tarCmd = &cobra.Command{
 		Use:   "tar",
@@ -358,7 +357,7 @@ func saveTarCache(artifactID string, data []byte) error {
 		return err
 	}
 
-	if err := os.MkdirAll(cacheDir, 0755); err != nil {
+	if err := os.MkdirAll(cacheDir, 0755); err != nil { // #nosec G301 -- cache directory under user's home
 		return fmt.Errorf("failed to create cache directory: %w", err)
 	}
 
@@ -367,7 +366,7 @@ func saveTarCache(artifactID string, data []byte) error {
 	safeID = strings.ReplaceAll(safeID, "/", "_")
 	cachePath := filepath.Join(cacheDir, safeID+".tar.cache")
 
-	if err := os.WriteFile(cachePath, data, 0644); err != nil {
+	if err := os.WriteFile(cachePath, data, 0644); err != nil { // #nosec G306 -- cache file under user's home
 		return fmt.Errorf("failed to write cache file: %w", err)
 	}
 
@@ -386,7 +385,7 @@ func loadTarCache(artifactID string) ([]byte, bool) {
 	safeID = strings.ReplaceAll(safeID, "/", "_")
 	cachePath := filepath.Join(cacheDir, safeID+".tar.cache")
 
-	data, err := os.ReadFile(cachePath)
+	data, err := os.ReadFile(cachePath) // #nosec G304 -- cachePath is constructed from safe getTarCacheDir
 	if err != nil {
 		return nil, false
 	}
