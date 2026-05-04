@@ -106,6 +106,7 @@ func NewServer(cfg Config) *mcpserver.MCPServer {
 	addAspectSearchTool(s)
 	addAspectGetTool(s)
 	addAspectCreateTool(s)
+	addArtifactBuildTool(s)
 	addServiceListTool(s)
 	addServiceGetTool(s)
 	addServiceRunTool(s)
