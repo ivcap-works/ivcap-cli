@@ -111,10 +111,12 @@ func NewServer(cfg Config) *mcpserver.MCPServer {
 	addServiceGetTool(s)
 	addServiceRunTool(s)
 	addJobStatusTool(s)
+	addVerifyURLTool(s)
 	addNextflowCreateTool(s)
 	addNextflowRunTool(s)
 	addSkillsResourcesAndPrompts(s)
 	addSkillsBridgeTools(s) // Workaround for clients that don't expose resources/read to LLMs
+	addUnifiedSearchTool(s) // Combined tools + skills search to prevent LLM loop
 
 	// Ensure we surface a stable built-in list_changed method constant, even if unused.
 	_ = mcpgo.MethodNotificationToolsListChanged

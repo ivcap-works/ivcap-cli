@@ -1,0 +1,2006 @@
+---
+name: nextflow-build
+version: 0.1.0
+description: >
+  Best practices for building Nextflow pipelines with well-defined samples schemas
+  and detailed descriptions to enable reusability and meaningful provenance tracking
+  in IVCAP.
+requires:
+  bins: ["ivcap"]
+---
+
+# Nextflow Pipeline Build Skill
+
+This skill focuses on building **production-ready** Nextflow pipelines for IVCAP with
+emphasis on **reusability**, **provenance tracking**, and **comprehensive documentation**.
+
+**Core Principle:** Every pipeline should have a well-defined samples schema and detailed
+descriptions, even if it's initially designed for specific input data. This enables:
+- Pipeline reusability across different datasets
+- Automatic provenance tracking in IVCAP
+- Better understanding and discovery by other researchers
+- Type safety and validation of inputs
+
+---
+
+## 🐛 Debugging Workflow: Reuse Service IDs with `nextflow_update`
+
+**When debugging or iteratively developing a pipeline, DO NOT create a new service ID each time.**
+
+Instead, create the service ID once, then use `nextflow_update` (or `nextflow_create` with the same service-id) to update the pipeline package for that service.
+
+### Why Reuse Service IDs During Development?
+
+Creating a new service ID for every minor change:
+- ❌ Pollutes the service registry with duplicate/abandoned services
+- ❌ Breaks workflow history and makes tracking versions difficult
+- ❌ Makes cleanup harder (multiple service IDs to manage)
+- ❌ Loses context about which service is "current"
+
+Reusing the same service ID:
+- ✅ Maintains a clean service registry
+- ✅ Preserves service metadata and history
+- ✅ Makes it clear which service is being actively developed
+- ✅ Simplifies testing (same service ID, updated implementation)
+
+### Debugging Workflow Pattern
+
+#### Step 1: Create Service ID Once (First Time Only)
+
+```bash
+# Generate a stable service ID for your pipeline
+SERVICE_ID="urn:ivcap:service:$(uuidgen | tr '[:upper:]' '[:lower:]')"
+echo "Your service ID: $SERVICE_ID"
+# Save this! You'll reuse it for all updates during development
+```
+
+Or when using MCP tools, generate the service ID and save it:
+
+```json
+{
+  "service_id": "urn:ivcap:service:a98b81a8-9279-509f-9c0e-40d39e83058a"
+}
+```
+
+#### Step 2: Initial Pipeline Creation
+
+Use `nextflow_create` (MCP) or `ivcap nextflow create` (CLI) with your chosen service ID:
+
+**CLI:**
+```bash
+ivcap nextflow create \
+  --service-id "$SERVICE_ID" \
+  -f pipeline-package.tar.gz
+```
+
+**MCP Tool:**
+```json
+{
+  "tool": "nextflow_create",
+  "arguments": {
+    "service_id": "urn:ivcap:service:a98b81a8-9279-509f-9c0e-40d39e83058a",
+    "sources": [
+      {
+        "path": "main.nf",
+        "type": "text",
+        "text": "// Your Nextflow code"
+      },
+      {
+        "path": "ivcap.yaml",
+        "type": "text",
+        "text": "..."
+      }
+    ]
+  }
+}
+```
+
+#### Step 3: Debug and Iterate
+
+After making changes to your pipeline:
+
+**CLI (Preferred for Debugging):**
+```bash
+# Update the same service with new pipeline code
+ivcap nextflow update \
+  "$SERVICE_ID" \
+  -f pipeline-package.tar.gz
+```
+
+**MCP Tool (When Available):**
+```json
+{
+  "tool": "nextflow_update",
+  "arguments": {
+    "service_id": "urn:ivcap:service:a98b81a8-9279-509f-9c0e-40d39e83058a",
+    "sources": [
+      {
+        "path": "main.nf",
+        "type": "text",
+        "text": "// Your UPDATED Nextflow code"
+      },
+      {
+        "path": "ivcap.yaml",
+        "type": "text",
+        "text": "..."
+      }
+    ]
+  }
+}
+```
+
+**Note:** If `nextflow_update` MCP tool is not yet available, you can use `nextflow_create` with the same `service_id` - it will update the existing service.
+
+#### Step 4: Test the Updated Pipeline
+
+```bash
+# Run the updated pipeline
+ivcap nextflow run "$SERVICE_ID" -f input.json
+
+# Or with MCP:
+# Use nextflow_run with the same service_id
+```
+
+### Typical Debugging Cycle
+
+```
+1. Edit pipeline code (main.nf, modules, scripts)
+   ↓
+2. Update ivcap.yaml if needed (new parameters, samples schema changes)
+   ↓
+3. Package changes into tar.gz (or prepare MCP sources)
+   ↓
+4. Run: ivcap nextflow update $SERVICE_ID -f package.tar.gz
+   ↓
+5. Run: ivcap nextflow run $SERVICE_ID -f test-input.json
+   ↓
+6. Review job results and logs
+   ↓
+7. Repeat from step 1 until working correctly
+```
+
+### Accessing Nextflow Logs When Runs Fail
+
+When a Nextflow pipeline fails, the job result includes a `results_artifact_urn` that contains the Nextflow execution logs and metadata.
+
+**Job result structure (when failed):**
+
+```yaml
+$schema: urn:ivcap:schema:nextflow.result.1
+job_id: urn:ivcap:job:9c1db38c-e180-4570-9874-e85db9bda90f
+results_artifact_urn: urn:ivcap:artifact:4d8fcdff-273a-4498-936a-a92333935696
+status: failed
+```
+
+#### Getting the Nextflow Log
+
+The `results_artifact_urn` contains a directory structure with the Nextflow log file located at:
+
+```
+./<job_uuid>/.nextflow.log
+```
+
+Where `<job_uuid>` is extracted from the `job_id` (the UUID part after `urn:ivcap:job:`).
+
+**CLI Method:**
+
+```bash
+# 1. Get the job result (contains results_artifact_urn)
+JOB_ID="urn:ivcap:job:9c1db38c-e180-4570-9874-e85db9bda90f"
+ivcap job get "$JOB_ID" --output json > job_result.json
+
+# 2. Extract the results artifact URN
+RESULTS_ARTIFACT=$(jq -r '.results_artifact_urn' job_result.json)
+
+# 3. Download the artifact
+ivcap artifact download "$RESULTS_ARTIFACT" -o results.tar.gz
+
+# 4. Extract and view the Nextflow log
+tar xzf results.tar.gz
+JOB_UUID=$(echo "$JOB_ID" | sed 's/.*://')  # Extract UUID from URN
+cat "./$JOB_UUID/.nextflow.log"
+```
+
+**MCP Method:**
+
+```json
+{
+  "tool": "artifact_get",
+  "arguments": {
+    "id": "urn:ivcap:artifact:4d8fcdff-273a-4498-936a-a92333935696",
+    "path": "9c1db38c-e180-4570-9874-e85db9bda90f/.nextflow.log",
+    "accept": ["text/plain"]
+  }
+}
+```
+
+**Important:** When fetching text files (`.nextflow.log`, `.csv`, `.tsv`, or any text files) from artifacts using `artifact_get`, **always include an appropriate `"accept"` parameter** in the arguments. Without this, the MCP tool returns the content as base64-encoded data instead of plain text, making it difficult to read and analyze.
+
+**Supported text formats:**
+- `"accept": ["text/plain"]` - For log files, plain text files (also accepts CSV and TSV as plain text)
+- `"accept": ["text/csv"]` - For CSV files specifically
+- `"accept": ["text/tsv"]` - For TSV files specifically
+- `"accept": ["text/*"]` - For any text-based format (universal fallback)
+- `"accept": ["application/json"]` - For JSON files
+
+**Important for MCP clients that cannot process base64:** If your client cannot handle base64-encoded blobs, **you must include an `accept` parameter** to get text files as readable content. Without the accept parameter, all files are returned as base64-encoded blobs regardless of their type.
+
+**Note:** If your client can only accept `text/plain`, CSV and TSV files will also be returned as plain text since they are text-based formats.
+
+#### Fetching Pipeline Results (CSV, TSV, JSON)
+
+Many Nextflow pipelines output tabular results as CSV or TSV files. When fetching these from the results artifact, use the appropriate accept parameter to get them as readable text instead of base64:
+
+**Example: Fetching a CSV results file**
+
+```json
+{
+  "tool": "artifact_get",
+  "arguments": {
+    "id": "urn:ivcap:artifact:4d8fcdff-273a-4498-936a-a92333935696",
+    "path": "9c1db38c-e180-4570-9874-e85db9bda90f/results/differential_expression.csv",
+    "accept": ["text/csv"]
+  }
+}
+```
+
+**Example: Fetching a TSV file**
+
+```json
+{
+  "tool": "artifact_get",
+  "arguments": {
+    "id": "urn:ivcap:artifact:results-...",
+    "path": "analysis/gene_counts.tsv",
+    "accept": ["text/tab-separated-values"]
+  }
+}
+```
+
+**Example: Fetching JSON results**
+
+```json
+{
+  "tool": "artifact_get",
+  "arguments": {
+    "id": "urn:ivcap:artifact:results-...",
+    "path": "metrics/quality_metrics.json",
+    "accept": ["application/json"]
+  }
+}
+```
+
+**Using text/* as universal fallback:**
+
+If you're unsure of the exact file type, use `"accept": ["text/*"]` to retrieve any text-based file format:
+
+```json
+{
+  "tool": "artifact_get",
+  "arguments": {
+    "id": "urn:ivcap:artifact:results-...",
+    "path": "output/results.txt",
+    "accept": ["text/*"]
+  }
+}
+```
+
+**What happens without accept parameter:**
+
+If you omit the `accept` parameter or your MCP client cannot process text content, the file will be returned as base64-encoded data, which looks like this:
+
+```
+Z2VuZV9pZCxsb2cyRm9sZENoYW5nZSxwdmFsdWUKR0VORTI1LDAuNSwwLjAwMQpHRU5F...
+```
+
+This makes it difficult to read and analyze the data directly. Always include the appropriate `accept` parameter for text files.
+
+**What's in the Nextflow log:**
+- Complete execution trace
+- Process execution details
+- Error messages and stack traces
+- Resource usage information
+- Nextflow configuration used
+
+#### Common Debugging Patterns Using Logs
+
+**Pattern 1: Container Not Found**
+```bash
+# Look for container pull errors in the log
+grep -i "container" ./$JOB_UUID/.nextflow.log
+grep -i "docker" ./$JOB_UUID/.nextflow.log
+grep -i "singularity" ./$JOB_UUID/.nextflow.log
+```
+
+Common error:
+```
+Error pulling container 'quay.io/biocontainers/biopython:1.83'
+```
+
+**Fix:** Verify the container image exists (see "Verifying Container Images" section)
+
+**Pattern 2: Input File Not Found**
+```bash
+# Look for file access errors
+grep -i "no such file" ./$JOB_UUID/.nextflow.log
+grep -i "cannot find" ./$JOB_UUID/.nextflow.log
+```
+
+Common error:
+```
+Cannot find file: /work/sample_data.fastq
+```
+
+**Fix:** Check that sample URNs are correct and accessible
+
+**Pattern 3: Process Script Failures**
+```bash
+# Look for process-specific errors
+grep -i "process.*failed" ./$JOB_UUID/.nextflow.log
+grep -i "exit status" ./$JOB_UUID/.nextflow.log
+```
+
+Common error:
+```
+Process 'ANALYZE' terminated with an error exit status (1)
+```
+
+**Fix:** Check the process script logic and dependencies
+
+**Pattern 4: Resource Limits**
+```bash
+# Look for memory or CPU issues
+grep -i "out of memory" ./$JOB_UUID/.nextflow.log
+grep -i "killed" ./$JOB_UUID/.nextflow.log
+```
+
+Common error:
+```
+Process exceeded memory limit
+```
+
+**Fix:** Increase memory allocation in process directives
+
+#### Complete Debugging Example with Logs
+
+```bash
+# 1. Pipeline fails
+ivcap nextflow run "$SERVICE_ID" -f test.json --output json > run_result.json
+
+# 2. Check status
+STATUS=$(jq -r '.status' run_result.json)
+echo "Status: $STATUS"  # Output: failed
+
+# 3. Get job ID and results artifact
+JOB_ID=$(jq -r '.job_id' run_result.json)
+RESULTS_ARTIFACT=$(jq -r '.results_artifact_urn' run_result.json)
+JOB_UUID=$(echo "$JOB_ID" | sed 's/.*://')
+
+# 4. Download and extract logs
+ivcap artifact download "$RESULTS_ARTIFACT" -o results.tar.gz
+tar xzf results.tar.gz
+
+# 5. Examine the Nextflow log
+echo "=== Last 50 lines of Nextflow log ==="
+tail -n 50 "./$JOB_UUID/.nextflow.log"
+
+# 6. Search for specific errors
+echo "=== Container errors ==="
+grep -i "container" "./$JOB_UUID/.nextflow.log" | grep -i error
+
+echo "=== Process failures ==="
+grep -i "failed" "./$JOB_UUID/.nextflow.log"
+
+# 7. Based on findings, fix the issue and update
+# Fix main.nf (e.g., correct container directive)
+tar czf fixed.tar.gz main.nf nextflow.config ivcap.yaml
+
+# 8. Update the service
+ivcap nextflow update "$SERVICE_ID" -f fixed.tar.gz
+
+# 9. Test again
+ivcap nextflow run "$SERVICE_ID" -f test.json
+```
+
+#### MCP Agent Pattern for Log Analysis
+
+If you are an MCP agent debugging a failed pipeline:
+
+1. **Check job result for failure**
+   ```json
+   {
+     "tool": "nextflow_run",
+     "arguments": {
+       "service_id": "urn:ivcap:service:...",
+       "input": {...}
+     }
+   }
+   ```
+   Response includes: `status: failed`, `results_artifact_urn`
+
+2. **Fetch the Nextflow log**
+   ```json
+   {
+     "tool": "artifact_get",
+     "arguments": {
+       "id": "<results_artifact_urn>",
+       "path": "<job_uuid>/.nextflow.log"
+     }
+   }
+   ```
+
+3. **Analyze log content**
+   - Look for error patterns (container, file, process failures)
+   - Identify the failing process and line number
+   - Determine root cause
+
+4. **Suggest fix and update pipeline**
+   ```json
+   {
+     "tool": "nextflow_update",
+     "arguments": {
+       "service_id": "urn:ivcap:service:...",
+       "sources": [
+         {
+           "path": "main.nf",
+           "type": "text",
+           "text": "// Fixed code based on log analysis"
+         }
+       ]
+     }
+   }
+   ```
+
+**Example agent response:**
+
+```
+I see the pipeline failed. Let me check the Nextflow log...
+
+[Fetches log via artifact_get]
+
+I found the issue: The container 'quay.io/biocontainers/biopython:1.83'
+could not be pulled. This image may not exist.
+
+Let me verify and fix:
+1. The correct image is 'python:3.11-slim' (verified official image)
+2. We can install biopython via pip in the script
+
+I'll update the pipeline with the working container...
+```
+
+### When to Create a New Service ID
+
+**ALWAYS create a new service ID when:**
+- ✅ **Pipeline is production-ready and others are using it** - Once users rely on your pipeline for real work, any substantial changes require a new service ID
+- ✅ **Adding substantial new features** - Major functionality changes (not just bug fixes) warrant a new version
+- ✅ Starting a completely different pipeline
+- ✅ You want to publish a new major version alongside the existing one
+- ✅ You're forking/branching pipeline functionality significantly
+- ✅ Moving from development to production
+
+**DO NOT create a new service ID for:**
+- ❌ Minor bug fixes during active development
+- ❌ Parameter adjustments during debugging
+- ❌ Debugging iterations before first production use
+- ❌ Container image updates (unless they change functionality)
+- ❌ Documentation improvements
+- ❌ Small feature additions during active development
+
+### Versioning Strategy: Development vs Production
+
+#### During Active Development (Before Production Use)
+- **Reuse the same service ID** for all iterations
+- Make bug fixes, add features, experiment freely
+- Update via `nextflow_update` or `nextflow_create` with same ID
+
+#### After Production Use Begins
+Once users have run jobs and rely on results:
+- **Create a NEW service ID** for substantial feature additions
+- **Use clear naming** to distinguish versions
+- **Document differences** in the description
+- Keep the old version available so users can reproduce previous results
+
+### Naming Conventions for Versioned Pipelines
+
+**The pipeline NAME should reflect version and major differences, not just the description.**
+
+#### Pattern 1: Semantic Versioning in Name
+```yaml
+# First production version
+name: genome-assembly-v1
+service-id: urn:ivcap:service:f3a1b2c3-4567-89ab-cdef-1234567890ab
+description: |
+  De novo genome assembly using Flye assembler.
+
+  ## Version: 1.0
+  Initial production release with basic assembly pipeline.
+```
+
+```yaml
+# Substantial feature addition -> NEW service ID + NAME
+name: genome-assembly-v2
+service-id: urn:ivcap:service:a1b2c3d4-5678-90ab-cdef-1234567890cd
+description: |
+  De novo genome assembly using Flye assembler with hybrid polishing.
+
+  ## Version: 2.0
+  **NEW in v2:** Added Illumina short-read hybrid polishing support
+
+  ## Differences from v1:
+  - NEW: Hybrid polishing with Pilon using short reads
+  - NEW: Parameters for polishing rounds and quality thresholds
+  - IMPROVED: Better memory management for large genomes
+
+  ## When to use v2 vs v1:
+  - Use v2 if you have both long and short reads for higher accuracy
+  - Use v1 if you only have long reads or want faster processing
+  - v1 results are still valid; v2 provides incremental improvements
+```
+
+#### Pattern 2: Feature-Based Naming
+```yaml
+# Basic version
+name: rna-deseq2-basic
+service-id: urn:ivcap:service:1234abcd-...
+description: |
+  RNA-seq differential expression with DESeq2.
+  Basic version for simple two-condition comparisons.
+```
+
+```yaml
+# Extended version -> NEW service ID + NAME
+name: rna-deseq2-multifactor
+service-id: urn:ivcap:service:5678efgh-...
+description: |
+  RNA-seq differential expression with DESeq2.
+  Extended version with multi-factor design support.
+
+  ## Differences from rna-deseq2-basic:
+  - NEW: Support for multiple factors (e.g., treatment + batch)
+  - NEW: Interaction terms in design formula
+  - NEW: Time-series analysis capabilities
+
+  ## When to use multifactor vs basic:
+  - Use multifactor for complex experimental designs with covariates
+  - Use basic for simple two-condition comparisons (faster, simpler)
+  - Both versions produce valid results for their use cases
+```
+
+#### Pattern 3: Method-Based Naming
+```yaml
+# Original method
+name: variant-calling-gatk
+service-id: urn:ivcap:service:aaaa1111-...
+description: |
+  Variant calling using GATK HaplotypeCaller.
+```
+
+```yaml
+# Alternative method -> NEW service ID + NAME
+name: variant-calling-deepvariant
+service-id: urn:ivcap:service:bbbb2222-...
+description: |
+  Variant calling using DeepVariant (deep learning approach).
+
+  ## Differences from variant-calling-gatk:
+  - Uses DeepVariant instead of GATK HaplotypeCaller
+  - Better accuracy for low-coverage data
+  - Requires GPU for optimal performance
+
+  ## When to use deepvariant vs gatk:
+  - Use deepvariant for higher accuracy, especially at low coverage
+  - Use gatk for established workflows and faster CPU-only processing
+  - Results may differ slightly; choose based on your validation needs
+```
+
+### Example: Production Versioning Scenario
+
+```bash
+# Phase 1: Development (One service ID, multiple iterations)
+SERVICE_ID="urn:ivcap:service:f8a1c2d3-4567-89ab-cdef-9876543210ab"
+
+ivcap nextflow create --service-id "$SERVICE_ID" -f v0.1.tar.gz
+# ... test, debug, iterate ...
+ivcap nextflow update "$SERVICE_ID" -f v0.2.tar.gz
+# ... test, debug, iterate ...
+ivcap nextflow update "$SERVICE_ID" -f v0.3.tar.gz
+# ... test passes! ...
+
+# Phase 2: First Production Release
+# Same service ID, but now it's production-ready
+ivcap nextflow update "$SERVICE_ID" -f v1.0.tar.gz
+# name: cell-counter-v1
+# description: "... Version 1.0 - Initial production release ..."
+
+# Phase 3: Users run jobs and use results in papers
+# Jobs: job-001, job-002, job-003 all reference SERVICE_ID
+# Users publish results based on these job outputs
+
+# Phase 4: Major Feature Request - Add multi-channel support
+# DON'T update the same service! Users' jobs would break/change
+
+# Create NEW service ID with NEW name
+SERVICE_ID_V2="urn:ivcap:service:a1b2c3d4-5678-90ab-cdef-fedcba098765"
+
+ivcap nextflow create --service-id "$SERVICE_ID_V2" -f v2.0.tar.gz
+# name: cell-counter-v2-multichannel
+# description: |
+#   ... Version 2.0 - Multi-channel support
+#
+#   NEW in v2:
+#   - Multi-channel fluorescence support (up to 4 channels)
+#   - Channel-specific cell detection models
+#
+#   Differences from v1 (cell-counter-v1):
+#   - v1: Single channel only
+#   - v2: Multi-channel support
+#
+#   When to use v2 vs v1:
+#   - Use v2 for multi-channel experiments
+#   - Use v1 for single-channel (exact reproduction of previous results)
+#   - v1 remains available for reproducibility
+
+# Result: Both services coexist
+# - Old jobs still reference cell-counter-v1 (reproducible)
+# - New jobs can use cell-counter-v2-multichannel (new features)
+```
+
+### Documentation Requirements for New Versions
+
+When creating a new service ID for a production pipeline version, **ALWAYS include**:
+
+1. **In the `name` field:**
+   - Version number or feature distinction
+   - Examples: `pipeline-v2`, `pipeline-extended`, `pipeline-gpu`
+
+2. **In the `description` field:**
+   - Version number prominently displayed
+   - "NEW in vX:" section listing major additions
+   - "Differences from previous version" section
+   - "When to use vX vs vY" guidance
+   - Why users might prefer the old or new version
+
+3. **Maintain both versions** until deprecated:
+   - Keep old service IDs active for reproducibility
+   - Clearly document deprecation timeline if planned
+   - Provide migration guides if needed
+
+**Example description template for new versions:**
+
+```yaml
+description: |
+  [One-line summary of what this pipeline does]
+
+  ## Version: X.Y
+  [Brief version-specific statement]
+
+  ## NEW in vX:
+  - [Major new feature 1]
+  - [Major new feature 2]
+  - [Significant improvement]
+
+  ## Differences from v{X-1} (pipeline-name-v{X-1}):
+  - v{X-1}: [What the previous version did/didn't do]
+  - vX: [What this version does differently]
+  - [Key architectural or functional differences]
+
+  ## When to use vX vs v{X-1}:
+  - Use vX if: [Scenarios where new version is better]
+  - Use v{X-1} if: [Scenarios where old version is preferred]
+  - [Reproducibility note if applicable]
+
+  ## Purpose
+  [Rest of standard documentation...]
+```
+
+### Example: Full Debugging Session
+
+```bash
+# 1. Create service ID once (save this!)
+SERVICE_ID="urn:ivcap:service:f8a1c2d3-4567-89ab-cdef-9876543210ab"
+
+# 2. Initial creation
+ivcap nextflow create --service-id "$SERVICE_ID" -f v1.tar.gz
+# Output: Service created successfully
+
+# 3. Test run reveals bug
+ivcap nextflow run "$SERVICE_ID" -f test.json
+# Output: Job failed - container image not found
+
+# 4. Fix container directive in main.nf, repackage
+tar czf v2.tar.gz main.nf nextflow.config ivcap.yaml
+
+# 5. Update (NOT create) the same service
+ivcap nextflow update "$SERVICE_ID" -f v2.tar.gz
+# Output: Service updated successfully
+
+# 6. Test again with same service ID
+ivcap nextflow run "$SERVICE_ID" -f test.json
+# Output: Job succeeded!
+
+# 7. Another iteration - add parameter validation
+# ... edit ivcap.yaml ...
+tar czf v3.tar.gz main.nf nextflow.config ivcap.yaml
+
+# 8. Update again (same service ID)
+ivcap nextflow update "$SERVICE_ID" -f v3.tar.gz
+
+# 9. Final test
+ivcap nextflow run "$SERVICE_ID" -f test.json
+# Output: All working perfectly!
+
+# Result: One service ID, multiple iterations, clean registry
+```
+
+### MCP Agent Guidance
+
+**If you are an MCP agent helping debug a Nextflow pipeline:**
+
+1. **Check if service ID exists in conversation history**
+   - If yes: Use `nextflow_update` (or `nextflow_create` with same ID)
+   - If no: Ask user if they have a service ID to reuse, or generate one
+
+2. **Always suggest reusing service IDs during debugging**
+   ```
+   "I see we're debugging the pipeline. Should I update the existing service
+   (urn:ivcap:service:...) or create a new one? I recommend updating the
+   existing service to keep your registry clean."
+   ```
+
+3. **Track service ID across conversation**
+   - Store the service ID when first created/mentioned
+   - Reuse it for all subsequent updates in the same debugging session
+
+4. **Use `nextflow_update` for iterations**
+   ```json
+   {
+     "tool": "nextflow_update",
+     "arguments": {
+       "service_id": "<previously-used-service-id>",
+       "sources": [...]
+     }
+   }
+   ```
+
+---
+
+## ⚠️ CRITICAL: Source Size Limits & Patterns
+
+**The Gotcha**: `nextflow_create` accepts `sources` as a JSON array. Each source can be:
+- `type: "text"` → inline content (max ~50KB per file, ~100KB total per call)
+- `type: "url"` → **HTTP(S) only** (file:// won't work in sandbox)
+- `type: "artifact"` → reference an IVCAP artifact (no size limit)
+
+**Your Responsibility**: Validate total `sources` size before calling.
+
+### Size Check
+
+```javascript
+// Pseudo-code for agent logic:
+function estimateSourcesSize(sources) {
+  let total = 0;
+  for (const source of sources) {
+    if (source.type === 'text') {
+      total += source.text.length;  // UTF-8 bytes
+    }
+    // type: 'url' and type: 'artifact' have no size in request
+  }
+  return total;
+}
+
+// If estimateSourcesSize > 50KB, use artifact pattern instead
+```
+
+If you're about to call `nextflow_create` with >10 files or >50KB of inline content:
+
+1. **Build with `artifact_build` MCP tool** - Incremental file-by-file building
+2. **Inline only the artifact reference** — single source, no size problem
+3. **Call nextflow_create once** with that one artifact source
+
+### Pattern: Use `artifact_build` for Large Pipelines ✅
+
+```python
+# Step 1: Initialize build session
+session = artifact_build(stage="init")
+session_id = session["session_id"]
+
+# Step 2: Add files incrementally (one at a time)
+for file_path in pipeline_files:
+    content = read_file(file_path)
+    content_b64 = base64.b64encode(content.encode()).decode()
+
+    artifact_build(
+        stage="add",
+        session_id=session_id,
+        path_name=file_path,
+        content_base64=content_b64,
+        mime_type=get_mime_type(file_path)
+    )
+
+# Step 3: Submit to create artifact
+result = artifact_build(
+    stage="submit",
+    session_id=session_id,
+    name="my-pipeline-v1.0"
+)
+
+artifact_id = result["artifact_id"]
+
+# Step 4: Deploy with single artifact reference
+nextflow_create(
+    service_id="urn:ivcap:service:...",
+    sources=[{
+        "path": ".",
+        "type": "artifact",
+        "artifact_id": artifact_id
+    }]
+)
+```
+
+**When to use this:**
+- ✅ Pipelines with >5 files
+- ✅ Total inline content >50KB
+- ✅ Any production deployment
+
+**Advantages:**
+- ✅ No size limits (handles 100+ files)
+- ✅ Each `add` call is small (<10KB)
+- ✅ Can verify with `list` stage before submit
+- ✅ Reproducible and cacheable
+
+### Size Limits Quick Reference
+
+| Scenario | Recommended Max | Hard Limit | Solution |
+|----------|----------------|------------|----------|
+| Single text file | 10KB | 50KB | Break into smaller files or use artifact |
+| Total inline per call | 50KB | 100KB | Use `artifact_build` or pre-built artifact |
+| Number of files inline | 5 files | 10 files | Use `artifact_build` |
+| `artifact_build` per add | 10KB | 100KB | Split large files |
+| `artifact_build` total | Unlimited | No limit | Can add 1000+ files |
+
+### Troubleshooting: Silent Failures
+
+If `nextflow_create` returns without error but service isn't created:
+
+**Step 1: Estimate inline size**
+```python
+total_size = sum(len(s.get("text", "")) for s in sources if s.get("type") == "text")
+print(f"Total inline: {total_size / 1024:.1f} KB")
+
+if total_size > 50_000:
+    print("❌ TOO LARGE - Use artifact_build")
+```
+
+**Step 2: Try minimal sources**
+```json
+{
+  "service_id": "...",
+  "sources": [
+    {"path": "main.nf", "type": "text", "text": "..."},
+    {"path": "ivcap.yaml", "type": "text", "text": "..."}
+  ]
+}
+```
+
+If this works, the issue was size. Rebuild with `artifact_build`.
+
+**Step 3: Verify service exists**
+```json
+{
+  "tool": "service_list",
+  "arguments": {"search": "my-pipeline"}
+}
+```
+
+**Step 4: Check idempotency**
+- Calling `nextflow_create` with same service_id updates (doesn't error)
+- If first call partially fails, second may silently succeed with incomplete sources
+- Always verify: `service_get(id="urn:ivcap:service:...")`
+
+### Real-World Example: Large Pipeline Deployment
+
+**Bad approach (will fail):**
+```python
+# ❌ Trying to inline 10+ files at once
+sources = []
+for file_path in glob("pipeline/**/*.py"):
+    content = read_file(file_path)
+    sources.append({
+        "path": file_path,
+        "type": "text",
+        "text": content  # 10 files × 8KB = 80KB → timeout
+    })
+
+nextflow_create(service_id="...", sources=sources)  # ❌ FAILS silently
+```
+
+**Good approach:**
+```python
+# ✅ Use artifact_build for incremental assembly
+session = artifact_build(stage="init")
+sid = session["session_id"]
+
+# Add main files
+for path in ["main.nf", "nextflow.config", "ivcap.yaml"]:
+    content = read_file(f"pipeline/{path}")
+    artifact_build(
+        stage="add",
+        session_id=sid,
+        path_name=path,
+        content_base64=base64.b64encode(content.encode()).decode(),
+        mime_type=get_mime_type(path)
+    )
+
+# Add all scripts
+for script in glob("pipeline/bin/*.py"):
+    content = read_file(script)
+    artifact_build(
+        stage="add",
+        session_id=sid,
+        path_name=f"bin/{os.path.basename(script)}",
+        content_base64=base64.b64encode(content.encode()).decode(),
+        mime_type="text/x-python"
+    )
+
+# Submit artifact
+result = artifact_build(stage="submit", session_id=sid, name="large-pipeline")
+
+# Deploy with artifact reference
+nextflow_create(
+    service_id="urn:ivcap:service:...",
+    sources=[{
+        "path": ".",
+        "type": "artifact",
+        "artifact_id": result["artifact_id"]
+    }]
+)
+```
+
+**Result:** ✅ All files deployed successfully, no timeouts or size issues
+
+---
+
+## ⚠️ CRITICAL: IVCAP Pipelines MUST Use Containers
+
+**All Nextflow pipelines deployed to IVCAP MUST use container directives, NOT conda.**
+
+The IVCAP execution environment has **no Python, R, bioinformatics tools, or conda installed**.
+It provides only Nextflow itself. Every process must specify its dependencies via containers.
+
+### ✅ Required for IVCAP:
+
+```groovy
+process ANALYZE {
+    container 'quay.io/biocontainers/biopython:1.83'
+    // ✅ All dependencies are in the container
+
+    script:
+    """
+    python analyze.py
+    """
+}
+```
+
+### ❌ Will NOT work on IVCAP:
+
+```groovy
+process ANALYZE {
+    conda 'conda-forge::biopython=1.83'
+    // ❌ conda is not available - this will fail
+
+    script:
+    """
+    python analyze.py
+    """
+}
+```
+
+**Key points:**
+- **Every process** that runs code must have a `container` directive
+- Find containers at https://biocontainers.pro/ or Docker Hub
+- Use `quay.io/biocontainers/<tool>:<version>` for most bioinformatics tools
+- This is **mandatory** - pipelines without containers will fail on IVCAP
+
+See `skills://nextflow-pipeline/SKILL.md` for detailed container usage patterns.
+
+### 🔍 Verifying Container Images Before Use
+
+**Before specifying any container directive, verify the image exists and is pullable.**
+
+Container images can be removed, have incorrect tags, or be unavailable. Always verify before adding to your pipeline:
+
+#### Step 1: Search for Available Tags
+
+Search the web for the exact image tag:
+- For BioContainers: `site:quay.io/repository/biocontainers/<tool>`
+- For Docker Hub: `site:hub.docker.com <tool>`
+
+Example search: `site:quay.io/repository/biocontainers/python` to find tags like `quay.io/biocontainers/python:3.14`
+
+#### Step 2: Verify Image Exists
+
+Before using an image, confirm it's accessible using one of these methods:
+
+**Option A: Dry-run pull (Docker)**
+```bash
+docker pull <image>:<tag> --dry-run
+```
+
+**Option B: Inspect manifest (preferred - no download)**
+```bash
+docker manifest inspect <image>:<tag>
+```
+
+**Example:**
+```bash
+# Verify BioContainers image exists
+docker manifest inspect quay.io/biocontainers/biopython:1.83
+
+# Verify standard Docker Hub image
+docker manifest inspect python:3.11-slim
+```
+
+#### Step 3: Prefer Well-Known Stable Images
+
+**Priority order:**
+1. **Official Docker Hub images** - Always current, never deleted
+   - ✅ `docker.io/library/python:3.11-slim`
+   - ✅ `docker.io/library/ubuntu:22.04`
+   - ✅ `docker.io/library/r-base:4.3.0`
+
+2. **BioContainers with verified tags** - Versioned but may be deprecated
+   - ⚠️ `quay.io/biocontainers/biopython:1.83` (verify first!)
+
+3. **Custom images** - Only if you maintain them
+   - ⚠️ Your own registries
+
+**Avoid guessing tags!** A tag that looks right may not exist.
+
+**⚠️ CRITICAL: Use Fully Qualified Image Names for Docker Hub**
+
+IVCAP's Kubernetes environment **prepends `quay.io/` to unqualified container names**. If you specify a container as just `python:3.11-slim`, it will be transformed to `quay.io/python:3.11-slim`, which doesn't exist and will fail to pull.
+
+**Always use fully qualified names for Docker Hub images:**
+- ✅ `docker.io/library/python:3.11-slim` (correct - fully qualified)
+- ❌ `python:3.11-slim` (wrong - will become `quay.io/python:3.11-slim`)
+
+This applies to all official Docker Hub images: `ubuntu`, `alpine`, `node`, `postgres`, etc.
+
+**Examples:**
+```groovy
+// ✅ CORRECT - Fully qualified Docker Hub images
+process ANALYZE {
+    container 'docker.io/library/python:3.11-slim'
+    // ...
+}
+
+process BUILD {
+    container 'docker.io/library/node:18-alpine'
+    // ...
+}
+
+// ❌ WRONG - Unqualified names (will fail on IVCAP)
+process ANALYZE {
+    container 'python:3.11-slim'
+    // This becomes quay.io/python:3.11-slim ❌
+}
+
+// ✅ CORRECT - Quay.io images can remain as-is
+process BIOINFORMATICS {
+    container 'quay.io/biocontainers/samtools:1.17'
+    // Already fully qualified ✅
+}
+```
+
+#### Step 4: Fallback Pattern for Simple Dependencies
+
+If you only need Python + pip-installable packages (like Biopython + curl), the simplest verified approach is:
+
+```groovy
+process ANALYZE {
+    container 'docker.io/library/python:3.11-slim'
+    // ✅ Official image, always available (fully qualified for IVCAP)
+
+    beforeScript 'apt-get update && apt-get install -y procps && rm -rf /var/lib/apt/lists/*'
+
+    script:
+    """
+    pip install biopython==1.83
+    python analyze.py
+    """
+}
+```
+
+**⚠️ CRITICAL: Install procps in beforeScript for Nextflow Metrics**
+
+When using plain language containers (like `python:3.11-slim`, `ubuntu:22.04`, etc.), **always install the `procps` package in the `beforeScript` directive**. Nextflow checks for the `ps` command **before** running your process script to collect CPU and memory metrics. If procps is installed inside the script block, it's too late—Nextflow has already failed the check.
+
+**Always use beforeScript for procps:**
+```groovy
+process MY_PROCESS {
+    container 'docker.io/library/python:3.11-slim'
+
+    beforeScript 'apt-get update && apt-get install -y procps && rm -rf /var/lib/apt/lists/*'
+
+    script:
+    """
+    # Your actual processing code here
+    python analyze.py
+    """
+}
+```
+
+**Why beforeScript is required:**
+- ✅ Nextflow checks for `ps` command availability **before** executing the script block
+- ✅ `beforeScript` runs first, ensuring procps is installed when Nextflow checks
+- ❌ Installing in `script` block is too late—Nextflow has already checked and failed
+
+This applies to:
+- ✅ `docker.io/library/python:*-slim` images
+- ✅ `docker.io/library/ubuntu:*` images
+- ✅ `docker.io/library/debian:*` images
+- ✅ Any minimal base image that doesn't include procps
+
+BioContainers typically already include procps, but plain language images often don't.
+
+**Trade-offs:**
+- ✅ Image always exists and is current
+- ✅ No verification needed
+- ⚠️ Slower startup (apt-get + pip install at runtime)
+- ⚠️ Less reproducible (pip may fetch different dependencies)
+
+**When to use this:**
+- Quick prototypes and testing
+- Simple dependencies available on PyPI
+- When BioContainers verification fails
+
+**Production recommendation:** Build and maintain your own verified container with pinned dependencies (and procps pre-installed).
+
+---
+
+## ⚠️ CRITICAL: Invoking Scripts in bin/ Directory
+
+When using custom scripts in the `bin/` directory of your Nextflow pipeline, **file permissions don't carry through into Kubernetes pods**. Even if you mark scripts as executable locally, they won't have execute permissions in the container.
+
+### ❌ Wrong: Relying on Execute Permissions
+
+```groovy
+// bin/analyze.py (with chmod +x locally)
+process ANALYZE {
+    container 'docker.io/library/python:3.11-slim'
+
+    script:
+    """
+    analyze.py input.txt output.txt
+    # ❌ Will fail: "Permission denied" - execute bit not preserved
+    """
+}
+```
+
+### ✅ Correct: Explicit Interpreter Invocation
+
+**Always explicitly invoke scripts with their interpreter:**
+
+```groovy
+process ANALYZE {
+    container 'docker.io/library/python:3.11-slim'
+
+    script:
+    """
+    python ${projectDir}/bin/analyze.py input.txt output.txt
+    # ✅ Works: Explicitly calls python interpreter
+    """
+}
+```
+
+**For different script types:**
+
+```groovy
+// Python scripts
+script:
+"""
+python ${projectDir}/bin/my_script.py args
+"""
+
+// R scripts
+script:
+"""
+Rscript ${projectDir}/bin/my_script.R args
+"""
+
+// Bash scripts
+script:
+"""
+bash ${projectDir}/bin/my_script.sh args
+"""
+
+// Perl scripts
+script:
+"""
+perl ${projectDir}/bin/my_script.pl args
+"""
+```
+
+**Why this matters:**
+- Kubernetes pods don't preserve file permissions from the pipeline package
+- The execute bit (`chmod +x`) is lost when files are mounted into the container
+- Explicit interpreter invocation works reliably across all environments
+- `${projectDir}/bin/` is automatically added to PATH by Nextflow, but permissions still don't work
+
+**Best practice:**
+```groovy
+process COMPLEX_ANALYSIS {
+    container 'docker.io/library/python:3.11-slim'
+
+    beforeScript 'apt-get update && apt-get install -y procps && rm -rf /var/lib/apt/lists/*'
+
+    input:
+    path input_file
+
+    output:
+    path 'results.txt'
+
+    script:
+    """
+    # ✅ Explicit invocation for all custom scripts
+    python ${projectDir}/bin/preprocess.py ${input_file} temp.txt
+    python ${projectDir}/bin/analyze.py temp.txt results.txt
+    """
+}
+```
+
+---
+
+## Why Samples Schemas Matter
+
+### The Problem: Ad-Hoc Input Handling
+
+Many pipelines are built for immediate use with specific datasets:
+
+```groovy
+// ❌ Bad: Hard-coded paths, no schema
+params.input1 = "/data/sample1_R1.fastq"
+params.input2 = "/data/sample1_R2.fastq"
+params.reference = "/data/hg38.fa"
+```
+
+**Issues:**
+- Not reusable with different data
+- No provenance tracking (IVCAP can't track what data was used)
+- No validation (wrong data types silently fail)
+- Unclear what inputs are expected
+
+### The Solution: Well-Defined Samples Schema
+
+```yaml
+# ✅ Good: Structured samples with schema
+samples:
+  - name: sample_id
+    description: Unique identifier for this sample
+    type: string
+
+  - name: read1_fastq
+    description: Forward read FASTQ file (IVCAP artifact URN or external URL)
+    type: string
+    format: uri
+
+  - name: read2_fastq
+    description: Reverse read FASTQ file (IVCAP artifact URN or external URL)
+    type: string
+    format: uri
+```
+
+**Benefits:**
+- ✅ **Reusable:** Works with any dataset matching the schema
+- ✅ **Provenance:** IVCAP automatically tracks all input artifacts
+- ✅ **Validated:** Type checking prevents runtime errors
+- ✅ **Documented:** Self-describing interface
+
+---
+
+## Build Checklist
+
+When building any Nextflow pipeline for IVCAP, ensure:
+
+### 1. ✅ Samples Schema is Always Defined
+
+**Rule:** Even if your pipeline processes a single file or fixed dataset, define
+the samples schema in `ivcap.yaml`.
+
+**Why:**
+- Future reusability (you or others may want to run it on different data)
+- IVCAP can track data lineage automatically
+- Enables batch processing if needed later
+- Makes the pipeline self-documenting
+
+**Example:** Single-file analysis pipeline
+
+```yaml
+# Even for a "one-off" analysis, define the schema
+samples:
+  - name: input_file
+    description: Input data file to analyze (CSV, TSV, or Excel format)
+    type: string
+    format: uri
+
+  - name: file_format
+    description: Format of the input file (csv, tsv, xlsx)
+    type: string
+```
+
+### 2. ✅ Descriptions are Detailed and Comprehensive
+
+**Rule:** The pipeline `description` in `ivcap.yaml` must be multi-line and
+answer key questions about the pipeline.
+
+**Template for Pipeline Description:**
+
+```yaml
+description: |
+  [One-line summary of what this pipeline does]
+
+  ## Purpose
+  [Explain the biological/scientific question this pipeline addresses]
+
+  ## Inputs
+  [Describe all inputs with formats and requirements]
+
+  ## Processing Steps
+  [Outline the major processing stages]
+  1. [Step 1]
+  2. [Step 2]
+  3. [Step 3]
+
+  ## Outputs
+  [Describe outputs with formats and locations]
+
+  ## Dependencies
+  [List key tools/algorithms with versions]
+
+  ## References
+  [Citations or links to papers/documentation]
+
+  ## Notes
+  [Any important caveats, limitations, or recommendations]
+```
+
+**Example: Real-World Description**
+
+```yaml
+description: |
+  RNA-seq differential expression analysis using DESeq2.
+
+  ## Purpose
+  Identify differentially expressed genes between experimental conditions
+  from RNA-seq count data. Suitable for bulk RNA-seq experiments with
+  biological replicates.
+
+  ## Inputs
+  - Count matrix: Gene-by-sample matrix from featureCounts or HTSeq
+  - Sample metadata: CSV with sample IDs, conditions, and covariates
+  - Gene annotations: GTF file for gene ID mapping (optional)
+
+  ## Processing Steps
+  1. Count matrix normalization (size factor estimation)
+  2. Dispersion estimation across biological replicates
+  3. Statistical testing (negative binomial GLM)
+  4. Multiple testing correction (Benjamini-Hochberg FDR)
+  5. Result visualization (MA plots, volcano plots, heatmaps)
+
+  ## Outputs
+  - DESeq2 results table (CSV): log2FC, p-values, adjusted p-values
+  - Normalized count matrix (CSV)
+  - Quality control plots (PDF)
+  - Differential gene lists (CSV): upregulated and downregulated genes
+
+  ## Dependencies
+  - R 4.2+
+  - DESeq2 1.38+
+  - ggplot2 3.4+
+
+  ## References
+  Love, M.I., Huber, W., Anders, S. (2014). Moderated estimation of fold
+  change and dispersion for RNA-seq data with DESeq2. Genome Biology, 15:550.
+
+  ## Notes
+  - Requires at least 2 biological replicates per condition
+  - Input counts should be raw (non-normalized) integers
+  - Effective for sample sizes 3-100; use alternatives for single-cell data
+```
+
+### 3. ✅ Parameter Descriptions Include Units and Ranges
+
+**Rule:** Every parameter must have a description that specifies:
+- What it controls
+- Valid ranges or formats
+- Units (bp, seconds, percentage, etc.)
+- Default behavior if optional
+
+**Example:**
+
+```yaml
+parameters:
+  - name: min_read_length
+    description: |
+      Minimum read length to retain after quality filtering.
+      Reads shorter than this threshold will be discarded.
+      Recommended range: 50-150 bp for Illumina short reads.
+      Units: base pairs (bp)
+    type: integer
+    optional: false
+
+  - name: quality_threshold
+    description: |
+      Phred quality score threshold for trimming.
+      Bases with quality below this value will be trimmed from read ends.
+      Range: 0-40 (typical: 20 for Q20 or 30 for Q30)
+      Default: 20 if not specified
+    type: integer
+    optional: true
+
+  - name: cpu_threads
+    description: |
+      Number of CPU threads for parallel processing.
+      Higher values speed up computation but increase memory usage.
+      Recommended: 4-16 threads depending on available resources.
+      Default: 4
+    type: integer
+    optional: true
+```
+
+### 4. ✅ Sample Field Descriptions Explain Format and Purpose
+
+**Rule:** Each sample field must document:
+- What data it represents
+- Expected format (URN, string ID, number, etc.)
+- Whether it's an IVCAP artifact reference
+- Any validation requirements
+
+**Example:**
+
+```yaml
+samples:
+  - name: sample_id
+    description: |
+      Unique identifier for this sample.
+      Must be alphanumeric with no spaces (underscores allowed).
+      Example: SAMPLE_001, patient_42, control_A
+    type: string
+
+  - name: read1_fastq
+    description: |
+      Forward read FASTQ file from paired-end sequencing.
+      Must be gzip-compressed (.fastq.gz or .fq.gz).
+      Provide as IVCAP artifact URN (urn:ivcap:artifact:...) or
+      external URL (https://...).
+    type: string
+    format: uri
+
+  - name: condition
+    description: |
+      Experimental condition for this sample.
+      Used for grouping samples in differential expression analysis.
+      Example: 'control', 'treatment', 'wildtype', 'mutant'
+    type: string
+
+  - name: batch
+    description: |
+      Batch identifier for this sample (optional but recommended).
+      Used to control for batch effects in statistical analysis.
+      Samples processed together should have the same batch ID.
+    type: string
+
+  - name: spike_in_concentration
+    description: |
+      ERCC spike-in concentration (if applicable).
+      Units: attomoles/μL
+      Required if using spike-ins for normalization.
+    type: number
+```
+
+---
+
+## Building with Provenance in Mind
+
+### What is Provenance Tracking?
+
+IVCAP automatically records:
+- Which artifacts were used as inputs
+- What parameters were specified
+- When the pipeline was executed
+- Who executed it
+- What outputs were produced
+
+**This only works if inputs are structured as samples with URN references.**
+
+### Provenance-Friendly Pattern
+
+```yaml
+# ivcap.yaml
+samples:
+  - name: input_data
+    description: Input dataset (IVCAP artifact URN)
+    type: string
+    format: uri
+
+  - name: reference_database
+    description: Reference database (IVCAP artifact URN)
+    type: string
+    format: uri
+```
+
+```groovy
+// main.nf - Extract samples from IVCAP request
+def jobParams = null
+if (params.containsKey('request_file')) {
+    def jsonFile = file(params.request_file)
+    def jsonSlurper = new groovy.json.JsonSlurper()
+    jobParams = jsonSlurper.parse(jsonFile)
+}
+
+def samplesData = jobParams?.samples ?: []
+def samplesChannel = Channel.fromList(samplesData)
+    .map { sample ->
+        tuple(
+            sample.sample_id,
+            file(sample.input_data),        // IVCAP resolves URN → file
+            file(sample.reference_database)
+        )
+    }
+```
+
+**When this pipeline runs:**
+- IVCAP records: "Job X used artifact:abc123 and artifact:def456"
+- Lineage graph shows: Input artifacts → Pipeline → Output artifacts
+- Reproducibility: Anyone can see exactly what data was used
+
+### Anti-Pattern: Hard-Coded Paths
+
+```groovy
+// ❌ No provenance tracking possible
+params.input = "/data/myfile.csv"
+input_ch = Channel.fromPath(params.input)
+```
+
+**IVCAP cannot track this because:**
+- No artifact URN reference
+- No structured samples
+- Provenance is lost
+
+---
+
+## Real-World Examples
+
+### Example 1: Genome Assembly Pipeline
+
+```yaml
+$schema: urn:ivcap:schema.nextflow.pipeline.1
+id: urn:sd-core:nextflow:genome-assembly
+name: genome-assembly-pipeline
+service-id: urn:ivcap:service:f3a1b2c3-4567-89ab-cdef-1234567890ab
+description: |
+  De novo genome assembly from long-read sequencing data using Flye assembler.
+
+  ## Purpose
+  Assemble complete bacterial or small eukaryotic genomes from PacBio or
+  Oxford Nanopore long-read sequencing data. Suitable for genomes 1 Mb - 500 Mb.
+
+  ## Inputs
+  - Long-read FASTQ files (PacBio HiFi, PacBio CLR, or Nanopore)
+  - Expected genome size estimate
+  - Sequencing platform type
+
+  ## Processing Steps
+  1. Read quality assessment (NanoPlot)
+  2. Read error correction (optional, for CLR/Nanopore)
+  3. Assembly graph construction (Flye)
+  4. Contig polishing (Racon + Medaka or Pilon)
+  5. Assembly quality assessment (QUAST)
+  6. Completeness check (BUSCO)
+
+  ## Outputs
+  - Final assembly FASTA (scaffolds and contigs)
+  - Assembly graph (GFA format)
+  - Quality metrics (N50, L50, completeness)
+  - QC plots and reports
+
+  ## Dependencies
+  - Flye 2.9+
+  - NanoPlot 1.40+
+  - Racon 1.5+
+  - Medaka 1.7+ (for Nanopore)
+  - QUAST 5.2+
+  - BUSCO 5.4+
+
+  ## References
+  Kolmogorov et al. (2019). Assembly of long, error-prone reads using
+  repeat graphs. Nature Biotechnology, 37:540-546.
+
+  ## Notes
+  - Requires 30-50x coverage for high-quality assembly
+  - Memory usage scales with genome size (allow 8-64 GB)
+  - PacBio HiFi reads produce best results (fewest errors)
+
+contact:
+  name: Genomics Core
+  email: genomics@example.org
+
+parameters:
+  - name: genome_size
+    description: |
+      Expected genome size for assembly optimization.
+      Used by Flye to estimate coverage and filter contigs.
+      Examples: 4.6m (E. coli), 3.2g (human)
+      Units: bp (suffix with k/m/g for kilo/mega/giga)
+    type: string
+    optional: false
+
+  - name: platform
+    description: |
+      Sequencing platform type (affects error model).
+      Valid values:
+        - 'pacbio-hifi' (PacBio HiFi/CCS, error rate ~0.1%)
+        - 'pacbio-clr' (PacBio CLR, error rate ~10-15%)
+        - 'nano-raw' (Nanopore, error rate ~5-10%)
+        - 'nano-hq' (Nanopore high-quality, error rate ~3-5%)
+    type: string
+    optional: false
+
+  - name: min_read_length
+    description: |
+      Minimum read length to include in assembly.
+      Shorter reads are filtered out.
+      Recommended: 1000 bp for bacterial genomes, 5000 bp for eukaryotes.
+      Units: base pairs (bp)
+    type: integer
+    optional: true
+
+  - name: polishing_rounds
+    description: |
+      Number of iterative polishing rounds.
+      More rounds improve accuracy but increase runtime.
+      Range: 1-4, recommended: 2
+      Default: 2
+    type: integer
+    optional: true
+
+  - name: busco_lineage
+    description: |
+      BUSCO lineage dataset for completeness assessment.
+      Examples: 'bacteria_odb10', 'fungi_odb10', 'metazoa_odb10'
+      See https://busco.ezlab.org/ for full list.
+      Default: auto-detect from input data
+    type: string
+    optional: true
+
+samples:
+  - name: sample_id
+    description: |
+      Unique sample identifier (no spaces or special characters).
+      Example: isolate_001, strain_XYZ
+    type: string
+
+  - name: reads_fastq
+    description: |
+      Long-read FASTQ file (IVCAP artifact URN or external URL).
+      Must be gzip-compressed (.fastq.gz or .fq.gz).
+      Can be merged reads from multiple flow cells.
+    type: string
+    format: uri
+
+  - name: short_reads_r1
+    description: |
+      Illumina short reads for hybrid polishing (optional).
+      Forward read FASTQ file (IVCAP artifact URN or URL).
+      Only needed if using Pilon for polishing.
+    type: string
+    format: uri
+
+  - name: short_reads_r2
+    description: |
+      Illumina short reads for hybrid polishing (optional).
+      Reverse read FASTQ file (IVCAP artifact URN or URL).
+    type: string
+    format: uri
+
+example:
+  $schema: urn:ivcap:schema:genome-assembly-pipeline.request.1
+  parameters:
+    genome_size: "4.6m"
+    platform: "pacbio-hifi"
+    min_read_length: 1000
+    polishing_rounds: 2
+    busco_lineage: "bacteria_odb10"
+  samples:
+    - sample_id: ecoli_strain_K12
+      reads_fastq: "urn:ivcap:artifact:a1b2c3..."
+      short_reads_r1: "urn:ivcap:artifact:d4e5f6..."
+      short_reads_r2: "urn:ivcap:artifact:g7h8i9..."
+```
+
+### Example 2: Simple Image Analysis (Single Input)
+
+Even for simple pipelines, define the schema:
+
+```yaml
+$schema: urn:ivcap:schema.nextflow.pipeline.1
+id: urn:sd-core:nextflow:image-cell-counter
+name: image-cell-counter
+service-id: urn:ivcap:service:c9d8e7f6-5432-10ab-cdef-9876543210ab
+description: |
+  Automated cell counting from microscopy images using deep learning.
+
+  ## Purpose
+  Count cells in fluorescence microscopy images using a pre-trained
+  Mask R-CNN model. Supports common image formats (TIFF, PNG, JPEG).
+
+  ## Inputs
+  - Microscopy image (single channel or RGB)
+  - Pre-trained model weights (optional, uses default if not provided)
+
+  ## Processing Steps
+  1. Image preprocessing (normalization, resizing)
+  2. Cell detection and segmentation (Mask R-CNN)
+  3. Cell counting and size distribution analysis
+  4. Visualization overlay (detected cells highlighted)
+
+  ## Outputs
+  - Cell count summary (CSV)
+  - Annotated image with detected cells (PNG)
+  - Cell size distribution plot (PNG)
+  - Detailed cell measurements (area, perimeter, circularity) (CSV)
+
+  ## Dependencies
+  - Python 3.9+
+  - PyTorch 2.0+
+  - Torchvision 0.15+
+  - OpenCV 4.7+
+
+  ## References
+  He et al. (2017). Mask R-CNN. ICCV 2017.
+
+  ## Notes
+  - Optimal for images with 10-1000 cells
+  - Model trained on HeLa cells; may need retraining for other cell types
+  - Processing time: ~5 seconds per image on GPU, ~30 seconds on CPU
+
+contact:
+  name: Imaging Core
+  email: imaging@example.org
+
+parameters:
+  - name: confidence_threshold
+    description: |
+      Minimum confidence score for cell detection (0.0-1.0).
+      Higher values reduce false positives but may miss faint cells.
+      Recommended: 0.5-0.8
+      Default: 0.7
+    type: number
+    optional: true
+
+  - name: min_cell_area
+    description: |
+      Minimum cell area in pixels to count as valid cell.
+      Filters out noise and debris.
+      Default: 100 pixels
+    type: integer
+    optional: true
+
+  - name: model_weights
+    description: |
+      Custom model weights file (IVCAP artifact URN or URL).
+      If not provided, uses default pre-trained weights.
+      Format: PyTorch .pth file
+    type: string
+    format: uri
+    optional: true
+
+# Even though this processes one image at a time, define samples schema
+# This enables batch processing and provenance tracking
+samples:
+  - name: image_id
+    description: |
+      Unique identifier for this image.
+      Example: plate1_well_A1, experiment_001
+    type: string
+
+  - name: image_file
+    description: |
+      Microscopy image file (IVCAP artifact URN or external URL).
+      Supported formats: .tiff, .tif, .png, .jpg, .jpeg
+      Can be grayscale or RGB.
+    type: string
+    format: uri
+
+  - name: pixel_size_um
+    description: |
+      Physical pixel size in micrometers (for size measurements).
+      Example: 0.65 for 40x objective with typical camera.
+      Units: μm/pixel
+    type: number
+
+example:
+  $schema: urn:ivcap:schema:image-cell-counter.request.1
+  parameters:
+    confidence_threshold: 0.7
+    min_cell_area: 100
+  samples:
+    - image_id: plate1_well_A1
+      image_file: "urn:ivcap:artifact:img123..."
+      pixel_size_um: 0.65
+    - image_id: plate1_well_A2
+      image_file: "urn:ivcap:artifact:img456..."
+      pixel_size_um: 0.65
+    - image_id: plate1_well_B1
+      image_file: "urn:ivcap:artifact:img789..."
+      pixel_size_um: 0.65
+```
+
+**Notice:** Even though this pipeline processes one image per sample, defining
+the samples schema enables:
+- Batch processing (multiple images in one job)
+- Provenance tracking (which images were analyzed)
+- Reusability (easy to run on new datasets)
+
+---
+
+## Validation Checklist
+
+Before deploying your pipeline, verify:
+
+### Documentation Quality
+
+- [ ] Pipeline description is multi-line and comprehensive
+- [ ] Description includes: Purpose, Inputs, Steps, Outputs, Dependencies, References
+- [ ] Every parameter has a detailed description
+- [ ] Parameter descriptions include units, ranges, and defaults
+- [ ] Every sample field has a clear description
+- [ ] Sample field descriptions explain format and validation requirements
+
+### Schema Completeness
+
+- [ ] Samples schema is defined (even for single-file pipelines)
+- [ ] All input data files are referenced through sample fields
+- [ ] Sample fields use `format: uri` for artifact references
+- [ ] Parameter types are appropriate (`string`, `integer`, `number`, `boolean`)
+- [ ] Optional parameters are marked with `optional: true`
+
+### Provenance Readiness
+
+- [ ] All data inputs come through samples (not hard-coded paths)
+- [ ] Artifact references use URN format or URLs
+- [ ] No direct file paths in `params` defaults
+- [ ] Pipeline can process different datasets without code changes
+
+### Example Request
+
+- [ ] Example request is provided in `ivcap.yaml`
+- [ ] Example demonstrates typical use case
+- [ ] Example shows both parameters and samples
+- [ ] Example uses realistic URNs or URLs
+
+### Testing
+
+- [ ] Test with actual IVCAP artifact URNs
+- [ ] Verify provenance is recorded correctly
+- [ ] Test with different sample counts (1, 2, many)
+- [ ] Validate error messages for invalid inputs
+
+---
+
+## Common Mistakes to Avoid
+
+### ❌ Mistake 1: No Samples Schema
+
+```yaml
+# Wrong: Only parameters, no samples
+parameters:
+  - name: input_file
+    description: Input file path
+    type: string
+```
+
+**Why it's wrong:**
+- No provenance tracking
+- Not reusable
+- No type safety
+
+**Fix:**
+```yaml
+# Correct: Use samples for data inputs
+parameters:
+  - name: analysis_mode
+    description: Analysis mode (fast or thorough)
+    type: string
+
+samples:
+  - name: input_file
+    description: Input data file (IVCAP artifact URN)
+    type: string
+    format: uri
+```
+
+### ❌ Mistake 2: Vague Descriptions
+
+```yaml
+# Wrong: Vague description
+description: This pipeline processes data.
+```
+
+**Fix:**
+```yaml
+# Correct: Detailed description
+description: |
+  RNA-seq differential expression analysis using DESeq2.
+
+  ## Purpose
+  Identify differentially expressed genes between experimental conditions...
+  [continue with full details]
+```
+
+### ❌ Mistake 3: Missing Units/Ranges
+
+```yaml
+# Wrong: No units or ranges
+parameters:
+  - name: threshold
+    description: Quality threshold
+    type: number
+```
+
+**Fix:**
+```yaml
+# Correct: Include units and ranges
+parameters:
+  - name: quality_threshold
+    description: |
+      Phred quality score threshold (0-40).
+      Recommended: 20 (Q20) or 30 (Q30).
+      Default: 20
+    type: integer
+    optional: true
+```
+
+### ❌ Mistake 4: Hard-Coded Data
+
+```groovy
+// Wrong: Hard-coded paths in main.nf
+params.reference = "/data/hg38.fa"
+params.samples = "/data/samples.csv"
+```
+
+**Fix:**
+```yaml
+# ivcap.yaml - Accept data as samples
+samples:
+  - name: reference_genome
+    description: Reference genome FASTA (IVCAP artifact URN)
+    type: string
+    format: uri
+```
+
+```groovy
+// main.nf - Extract from IVCAP request
+def refGenome = jobParams?.samples[0]?.reference_genome
+def refFile = file(refGenome)
+```
+
+---
+
+## Summary
+
+Building production-ready Nextflow pipelines for IVCAP requires:
+
+1. **Always define samples schema** - Even for simple/specific use cases
+2. **Write comprehensive descriptions** - Pipeline, parameters, and sample fields
+3. **Include units and ranges** - Make parameters self-documenting
+4. **Use URN references** - Enable provenance tracking
+5. **Think reusability** - Design for future datasets, not just current data
+
+**Remember:** Time spent on good documentation and schema design pays off through:
+- Better provenance tracking
+- Easier reuse by others (and future you)
+- Fewer runtime errors
+- Better integration with IVCAP ecosystem
+
+Your pipeline is not just code - it's a reusable scientific tool. Build it accordingly.

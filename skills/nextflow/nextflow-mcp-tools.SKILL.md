@@ -1,16 +1,16 @@
 ---
 name: nextflow-mcp-tools
-version: 0.1.0
+version: 0.2.0
 description: >
   Using MCP tools for Nextflow pipeline deployment and execution, including
-  artifact_build for large pipelines, source types, size limits, and troubleshooting.
+  artifact_build for creating pipeline packages and troubleshooting.
 requires:
   bins: ["ivcap"]
 ---
 
 # Nextflow MCP Tools Usage
 
-This skill covers using MCP tools (`nextflow_create`, `nextflow_run`, `artifact_build`) for programmatic pipeline deployment and execution.
+This skill covers using MCP tools (`artifact_build`, `nextflow_create`, `nextflow_run`) for programmatic pipeline deployment and execution.
 
 **See also:**
 - Pipeline Basics: `skills://nextflow-pipeline-basics/SKILL.md`
@@ -19,42 +19,28 @@ This skill covers using MCP tools (`nextflow_create`, `nextflow_run`, `artifact_
 
 ---
 
-## ⚠️ CRITICAL: Handling Large Pipelines (Best Practice)
+## ⚠️ CRITICAL: Nextflow Deployment Workflow
 
-When your pipeline has many files (>5 files) or large total size (>50KB), **DO NOT inline everything in a single `nextflow_create` call**. This causes:
-- Request payloads too large (>100KB typically fails)
-- Token limit exhaustion in MCP calls
-- Parser timeouts on massive nested JSON
-- Silent failures without error messages
+The `nextflow_create` tool **NO LONGER accepts inline sources**. You must first build and upload an artifact using the `artifact_build` tool, then deploy it using `nextflow_create`.
 
-### Anti-Pattern: Inline Everything ❌
+### Required Two-Step Workflow
+
+**⚠️ CRITICAL: Do NOT Pre-Tar Your Files**
+
+The `artifact_build` tool **automatically tars your files for you**. You must:
+
+- ❌ **DON'T** Package files → create tar.gz → upload tar
+- ✅ **DO** Call init → add individual files → call submit
+
+The tool will handle all tarring and compression internally. Provide individual files (main.nf, nextflow.config, ivcap.yaml, etc.) and `artifact_build` will package them into a tar.gz archive.
+
+---
+
+**Step 1: Build and Upload Pipeline Package**
+Use `artifact_build` to create a tar.gz containing your pipeline files:
 
 ```json
-{
-  "tool": "nextflow_create",
-  "arguments": {
-    "service_id": "urn:ivcap:service:...",
-    "sources": [
-      {"path": "main.nf", "type": "text", "text": "... 5KB ..."},
-      {"path": "nextflow.config", "type": "text", "text": "... 2KB ..."},
-      {"path": "ivcap.yaml", "type": "text", "text": "... 8KB ..."},
-      {"path": "bin/analyze.py", "type": "text", "text": "... 8KB ..."},
-      {"path": "bin/fetch.py", "type": "text", "text": "... 6KB ..."},
-      {"path": "bin/process.py", "type": "text", "text": "... 12KB ..."},
-      // ... 7 more Python files inlined (50KB+ more)
-    ]
-  }
-}
-```
-
-**Result:** ❌ Request too large, timeout, silent failure
-
-### Pattern 1: Use `artifact_build` MCP Tool (Recommended for Agents) ✅
-
-The `artifact_build` MCP tool provides **incremental building** for large pipelines:
-
-**Step 1: Initialize build session**
-```json
+// 1a. Initialize build session
 {
   "tool": "artifact_build",
   "arguments": {
@@ -62,361 +48,159 @@ The `artifact_build` MCP tool provides **incremental building** for large pipeli
   }
 }
 ```
-Returns: `{"session_id": "uuid-abc123...", "message": "..."}`
+Returns: `{"id": "session-uuid-123...", ...}`
 
-**Step 2: Add files incrementally (multiple calls)**
 ```json
+// 1b. Add pipeline files incrementally
 {
   "tool": "artifact_build",
   "arguments": {
     "stage": "add",
-    "session_id": "uuid-abc123...",
-    "path_name": "main.nf",
-    "content_base64": "IyEvdXNyL2Jpbi9lbnYg...",
-    "mime_type": "text/x-nextflow"
+    "id": "session-uuid-123...",
+    "files": [
+      {
+        "path_name": "main.nf",
+        "content": "IyEvdXNyL2Jpbi9lbnYgbmV4dGZsb3cKbmV4dGZsb3cuZW5hYmxlLmRzbCA9IDIKCndvcmtmbG93IHsKICAgIGxvZy5pbmZvICJIZWxsbyBmcm9tIE5leHRmbG93ISIKfQo=",
+        "mime_type": "text/x-nextflow"
+      },
+      {
+        "path_name": "nextflow.config",
+        "content": "cGFyYW1zLm91dGRpciA9ICIke3BhcmFtcy5yZXN1bHRzX2RpcjovdG1wfS9yZXN1bHRzIgo=",
+        "mime_type": "text/plain"
+      },
+      {
+        "path_name": "ivcap.yaml",
+        "content": "bmFtZTogbXktcGlwZWxpbmUKZGVzY3JpcHRpb246IEEgc2FtcGxlIE5leHRmbG93IHBpcGVsaW5lCnBhcmFtZXRlcnM6CiAgc2FtcGxlX2NvdW50OgogICAgdHlwZTogaW50ZWdlcgogICAgZGVzY3JpcHRpb246IE51bWJlciBvZiBzYW1wbGVzIHRvIHByb2Nlc3MKICAgIGRlZmF1bHQ6IDUK",
+        "mime_type": "application/x-yaml"
+      }
+    ]
   }
 }
 ```
 
-Repeat for each file. Each call is small (<10KB per file).
-
-**Step 3: List staged files (optional verification)**
 ```json
-{
-  "tool": "artifact_build",
-  "arguments": {
-    "stage": "list",
-    "session_id": "uuid-abc123..."
-  }
-}
-```
-
-**Step 4: Submit the artifact**
-```json
+// 1c. Submit to create artifact
 {
   "tool": "artifact_build",
   "arguments": {
     "stage": "submit",
-    "session_id": "uuid-abc123...",
-    "name": "p53-pipeline-v1.0"
+    "id": "session-uuid-123...",
+    "name": "my-pipeline-v1.0"
   }
 }
 ```
-Returns: `{"artifact_id": "urn:ivcap:artifact:xyz...", ...}`
+Returns: `{"id": "urn:ivcap:artifact:abc123...", ...}`
 
-**Step 5: Deploy pipeline using the artifact**
+**Step 2: Deploy Pipeline Service**
+Use `nextflow_create` to deploy the artifact as a service:
+
 ```json
 {
   "tool": "nextflow_create",
   "arguments": {
-    "service_id": "urn:ivcap:service:...",
-    "sources": [
-      {
-        "path": ".",
-        "type": "artifact",
-        "artifact_id": "urn:ivcap:artifact:xyz..."
-      }
-    ]
+    "service_id": "urn:ivcap:service:a98b81a8-9279-509f-9c0e-40d39e83058a",
+    "artifact_id": "urn:ivcap:artifact:abc123..."
   }
 }
 ```
 
-**Advantages:**
-- ✅ No size limits (handles 100+ files)
-- ✅ Each call is small and fast
-- ✅ Can verify with `list` before submit
-- ✅ Reproducible (same artifact always)
-- ✅ Session-based (can resume if interrupted)
+---
 
-### Pattern 2: Pre-Build Locally and Upload (Recommended for CLI) ✅
+## Complete Deployment Example
 
-**For production pipelines**, always build locally:
+```python
+import uuid
+import base64
+
+# Generate service ID (UUIDv5 from pipeline name)
+namespace = uuid.NAMESPACE_DNS
+service_uuid = uuid.uuid5(namespace, "my-pipeline")
+service_id = f"urn:ivcap:service:{service_uuid}"
+
+# Step 1: Initialize build session
+init_response = artifact_build(stage="init")
+session_id = init_response["id"]
+
+# Step 2: Add pipeline files
+pipeline_files = {
+    "main.nf": """#!/usr/bin/env nextflow
+nextflow.enable.dsl = 2
+
+workflow {
+    log.info "Processing samples..."
+}
+""",
+    "nextflow.config": """
+params.outdir = "${params.results_dir:/tmp}/results"
+""",
+    "ivcap.yaml": """
+name: my-pipeline
+description: My Nextflow pipeline
+parameters:
+  sample_count:
+    type: integer
+    description: Number of samples to process
+    default: 5
+"""
+}
+
+# Add files to the build session
+for path, content in pipeline_files.items():
+    content_b64 = base64.b64encode(content.encode()).decode()
+    artifact_build(
+        stage="add",
+        id=session_id,
+        files=[{
+            "path_name": path,
+            "content": content_b64,
+            "mime_type": "text/plain"
+        }]
+    )
+
+# Step 3: Submit to create artifact
+submit_result = artifact_build(
+    stage="submit",
+    id=session_id,
+    name="my-pipeline-v1.0"
+)
+artifact_id = submit_result["id"]
+
+# Step 4: Deploy the pipeline service
+deploy_result = nextflow_create(
+    service_id=service_id,
+    artifact_id=artifact_id
+)
+
+print(f"Service deployed: {deploy_result['service_id']}")
+print(f"Artifact: {deploy_result['pipeline_artifact_urn']}")
+```
+
+---
+
+## Using Pre-Built Artifacts (CLI Upload)
+
+If you've already uploaded an artifact using the CLI, you can deploy it directly:
 
 ```bash
-# 1. On your system (or in agent bash_tool):
-cd /path/to/pipeline
-tar -czf p53-pipeline.tar.gz \
-  main.nf \
-  nextflow.config \
-  ivcap.yaml \
-  bin/*.py
-
-# 2. Upload to IVCAP as artifact
-ivcap artifact upload p53-pipeline.tar.gz \
-  --name "p53-pipeline-v1.0" \
+# Upload artifact via CLI
+ivcap artifact upload my-pipeline.tar.gz \
+  --name "my-pipeline-v1.0" \
   --output json > artifact.json
 
 ARTIFACT_ID=$(jq -r '.id' artifact.json)
-
-# 3. Reference the artifact in nextflow create
-ivcap nextflow create \
-  --service-id "urn:ivcap:service:..." \
-  --artifact "$ARTIFACT_ID" \
-  --output json
 ```
 
-**Or via MCP after upload:**
+Then deploy via MCP:
+
 ```json
 {
   "tool": "nextflow_create",
   "arguments": {
     "service_id": "urn:ivcap:service:...",
-    "sources": [
-      {
-        "path": ".",
-        "type": "artifact",
-        "artifact_id": "urn:ivcap:artifact:xyz123..."
-      }
-    ]
+    "artifact_id": "urn:ivcap:artifact:..."
   }
 }
 ```
-
-**Advantages:**
-- ✅ Single artifact upload, no size limits
-- ✅ Exact same file permissions/structure preserved
-- ✅ Faster execution (tar already built)
-- ✅ Reproducible (same tar.gz always)
-
-### Pattern 3: Staged Sources (For Development Only) ⚠️
-
-**During development**, use smaller batches:
-
-```json
-// Call 1: Core files only (~15KB total)
-{
-  "tool": "nextflow_create",
-  "arguments": {
-    "service_id": "urn:ivcap:service:abc123...",
-    "sources": [
-      {"path": "main.nf", "type": "text", "text": "..."},
-      {"path": "nextflow.config", "type": "text", "text": "..."},
-      {"path": "ivcap.yaml", "type": "text", "text": "..."}
-    ]
-  }
-}
-
-// Call 2: Add scripts via update (3-4 files, ~20KB)
-{
-  "tool": "nextflow_update",
-  "arguments": {
-    "service_id": "urn:ivcap:service:abc123...",  // SAME ID
-    "sources": [
-      {"path": "bin/fetch_data.py", "type": "text", "text": "..."},
-      {"path": "bin/analyze.py", "type": "text", "text": "..."}
-    ]
-  }
-}
-```
-
-**Note:** Calling `nextflow_create` with the same `service_id` updates the existing service (idempotent).
-
-**Trade-offs:**
-- ⚠️ Multiple round trips (slower)
-- ⚠️ Can hide partial failures (first call fails, second succeeds partially)
-- ✅ Good for iterative development
-- ❌ NOT recommended for production
-
-### Size Limits Reference
-
-| Source Type | Recommended Max | Hard Limit | Notes |
-|-------------|----------------|------------|-------|
-| Single `type: "text"` file | <10KB | ~50KB | Larger files slow parsing |
-| Total inline sources per call | <50KB | ~100KB | Above this, expect timeouts |
-| `type: "artifact"` | Unlimited | No limit | Stored in IVCAP, not inlined |
-| `type: "url"` (external HTTP) | Unlimited | No limit | Fetched by server |
-| `artifact_build` per file | <10KB | 100KB | Per `add` call |
-| `artifact_build` total | Unlimited | No limit | Can add 1000+ files |
-
-### Anti-Pattern: `type: "url"` for Local Files ❌
-
-```json
-{
-  "path": "bin/script.py",
-  "type": "url",
-  "url": "file:///home/claude/pipeline/bin/script.py"  // ❌ Won't work (sandboxed)
-}
-```
-
-**Why it fails:**
-- MCP server runs in a sandboxed environment
-- `file://` URLs are not accessible
-- Only `http://` and `https://` URLs work
-
-✅ **Do this instead:**
-```json
-{
-  "path": "bin/script.py",
-  "type": "text",
-  "text": "#!/usr/bin/env python3\n..."  // Inline for small files
-}
-
-// OR use artifact_build for large files
-// OR upload to external server and reference via https://
-```
-
-### Troubleshooting Silent Failures
-
-If `nextflow_create` returns without error but service isn't created:
-
-#### 1. Check Total Size
-
-If you're an agent with bash access:
-```bash
-# Estimate inline sources size
-du -sh pipeline/  # Should be <50KB for all inline content
-```
-
-Or in Python:
-```python
-total_size = sum(len(src["text"]) for src in sources if src.get("type") == "text")
-print(f"Total inline size: {total_size / 1024:.1f} KB")
-
-if total_size > 50_000:
-    print("⚠️ TOO LARGE - Use artifact_build or pre-built artifact")
-```
-
-#### 2. Reduce to Bare Minimum
-
-Try with just essential files:
-```json
-{
-  "service_id": "...",
-  "sources": [
-    {"path": "main.nf", "type": "text", "text": "..."},
-    {"path": "ivcap.yaml", "type": "text", "text": "..."}
-  ]
-}
-```
-
-If THIS works, the issue was request size. Add other files via:
-- Pattern 1 (artifact_build)
-- Pattern 2 (pre-built artifact)
-- Pattern 3 (staged updates)
-
-#### 3. Verify Service Was Created
-
-```json
-{
-  "tool": "service_list",
-  "arguments": {
-    "search": "my-pipeline"
-  }
-}
-```
-
-Check if your service ID appears in results.
-
-#### 4. Check for Idempotency Issues
-
-Calling `nextflow_create` twice with the same service_id updates (doesn't error).
-
-**This is intentional** but can hide issues:
-- First call partially fails (e.g., missing files)
-- Second call silently succeeds with incomplete sources
-- Pipeline appears created but is broken
-
-**Solution:** Always verify after create:
-```json
-{
-  "tool": "service_get",
-  "arguments": {
-    "id": "urn:ivcap:service:..."
-  }
-}
-```
-
-### Real-World Example: P53 Pipeline (10+ Files)
-
-**Scenario:** Building a p53 mutation analysis pipeline with:
-- `main.nf` (5KB)
-- `nextflow.config` (2KB)
-- `ivcap.yaml` (8KB)
-- `bin/fetch_ensembl.py` (12KB)
-- `bin/parse_vcf.py` (8KB)
-- `bin/analyze_mutations.py` (15KB)
-- `bin/generate_report.py` (10KB)
-- `bin/utils.py` (6KB)
-- `bin/plotting.py` (8KB)
-- ... (3 more Python files, 20KB)
-
-**Total: ~100KB inline would FAIL**
-
-**Solution using artifact_build:**
-
-```python
-# Step 1: Initialize
-session = artifact_build(stage="init")
-session_id = session["session_id"]
-
-# Step 2: Add each file incrementally
-files = [
-    ("main.nf", "text/x-nextflow", read_file("main.nf")),
-    ("nextflow.config", "text/plain", read_file("nextflow.config")),
-    ("ivcap.yaml", "application/x-yaml", read_file("ivcap.yaml")),
-    ("bin/fetch_ensembl.py", "text/x-python", read_file("bin/fetch_ensembl.py")),
-    ("bin/parse_vcf.py", "text/x-python", read_file("bin/parse_vcf.py")),
-    # ... all other files
-]
-
-for path, mime, content in files:
-    import base64
-    content_b64 = base64.b64encode(content.encode()).decode()
-
-    artifact_build(
-        stage="add",
-        session_id=session_id,
-        path_name=path,
-        content_base64=content_b64,
-        mime_type=mime
-    )
-
-# Step 3: List to verify (optional)
-staged = artifact_build(stage="list", session_id=session_id)
-print(f"Staged {len(staged['files'])} files")
-
-# Step 4: Submit
-result = artifact_build(
-    stage="submit",
-    session_id=session_id,
-    name="p53-mutation-pipeline-v1.0"
-)
-
-artifact_id = result["artifact_id"]
-
-# Step 5: Deploy pipeline
-nextflow_create(
-    service_id="urn:ivcap:service:...",
-    sources=[{
-        "path": ".",
-        "type": "artifact",
-        "artifact_id": artifact_id
-    }]
-)
-```
-
-**Result:** ✅ All 10+ files deployed successfully, no size issues
-
-### Decision Tree: Which Pattern to Use?
-
-```
-How many files in your pipeline?
-├─ 1-3 files, <20KB total
-│  └─> Use inline sources (type: "text") ✓
-│
-├─ 4-6 files, 20-50KB total
-│  ├─ Agent with MCP?
-│  │  └─> Use artifact_build (Pattern 1) ✓
-│  └─ CLI user?
-│     └─> Pre-build tar.gz (Pattern 2) ✓
-│
-└─ 7+ files, >50KB total
-   └─> MUST use:
-       ├─ artifact_build (Pattern 1) for agents ✓
-       └─ Pre-built artifact (Pattern 2) for CLI ✓
-```
-
-**Never use Pattern 3 (staged updates) for >50KB pipelines in production.**
 
 ---
 
@@ -434,157 +218,429 @@ How many files in your pipeline?
 - Manual deployment and testing
 - Shell scripts and CI/CD pipelines
 - Direct human control needed
+- Working with local tar.gz files
 
 ---
 
-## MCP Tool Gotchas
+## Choosing Between artifact_create and artifact_build
 
-⚠️ **Critical differences from CLI workflow:**
+### ⚠️ CRITICAL: When to Use Which Tool
 
-1. **Service ID generation is agent responsibility**
-   - Generate UUIDv5: `uuid.uuid5(uuid.NAMESPACE_DNS, "pipeline-name")`
-   - Format: `urn:ivcap:service:<uuid>`
-   - Do NOT use random UUIDs - use namespace-based for reproducibility
+**Use `artifact_build` when:**
+- ✅ You are assembling files **in your agent's sandbox** (e.g., `/home/claude/`, `/tmp/`)
+- ✅ You are creating files programmatically and need to upload them
+- ✅ Building multi-file archives from content you generate
+- ✅ Files don't exist in a location accessible to the MCP server
 
-2. **Two-step process is mandatory**
-   - Step 1: `nextflow_create()` deploys service
-   - Step 2: `nextflow_run()` submits jobs
-   - Cannot run before service exists
+**Use `artifact_create` when:**
+- ✅ Files already exist on the **MCP server's filesystem** (not your sandbox)
+- ✅ Referencing URLs that the MCP server can access (http://, https://)
+- ✅ Using existing artifacts by URN
 
-3. **Sources must be fully formed**
-   - Each source needs: `{path, type, [text|base64|url|artifact_id]}`
-   - Do NOT omit the `type` field
-   - `path` must include directory (e.g., `bin/script.py` not just `script.py`)
-   - Use `type: "text"` for inline code, not `type: "url"` with local paths
+### Common Mistake: Using artifact_create with Sandbox Files
 
----
-
-## Sources Parameter Format
-
-The `sources` array defines the pipeline package contents. Each source becomes a file in the tar.gz archive.
-
-### Source Types
-
-**Type: text (for inline code)**
+❌ **This will FAIL:**
 ```json
 {
-  "path": "main.nf",
-  "type": "text",
-  "text": "#!/usr/bin/env nextflow\nnextflow.enable.dsl = 2\n..."
+  "tool": "artifact_create",
+  "arguments": {
+    "content": [
+      {
+        "name": "my-pipeline.tar.gz",
+        "source": {
+          "type": "url",
+          "url": "file:///home/claude/my-pipeline.tar.gz"
+        }
+      }
+    ]
+  }
 }
 ```
-- Use for: Nextflow code, config files, Python scripts
-- ✅ Preferred for MCP tool usage
-- ❌ Do NOT use `type: "url"` with local file paths
+**Why:** The MCP server cannot access files in your agent's sandbox (`/home/claude/`).
 
-**Type: base64 (for binary files)**
+✅ **Use artifact_build instead:**
 ```json
-{
-  "path": "data/reference.fasta.gz",
-  "type": "base64",
-  "base64": "H4sIAAAAA...",
-  "media_type": "application/gzip"
-}
-```
+// 1. Initialize
+{"tool": "artifact_build", "arguments": {"stage": "init"}}
 
-**Type: url (for external sources)**
-```json
-{
-  "path": "bin/download_data.sh",
-  "type": "url",
-  "url": "https://example.com/scripts/download.sh"
-}
-```
+// 2. Read and add files from your sandbox
+{"tool": "artifact_build", "arguments": {
+  "stage": "add",
+  "id": "session-id",
+  "files": [{"path_name": "main.nf", "content": "base64...", "mime_type": "text/plain"}]
+}}
 
-**Type: artifact (for IVCAP artifacts)**
-```json
-{
-  "path": "ivcap.yaml",
-  "type": "artifact",
-  "artifact_id": "urn:ivcap:artifact:...",
-  "artifact_path": "pipeline/ivcap.yaml"
-}
-```
-
-### Required Source Fields per Type
-
-| Type | path | type | Content Field | Optional |
-|------|------|------|---|---|
-| text | ✓ | ✓ | text | - |
-| base64 | ✓ | ✓ | base64 | media_type |
-| url | ✓ | ✓ | url | - |
-| artifact | ✓ | ✓ | artifact_id, artifact_path | - |
-
-### Common Mistakes
-
-❌ **Wrong:** Omitting `type` field
-```json
-{"path": "main.nf", "text": "..."}  // Missing type!
-```
-
-✅ **Correct:**
-```json
-{"path": "main.nf", "type": "text", "text": "..."}
+// 3. Submit
+{"tool": "artifact_build", "arguments": {"stage": "submit", "id": "session-id"}}
 ```
 
 ---
 
-❌ **Wrong:** Using `type: "url"` with local file paths
-```json
-{"path": "bin/script.py", "type": "url", "url": "file:///home/claude/..."}
-```
+## Choosing Between artifact_build 'add' vs 'add_remote' Stages
 
-✅ **Correct:** Inline content directly with `type: "text"`
-```json
-{"path": "bin/script.py", "type": "text", "text": "#!/usr/bin/env python3\n..."}
+### ⚠️ CRITICAL: Size Constraints and RPC Patterns
+
+The `artifact_build` tool has two ways to add files:
+
+#### 'add' Stage: For Small Files (Base64)
+- ✅ **Use when:** File content fits in RPC payload (typically < 1MB)
+- ✅ **How it works:** You encode the file content as base64 and send it inline
+- ✅ **Best for:** Source code files (main.nf, config, scripts < 1MB)
+- ❌ **DON'T use for:** Large data files, reference genomes, archives
+- **Protocol:** `{"path_name": "file.txt", "content": "base64-encoded-content"}`
+
+#### 'add_remote' Stage: For Large Files (URL Download)
+- ✅ **Use when:** Files are large or already hosted at URLs
+- ✅ **How it works:** You provide a URL; MCP server downloads the file directly
+- ✅ **Best for:** Large data files, binaries, archives already on web
+- ✅ **Avoids:** Encoding/decoding overhead, RPC payload limits
+- ❌ **DON'T use for:** Small files that fit easily in base64
+- **Protocol:** `{"path_name": "data.tar.gz", "url": "https://..."}`
+
+### Key Differences
+
+| Aspect | 'add' (Base64) | 'add_remote' (URL) |
+|--------|----------------|-------------------|
+| **File Size** | Small (< 1MB typical) | Large (unlimited) |
+| **Content Encoding** | Base64 (3:4 overhead) | Binary (no overhead) |
+| **Network** | RPC payload | Direct HTTP download |
+| **Best For** | Source code, configs | Data, archives, binaries |
+| **Example** | `main.nf`, `ivcap.yaml` | `reference-genome.tar.gz` |
+
+### Recommended Pattern
+
+```python
+# For a mixed pipeline package:
+
+# 1. Add source code files (small) with 'add'
+artifact_build(
+    stage="add",
+    id=session_id,
+    files=[
+        {"path_name": "main.nf", "content": base64_encode(main_nf_content)},
+        {"path_name": "ivcap.yaml", "content": base64_encode(ivcap_yaml_content)},
+    ]
+)
+
+# 2. Add large data files with 'add_remote'
+artifact_build(
+    stage="add_remote",
+    id=session_id,
+    files=[
+        {"path_name": "data/reference.tar.gz", "url": "https://example.com/reference-genome.tar.gz"},
+        {"path_name": "data/annotation.gff", "url": "https://example.com/genes.gff"},
+    ]
+)
+
+# 3. Submit when all files are added
+artifact_build(
+    stage="submit",
+    id=session_id,
+    name="my-pipeline-v1.0"
+)
 ```
 
 ---
 
-❌ **Wrong:** Omitting directory in path
+## Verifying URLs Before Download
+
+When using `add_remote` to download files from URLs, you can use the `verify_url` tool to check if a URL is accessible before attempting the download. This is particularly useful for:
+
+- Checking that remote files exist before adding them to artifacts
+- Verifying HTTP status codes and availability
+- Inspecting content metadata (Content-Type, Content-Length) without downloading the full file
+- Building robust agent workflows that validate URLs before processing
+- **Validating URLs in generated pipeline code before deployment** (CRITICAL for Nextflow)
+
+### ⚠️ CRITICAL: Verify URLs in Generated Nextflow Code
+
+When you **generate or create Nextflow pipeline code** that includes hardcoded download URLs (in `bin/` scripts, within process definitions, or in configuration files), you **MUST verify those URLs before deploying the pipeline**:
+
+1. **Before Creating Pipeline Artifacts:** Use `verify_url` to confirm:
+   - The URL actually exists and is accessible
+   - The Content-Type matches expectations (e.g., `application/gzip` for `.tar.gz`)
+   - The Content-Length matches the expected file size (validates the URL points to the correct version)
+
+2. **During Code Generation:** If your agent generates download scripts like:
+   ```bash
+   # Inside a Nextflow process
+   wget https://example.com/reference-genome-v2.0.tar.gz
+   ```
+   Verify the URL BEFORE adding this code to the artifact.
+
+3. **Before artifact_build submission:** Use this pattern:
+   ```python
+   # Extract all URLs from generated code
+   urls_in_code = extract_urls_from_pipeline_code(generated_main_nf)
+
+   # Verify each URL exists and has correct metadata
+   for url in urls_in_code:
+       verify_result = verify_url(url=url)
+       if not verify_result.get("success"):
+           raise ValueError(f"URL verification failed: {url}")
+
+       # Validate content-type and content-length expectations
+       if expected_content_type and verify_result.get("content_type") != expected_content_type:
+           raise ValueError(f"Unexpected content-type for {url}")
+
+   # Only proceed with artifact creation after all URLs verified
+   artifact_build(stage="submit", id=session_id, name="pipeline")
+   ```
+
+### Why This Matters for Nextflow
+
+Nextflow pipelines often hardcode external data URLs. If these URLs are:
+- ❌ **Typos or outdated:** Pipeline jobs will fail with cryptic download errors
+- ❌ **Redirects to wrong version:** Pipeline results will be wrong without obvious cause
+- ❌ **Content-Type mismatch:** Scripts may fail trying to decompress wrong file type
+
+By verifying upfront:
+- ✅ Catch URL problems **before deploying** the pipeline service
+- ✅ Validate **Content-Type** matches what the pipeline expects
+- ✅ Confirm **Content-Length** to detect version mismatches
+- ✅ Agents can self-correct and regenerate code with correct URLs
+
+
+### verify_url Tool
+
 ```json
-{"path": "analyze.py", "type": "text", "text": "..."}  // Should be bin/analyze.py
+{
+  "tool": "verify_url",
+  "arguments": {
+    "url": "https://example.com/reference-genome.tar.gz"
+  }
+}
 ```
 
-✅ **Correct:** Full path with directory structure
+**Returns:**
 ```json
-{"path": "bin/analyze.py", "type": "text", "text": "..."}
+{
+  "url": "https://example.com/reference-genome.tar.gz",
+  "success": true,
+  "status_code": 200,
+  "status": "200 OK",
+  "content_type": "application/gzip",
+  "content_length": "5368709120",
+  "last_modified": "Mon, 01 Jan 2024 00:00:00 GMT",
+  "etag": "\"abc123\""
+}
+```
+
+### Usage Pattern
+
+```python
+# Before adding a remote file, verify it exists
+verify_result = verify_url(url="https://example.com/data.tar.gz")
+
+if verify_result.get("success"):
+    # URL is accessible, proceed with artifact_build
+    artifact_build(
+        stage="add_remote",
+        id=session_id,
+        files=[{
+            "path_name": "data.tar.gz",
+            "url": "https://example.com/data.tar.gz",
+            "size": int(verify_result.get("content_length", 0))
+        }]
+    )
+else:
+    # URL is not accessible, handle error
+    print(f"Error accessing URL: {verify_result.get('error')}")
+    print(f"Status code: {verify_result.get('status_code')}")
+```
+
+### Key Fields
+
+| Field | Purpose |
+|-------|---------|
+| **success** | Boolean indicating HTTP < 400 status code |
+| **status_code** | HTTP status code (200, 404, 500, etc.) |
+| **status** | HTTP status message (e.g., "200 OK") |
+| **content_type** | MIME type of the resource |
+| **content_length** | Size in bytes (useful for validating expected file size) |
+| **last_modified** | Last modification timestamp |
+| **etag** | Entity tag for cache validation |
+
+### Error Handling
+
+When a URL is not accessible, `verify_url` returns:
+
+```json
+{
+  "url": "https://example.com/missing-file.tar.gz",
+  "success": false,
+  "status_code": 404,
+  "status": "404 Not Found",
+  "error": "HTTP 404: Not Found"
+}
 ```
 
 ---
 
-## MCP Tool Execution Flow
 
+## MCP Tool Reference
+
+### artifact_build()
+
+Creates and uploads a tar.gz artifact incrementally **from content you provide**.
+
+**Stage: init**
+```json
+{
+  "tool": "artifact_build",
+  "arguments": {
+    "stage": "init"
+  }
+}
 ```
-Agent/User
-    ↓
-Generate service ID (UUIDv5)
-    ↓
-Prepare sources array
-  - main.nf (type: text)
-  - nextflow.config (type: text)
-  - ivcap.yaml (type: text)
-  - bin/*.py (type: text)
-    ↓
-Call nextflow_create()
-  ✓ Pipeline artifact created
-  ✓ Service registered in Data Fabric
-  ✓ Returns: service_id, pipeline_artifact_urn
-    ↓
-Call nextflow_run()
-  ✓ Job submitted to service
-  ✓ Returns: job_id (if immediate)
-  ✓ Returns: job_id + polling instructions (if slow)
-    ↓
-Call job_status() in loop
-  ✓ Check execution progress
-  ✓ Wait for completion
-    ↓
-Call artifact_get()
-  ✓ Retrieve results from results_artifact_urn
-  ✓ Use accept: ["text/csv"] for text content
-    ↓
-Complete
+Returns: `{"id": "session-uuid", "staging_dir": "/tmp/...", "created_at": "..."}`
+
+**Stage: add** (For Small Files - Base64 Encoded)
+```json
+{
+  "tool": "artifact_build",
+  "arguments": {
+    "stage": "add",
+    "id": "session-uuid",
+    "files": [
+      {
+        "path_name": "path/to/file.txt",
+        "content": "base64-encoded-content",
+        "mime_type": "text/plain",
+        "size": 1234
+      }
+    ]
+  }
+}
+```
+Returns: `{"id": "session-uuid", "files_added": 1, "total_files": 5, ...}`
+
+**⚠️ Note on 'add' stage:**
+- Use for small files that fit in RPC payload (typically < 1MB)
+- Content must be base64-encoded
+- Has 3:4 size overhead from base64 encoding
+- Best for source code: main.nf, nextflow.config, ivcap.yaml, scripts
+
+**Stage: add_remote** (For Large Files - URL Download)
+```json
+{
+  "tool": "artifact_build",
+  "arguments": {
+    "stage": "add_remote",
+    "id": "session-uuid",
+    "files": [
+      {
+        "path_name": "data/reference-genome.tar.gz",
+        "url": "https://example.com/genomes/reference-v2.tar.gz",
+        "mime_type": "application/gzip",
+        "size": 5368709120
+      }
+    ]
+  }
+}
+```
+Returns: `{"id": "session-uuid", "files_added": 1, "total_files": 5, ...}`
+
+**⚠️ Note on 'add_remote' stage:**
+- Use for large files (> 1MB) or files already hosted at URLs
+- MCP server downloads the file directly from the provided URL
+- No base64 encoding overhead
+- No RPC payload size limits
+- Best for: large data files, binaries, reference genomes, archives
+- URL must be publicly accessible or have proper auth headers
+- Optional `mime_type` is inferred from Content-Type header if omitted
+- Optional `size` parameter validates downloaded content matches expected size
+
+**Stage: list**
+```json
+{
+  "tool": "artifact_build",
+  "arguments": {
+    "stage": "list",
+    "id": "session-uuid"
+  }
+}
+```
+Returns: `{"id": "session-uuid", "file_count": 5, "total_size": 12345, "files": [...]}`
+
+**Stage: submit**
+```json
+{
+  "tool": "artifact_build",
+  "arguments": {
+    "stage": "submit",
+    "id": "session-uuid",
+    "name": "my-artifact",
+    "policy": "optional-policy-id"
+  }
+}
+```
+Returns: `{"id": "urn:ivcap:artifact:...", "name": "...", "size": 12345, ...}`
+
+### nextflow_create()
+
+Deploys a Nextflow pipeline from a pre-built artifact.
+
+| Parameter | Required | Type | Description |
+|-----------|----------|------|-------------|
+| service_id | YES | string | Service URN (e.g., `urn:ivcap:service:a98b81a8-9279-509f-9c0e-40d39e83058a`) |
+| artifact_id | YES | string | Artifact URN containing the pipeline tar.gz |
+| name | NO | string | Optional name for display purposes |
+| policy | NO | string | Optional access policy |
+
+**Example:**
+```json
+{
+  "tool": "nextflow_create",
+  "arguments": {
+    "service_id": "urn:ivcap:service:a98b81a8-9279-509f-9c0e-40d39e83058a",
+    "artifact_id": "urn:ivcap:artifact:abc123...",
+    "name": "My Pipeline"
+  }
+}
+```
+
+**Returns:**
+```json
+{
+  "ok": true,
+  "service_id": "urn:ivcap:service:...",
+  "pipeline_artifact_urn": "urn:ivcap:artifact:...",
+  "service_aspect_record_id": "urn:ivcap:aspect:...",
+  "tool": {
+    "name": "my-pipeline",
+    "description": "...",
+    "service_id": "...",
+    "source": "ivcap.yaml"
+  }
+}
+```
+
+### nextflow_run()
+
+Runs a Nextflow pipeline job.
+
+| Parameter | Required | Type | Description |
+|-----------|----------|------|-------------|
+| service_id | YES | string | Service URN to run |
+| input | NO* | object | Inline job input payload (JSON object) |
+| aspect_urn | NO* | string | URN of aspect containing job parameters |
+
+*Either input or aspect_urn required
+
+**Example:**
+```json
+{
+  "tool": "nextflow_run",
+  "arguments": {
+    "service_id": "urn:ivcap:service:...",
+    "input": {
+      "parameters": {
+        "sample_count": 10
+      }
+    }
+  }
+}
 ```
 
 ---
@@ -622,32 +678,6 @@ Response from nextflow_run():
 → Call `job_status(job_id=...)` after 30 seconds
 → Repeat until status is "succeeded" or "failed"
 
-### Polling Code Pattern
-
-```python
-import time
-
-job_id = response["job_id"]
-poll_interval = response.get("poll_after_seconds", 30)
-
-while True:
-    status_response = job_status(job_id=job_id)
-    if status_response["status"] in ["succeeded", "failed"]:
-        break
-    print(f"Still running... checking again in {poll_interval}s")
-    time.sleep(poll_interval)
-    poll_interval = status_response.get("poll_after_seconds", 30)
-
-# Now get results
-results_urn = status_response["result"]["results_artifact_urn"]
-```
-
-### Important Notes
-- ✅ Set appropriate `poll_after_seconds` (usually 30s)
-- ✅ Always check both `.status` and `.result.status`
-- ❌ Don't poll in tight loops (respect poll_after_seconds)
-- ❌ Don't assume immediate completion
-
 ---
 
 ## Accessing Pipeline Results via MCP
@@ -670,68 +700,103 @@ for row in reader:
     print(row)
 ```
 
-### Pattern: Fetch Text Report
-```python
-report = artifact_get(
-    id="urn:ivcap:artifact:...",
-    path="/results/report.txt",
-    accept=["text/plain"]
-)
-print(report)
-```
-
 ### Critical: Use `accept` Parameter
 - ✅ `accept: ["text/csv"]` → Returns readable CSV
 - ✅ `accept: ["text/plain"]` → Returns readable text
 - ✅ `accept: ["text/*"]` → Returns any text format
 - ❌ Omit `accept` → Returns base64-encoded data (harder to parse)
 
-### Results Artifact Structure
-Nextflow results artifact contains:
-```
-<job_uuid>/
-  results/
-    pipeline_report.html
-    pipeline_timeline.html
-    [your publishDir outputs]
-  .nextflow.log
-  work/
-    [Nextflow work directory]
-```
-
 ---
 
-## MCP Tools Quick Reference
+## Troubleshooting
 
-### nextflow_create()
-| Parameter | Required | Type | Example |
-|-----------|----------|------|---------|
-| service_id | YES | string | `"urn:ivcap:service:fc51f603-1514-5dd0-a259-e7cb08970874"` |
-| sources | YES | array | `[{path: "main.nf", type: "text", text: "..."}]` |
-| name | NO | string | `"my-pipeline"` |
-| collection | NO | string | `"urn:ivcap:collection:..."` |
+### Error: "missing artifact_id"
 
-### nextflow_run()
-| Parameter | Required | Type | Example |
-|-----------|----------|------|---------|
-| service_id | YES | string | `"urn:ivcap:service:fc51f603..."` |
-| input | NO* | object | `{parameters: {top_variants: 30}}` |
-| aspect_urn | NO* | string | `"urn:ivcap:aspect:..."` |
-| watch | NO | boolean | `true` (wait for completion) |
+**Cause:** You're trying to use the old workflow with inline sources.
 
-*Either input or aspect_urn required
+**Solution:** Use the two-step workflow:
+1. Build artifact with `artifact_build`
+2. Deploy with `nextflow_create` using the artifact ID
 
-### job_status()
-| Parameter | Required | Type | Example |
-|-----------|----------|------|---------|
-| job_id | YES | string | `"urn:ivcap:job:13a363f5..."` |
+### Error: "neither 'ivcap.yaml' nor 'ivcap-tool.yaml' found"
 
-### artifact_get()
-| Parameter | Required | Type | Example |
-|-----------|----------|------|---------|
-| id | YES | string | `"urn:ivcap:artifact:99ce0551..."` |
-| path | NO | string | `"13a363f5.../results/output.csv"` |
-| accept | NO | array | `["text/csv"]` |
+**Cause:** Your artifact doesn't contain the required tool descriptor file.
+
+**Solution:** Ensure your `artifact_build` session includes `ivcap.yaml` or `ivcap-tool.yaml`:
+```json
+{
+  "stage": "add",
+  "id": "session-id",
+  "files": [
+    {
+      "path_name": "ivcap.yaml",
+      "content": "base64-encoded-yaml-content"
+    }
+  ]
+}
+```
+
+### Error: "failed to download artifact"
+
+**Cause:** Invalid artifact ID or authentication issue.
+
+**Solution:**
+- Verify the artifact ID is correct (format: `urn:ivcap:artifact:...`)
+- Check authentication with `ivcap context list`
+
+### Error: "nextflow_create failed" or "no main.nf found in archive"
+
+**Cause:** You pre-tarred your files before uploading them.
+
+**❌ This is WRONG:**
+```python
+# WRONG: Don't do this!
+import tarfile
+import base64
+
+# Create tar.gz first
+tar_data = create_tar_gz([
+    ("main.nf", main_nf_content),
+    ("ivcap.yaml", ivcap_yaml_content),
+])
+
+# Then try to upload it as a single file
+artifact_build(
+    stage="add",
+    id=session_id,
+    files=[{
+        "path_name": "my-pipeline.tar.gz",  # ❌ WRONG!
+        "content": base64.b64encode(tar_data).decode(),
+    }]
+)
+```
+**Why it fails:** The tar.gz file is treated as-is, not extracted. When `nextflow_create` tries to find `main.nf` inside, it finds `my-pipeline.tar.gz/my-pipeline/main.nf` or nothing at all.
+
+**✅ This is CORRECT:**
+```python
+# CORRECT: Add individual files, artifact_build tars them
+artifact_build(
+    stage="add",
+    id=session_id,
+    files=[
+        {
+            "path_name": "main.nf",
+            "content": base64.b64encode(main_nf_content.encode()).decode(),
+        },
+        {
+            "path_name": "ivcap.yaml",
+            "content": base64.b64encode(ivcap_yaml_content.encode()).decode(),
+        },
+    ]
+)
+
+# artifact_build automatically creates the tar.gz with correct structure
+# nextflow_create finds main.nf at the root of the archive
+```
+
+**Key Point:**
+- ❌ **DON'T** package files → create tar.gz → upload tar
+- ✅ **DO** add individual files → let artifact_build tar them
 
 ---
 

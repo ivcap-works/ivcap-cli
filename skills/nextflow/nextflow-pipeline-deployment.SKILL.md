@@ -88,7 +88,9 @@ print(service_id)
 
 **Note:** This requirement for manual service ID generation may change in future versions to support auto-generation of service IDs.
 
-### Step 1: Create/Update Service
+### Deployment Method 1: CLI (Recommended for Manual Deployment)
+
+**Step 1: Create/Update Service**
 
 ```bash
 # IMPORTANT: Generate service ID first (UUIDv5)
@@ -115,7 +117,105 @@ ivcap nextflow update \
 4. Creates/updates a Data Fabric aspect for the service
 5. Returns the service URN, artifact URN, and aspect record ID
 
-### Step 2: Submit Jobs
+### Deployment Method 2: MCP Tools (Recommended for Agents/Automation)
+
+**IMPORTANT:** The MCP `nextflow_create` tool **NO LONGER accepts inline sources**. You must first build and upload an artifact using the `artifact_build` tool.
+
+#### ⚠️ Critical: artifact_create vs artifact_build
+
+If you are an agent assembling files in your sandbox (e.g., `/home/claude/`, `/tmp/`):
+- ❌ **DO NOT** use `artifact_create` with file URLs like `file:///home/claude/pipeline.tar.gz`
+- ✅ **DO** use `artifact_build` to upload content from your sandbox
+- **Why:** The MCP server cannot access files in your agent's sandbox
+
+#### ⚠️ CRITICAL: Do NOT Pre-Tar Your Files
+
+The `artifact_build` tool **automatically tars your files for you**:
+
+- ❌ **DON'T** Package files → create tar.gz → upload tar
+- ✅ **DO** Call init → add individual files → call submit
+
+The tool will handle all tarring and compression internally. Provide individual files (main.nf, nextflow.config, ivcap.yaml, etc.) and `artifact_build` will package them into a tar.gz archive before uploading.
+
+**Step 1: Build and Upload Pipeline Artifact**
+
+```python
+import uuid
+import base64
+
+# Generate service ID (UUIDv5 from pipeline name)
+namespace = uuid.NAMESPACE_DNS
+service_uuid = uuid.uuid5(namespace, "my-pipeline")
+service_id = f"urn:ivcap:service:{service_uuid}"
+
+# Initialize build session
+init_response = artifact_build(stage="init")
+session_id = init_response["id"]
+
+# Add pipeline files
+pipeline_files = {
+    "main.nf": "#!/usr/bin/env nextflow\nnextflow.enable.dsl = 2\n...",
+    "nextflow.config": "params.outdir = ...",
+    "ivcap.yaml": "name: my-pipeline\n..."
+}
+
+for path, content in pipeline_files.items():
+    content_b64 = base64.b64encode(content.encode()).decode()
+    artifact_build(
+        stage="add",
+        id=session_id,
+        files=[{
+            "path_name": path,
+            "content": content_b64,
+            "mime_type": "text/plain"
+        }]
+    )
+
+# Submit to create artifact
+submit_result = artifact_build(
+    stage="submit",
+    id=session_id,
+    name="my-pipeline-v1.0"
+)
+artifact_id = submit_result["id"]
+```
+
+**Step 2: Deploy Pipeline Service**
+
+```python
+# Deploy the pipeline using the artifact
+deploy_result = nextflow_create(
+    service_id=service_id,
+    artifact_id=artifact_id
+)
+
+print(f"Service deployed: {deploy_result['service_id']}")
+print(f"Artifact: {deploy_result['pipeline_artifact_urn']}")
+```
+
+**Alternative: Use Pre-Built Artifact**
+
+If you've already uploaded an artifact via CLI:
+
+```bash
+# Upload artifact
+ivcap artifact upload my-pipeline.tar.gz \
+  --name "my-pipeline-v1.0" \
+  --output json > artifact.json
+
+ARTIFACT_ID=$(jq -r '.id' artifact.json)
+```
+
+Then deploy via MCP:
+
+```python
+deploy_result = nextflow_create(
+    service_id="urn:ivcap:service:...",
+    artifact_id="urn:ivcap:artifact:..."
+)
+```
+
+### Running Jobs (Both CLI and MCP)
 
 ```bash
 # Via inline JSON/YAML parameters file

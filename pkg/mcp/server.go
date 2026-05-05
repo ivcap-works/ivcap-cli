@@ -78,8 +78,9 @@ var builtInToolNames = map[string]bool{
 	"service_get":     true,
 	"service_run":     true,
 	"job_status":      true,
-	"list_skills":     true,
+	"verify_url":      true,
 	"read_skill":      true,
+	"search":          true,
 }
 
 var (
@@ -170,7 +171,7 @@ func filterToolsBySessionAllowlist(ctx context.Context, tools []mcp.Tool) []mcp.
 		res = append(res, *selectTools)
 	}
 	// Keep stable order for built-ins after select_tools.
-	builtInOrder := []string{"artifact_create", "artifact_get", "artifact_build", "aspect_search", "aspect_get", "aspect_create", "service_list", "service_get", "service_run", "job_status", "nextflow_create", "nextflow_run", "list_skills", "read_skill"}
+	builtInOrder := []string{"artifact_create", "artifact_get", "artifact_build", "aspect_search", "aspect_get", "aspect_create", "service_list", "service_get", "service_run", "job_status", "verify_url", "nextflow_create", "nextflow_run", "read_skill", "search"}
 	for _, n := range builtInOrder {
 		if t, ok := toolMap[n]; ok {
 			res = append(res, t)

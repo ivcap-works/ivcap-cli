@@ -52,9 +52,7 @@ diagnostic_info = {
     "timestamp": "2026-04-05T11:06:00Z",
     "parameters": {
         "service_id": "urn:ivcap:service:...",
-        "sources_count": 12,
-        "total_size_bytes": 85000,
-        "source_types": ["text", "text", "artifact"],
+        "artifact_id": "urn:ivcap:artifact:...",
     },
     "response": {
         "status_code": 200,  # or error code
@@ -109,93 +107,91 @@ High - Affects any pipeline with >5 files without clear error message
 
 | Pattern | Root Cause | Agent Action |
 |---------|------------|--------------|
-| Silent success, no resource | Size limit exceeded | Report with request size, suggest validation |
-| Timeout after 30s | Large payload parsing | Report with payload size, suggest streaming |
-| "Invalid JSON" on valid JSON | Special characters unescaped | Report with sample, suggest escaping |
+| "missing artifact_id" error | Using old inline sources syntax | Guide to new artifact_build workflow |
+| "artifact not found" | Invalid artifact URN | Verify artifact exists with artifact_get |
+| "neither ivcap.yaml nor ivcap-tool.yaml found" | Missing descriptor in artifact | Show how to add descriptor to artifact_build |
 | Works in CLI, fails in MCP | Parameter mapping issue | Report parameter differences |
 | Intermittent success | Race condition | Report timing details, suggest locking |
+| artifact_create fails with file URL | Using sandbox path MCP can't access | Use artifact_build instead |
 
 ---
 
 ## Example: Reporting a Tool Improvement
 
-**Scenario:** `nextflow_create` silently fails with large sources
+**Scenario:** `nextflow_create` fails with missing artifact
 
 ```markdown
 ## MCP Tool Issue Report
 
 **Tool:** nextflow_create (ivcap-cli MCP server)
 
-**Issue:** Silent failure on large source payloads without error message
+**Issue:** Unclear error when artifact doesn't contain required descriptor file
 
 **Expected Behavior:**
-Tool should either:
-1. Accept the payload and create the service, OR
-2. Return clear error: "Payload too large (85KB). Maximum: 50KB. Use artifact_build for larger pipelines."
+Tool should return clear error: "Artifact 'urn:ivcap:artifact:...' does not contain required 'ivcap.yaml' or 'ivcap-tool.yaml' file. Please ensure your artifact_build session includes the tool descriptor."
 
 **Actual Behavior:**
-- Returns HTTP 200 with success message
-- No service created
-- No error logged
-- User has no indication of failure until verification
+- Returns generic error: "neither 'ivcap.yaml' nor 'ivcap-tool.yaml' found in artifact"
+- Doesn't guide user to artifact_build documentation
+- Doesn't suggest how to fix the issue
 
 **Reproduction:**
 ```python
-nextflow_create(
-    service_id="urn:ivcap:service:...",
-    sources=[
-        {"path": "main.nf", "type": "text", "text": "..." * 5000},  # 5KB
-        {"path": "config", "type": "text", "text": "..." * 2000},   # 2KB
-        # ... 10 more files totaling 85KB
+# Build artifact without descriptor file
+init = artifact_build(stage="init")
+artifact_build(
+    stage="add",
+    id=init["id"],
+    files=[
+        {"path_name": "main.nf", "content": "...", "mime_type": "text/plain"},
+        {"path_name": "nextflow.config", "content": "...", "mime_type": "text/plain"}
+        # Missing ivcap.yaml!
     ]
 )
-# Returns: {"status": "success", "service_id": "..."}
-# But: service_list() shows no matching service
+result = artifact_build(stage="submit", id=init["id"])
+
+# Try to deploy - fails with unclear error
+nextflow_create(
+    service_id="urn:ivcap:service:...",
+    artifact_id=result["id"]
+)
+# Returns: Error: neither "ivcap.yaml" nor "ivcap-tool.yaml" found in artifact
 ```
 
 **Impact:**
-- HIGH: Affects any multi-file pipeline
-- User confusion (success reported but nothing created)
-- Wasted time debugging the wrong layer
+- MEDIUM: Affects users who forget to include descriptor
+- Error message could be more helpful
+- Should reference artifact_build workflow
 
 **Suggested Implementation:**
 ```go
 // In pkg/mcp/nextflow.go
-func (s *Server) handleNextflowCreate(args map[string]any) (any, error) {
-    // Add size validation
-    totalSize := 0
-    for _, source := range sources {
-        if source.Type == "text" {
-            totalSize += len(source.Text)
-        }
-    }
-
-    const maxInlineSize = 50 * 1024  // 50KB
-    if totalSize > maxInlineSize {
-        return nil, fmt.Errorf(
-            "inline sources too large (%d bytes). Maximum: %d bytes. "+
-            "For larger pipelines, use artifact_build tool to create artifact, "+
-            "then reference with type='artifact'",
-            totalSize, maxInlineSize,
-        )
-    }
-
-    // ... rest of implementation
+if toolHdr == nil {
+    return nil, fmt.Errorf(
+        "artifact %s does not contain required 'ivcap.yaml' or 'ivcap-tool.yaml'. "+
+        "When using artifact_build, ensure you add the descriptor file: "+
+        `artifact_build(stage="add", files=[{"path_name": "ivcap.yaml", ...}]). `+
+        "See skills://nextflow-mcp-tools/SKILL.md for examples",
+        parsed.ArtifactID,
+    )
 }
 ```
 
-**Documentation Update Needed:**
-Update tool description in MCP schema to mention:
-- Maximum inline payload size (50KB recommended, 100KB hard limit)
-- Recommend artifact_build for larger pipelines
-- Link to examples in skills docs
-
 **Workaround (for users now):**
-Use artifact_build pattern as documented in skills/nextflow/nextflow-mcp-tools.SKILL.md
+Ensure artifact_build session includes ivcap.yaml:
+```python
+artifact_build(
+    stage="add",
+    id=session_id,
+    files=[
+        {"path_name": "ivcap.yaml", "content": base64_yaml, "mime_type": "application/x-yaml"}
+    ]
+)
+```
 
 **Related:**
-- artifact_build tool was added to solve this exact problem
-- CLI handles this better (direct tar.gz upload, no size issues)
+- Common mistake when switching from old inline sources workflow
+- Should be documented in migration guide
 ```
 
 ---
@@ -281,6 +277,53 @@ if "ERROR" in log_content:
 
 ---
 
+## Common MCP Tool Mistakes
+
+### ❌ Using artifact_create with Agent Sandbox Files
+
+**Problem:**
+```json
+{
+  "tool": "artifact_create",
+  "arguments": {
+    "content": [{
+      "source": {
+        "type": "url",
+        "url": "file:///home/claude/my-pipeline.tar.gz"
+      }
+    }]
+  }
+}
+```
+
+**Error:** MCP server cannot access files in agent sandbox (`/home/claude/`, `/tmp/`, etc.)
+
+**Solution:** Use `artifact_build` instead:
+```python
+# Read file from sandbox
+with open('/home/claude/my-pipeline.tar.gz', 'rb') as f:
+    content_b64 = base64.b64encode(f.read()).decode()
+
+# Upload via artifact_build
+init = artifact_build(stage="init")
+artifact_build(
+    stage="add",
+    id=init["id"],
+    files=[{
+        "path_name": "pipeline.tar.gz",
+        "content": content_b64,
+        "mime_type": "application/gzip"
+    }]
+)
+result = artifact_build(stage="submit", id=init["id"], name="my-pipeline")
+```
+
+**When to use each:**
+- `artifact_create`: Files accessible to MCP server (URLs, existing artifacts)
+- `artifact_build`: Files in your agent's sandbox that need to be uploaded
+
+---
+
 ## Common Errors Quick Reference
 
 See `skills://file/nextflow/references/troubleshooting.md` for full details.
@@ -293,6 +336,7 @@ See `skills://file/nextflow/references/troubleshooting.md` for full details.
 | `onComplete() not applicable` | Move `workflow.onComplete` to `main.nf`, not config |
 | `first is useless on value channel` | Remove `.first()` when channel already emits one item |
 | `params.fasta = "path" triggers wrong branch | Set optional params to `null`, not a path string |
+| artifact_create with sandbox file URL | Use `artifact_build` to upload from agent sandbox |
 
 ---
 

@@ -113,6 +113,52 @@ Or SSE mode:
 ivcap mcp --port 8088
 ```
 
+### MCP Artifact Tools: artifact_create vs artifact_build
+
+When working with artifacts via MCP, choose the correct tool based on file location:
+
+**Use `artifact_build` when:**
+- ✅ Files are in your **agent's sandbox** (e.g., `/home/claude/`, `/tmp/`, any local agent path)
+- ✅ Assembling multiple files programmatically into a single archive
+- ✅ Creating artifacts from content you generate/process
+
+**Use `artifact_create` when:**
+- ✅ Referencing **URLs** the MCP server can access (http://, https://)
+- ✅ Referencing **existing artifacts** by URN
+- ✅ Files exist on the **MCP server's filesystem** (rare in agent contexts)
+
+**Critical mistake to avoid:**
+```json
+❌ WRONG - MCP server cannot access agent sandbox:
+{
+  "tool": "artifact_create",
+  "arguments": {
+    "content": [{
+      "source": {
+        "type": "url",
+        "url": "file:///home/claude/data.tar.gz"
+      }
+    }]
+  }
+}
+```
+
+```json
+✅ CORRECT - Use artifact_build for sandbox files:
+// 1. Initialize session
+{"tool": "artifact_build", "arguments": {"stage": "init"}}
+
+// 2. Add files with base64-encoded content
+{"tool": "artifact_build", "arguments": {
+  "stage": "add",
+  "id": "session-id",
+  "files": [{"path_name": "data.tar.gz", "content": "base64...", "mime_type": "application/gzip"}]
+}}
+
+// 3. Submit to create artifact
+{"tool": "artifact_build", "arguments": {"stage": "submit", "id": "session-id", "name": "my-data"}}
+```
+
 ## Common agent mistakes to guard against
 - Hallucinated URNs / IDs (e.g. includes query params like `?fields=`).
 - Incorrect history tokens (e.g. `@3` from another session).

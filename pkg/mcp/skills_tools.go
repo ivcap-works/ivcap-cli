@@ -17,7 +17,6 @@ package mcp
 import (
 	"context"
 	"fmt"
-	"sort"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -26,39 +25,12 @@ import (
 	asset "github.com/ivcap-works/ivcap-cli/skills"
 )
 
-// addSkillsBridgeTools adds list_skills and read_skill tools as a workaround
+// addSkillsBridgeTools adds read_skill tool as a workaround
 // for MCP clients that don't expose resources/read to LLMs.
-// These tools duplicate functionality available via resources/read but are
+// This tool duplicates functionality available via resources/read but is
 // callable via tools/call.
+// Note: list_skills functionality is now provided by the unified search tool.
 func addSkillsBridgeTools(s *server.MCPServer) {
-	// list_skills: returns the skills manifest as JSON
-	listSkillsSchema := map[string]any{
-		"type":       "object",
-		"properties": map[string]any{},
-	}
-	listSkillsTool := mcp.NewToolWithRawSchema(
-		"list_skills",
-		"[BUILT-IN FALLBACK TOOL - Always available] List all available IVCAP skill playbooks. Use this when resources/read is not available to you. No select_tools needed. Returns JSON manifest with skill names, URIs, versions, and descriptions. Equivalent to: resources/read uri=\"skills://manifest\". After listing, call read_skill to get specific skill content.",
-		MapToRaw(listSkillsSchema),
-	)
-	s.AddTool(listSkillsTool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		docs, err := skillsdoc.LoadAllSkillDocs(asset.FS)
-		if err != nil {
-			return nil, err
-		}
-		items := make([]skillsManifestItem, 0, len(docs))
-		for _, d := range docs {
-			items = append(items, skillsManifestItem{
-				Name:        d.Name,
-				URI:         skillDocURI(d.Name),
-				Version:     d.Version,
-				Description: d.Description,
-			})
-		}
-		sort.Slice(items, func(i, j int) bool { return items[i].Name < items[j].Name })
-		return mcp.NewToolResultJSON(map[string]any{"skills": items})
-	})
-
 	// read_skill: reads a skill document by name
 	readSkillSchema := map[string]any{
 		"type": "object",
@@ -72,7 +44,7 @@ func addSkillsBridgeTools(s *server.MCPServer) {
 	}
 	readSkillTool := mcp.NewToolWithRawSchema(
 		"read_skill",
-		"[BUILT-IN FALLBACK TOOL - Always available] Read an IVCAP skill playbook by name. Use this when resources/read is not available to you. No select_tools needed. Returns the full markdown skill document with instructions. Equivalent to: resources/read uri=\"skills://{name}/SKILL.md\". First call list_skills to see available skill names.",
+		"[BUILT-IN FALLBACK TOOL - Always available] Read an IVCAP skill playbook by exact name. ⚠️ CRITICAL: (1) ALWAYS call list_skills FIRST to verify the skill name exists - don't guess. (2) If you get an error, READ IT CAREFULLY - it tells you exactly what to do. Don't ignore errors or hallucinate solutions. Common errors: skill not found → check list_skills output, invalid name → copy exact name from list. Use this when resources/read is not available. Returns the full markdown skill document with instructions. Equivalent to: resources/read uri=\"skills://{name}/SKILL.md\".",
 		MapToRaw(readSkillSchema),
 	)
 	s.AddTool(readSkillTool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {

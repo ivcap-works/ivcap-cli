@@ -22,6 +22,8 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -63,8 +65,8 @@ func addArtifactBuildTool(s *server.MCPServer) {
 		"properties": map[string]any{
 			"stage": map[string]any{
 				"type":        "string",
-				"description": "Build stage: 'init', 'add', 'list', or 'submit'",
-				"enum":        []any{"init", "add", "list", "submit"},
+				"description": "Build stage: 'init', 'add', 'add_remote', 'list', or 'submit'",
+				"enum":        []any{"init", "add", "add_remote", "list", "submit"},
 			},
 			"id": map[string]any{
 				"type":        "string",
@@ -123,12 +125,14 @@ func addArtifactBuildTool(s *server.MCPServer) {
 			return handleArtifactBuildInit(ctx, args)
 		case "add":
 			return handleArtifactBuildAdd(ctx, args)
+		case "add_remote":
+			return handleArtifactBuildAddRemote(ctx, args)
 		case "list":
 			return handleArtifactBuildList(ctx, args)
 		case "submit":
 			return handleArtifactBuildSubmit(ctx, args)
 		default:
-			return nil, fmt.Errorf("invalid stage: %q (must be init, add, list, or submit)", stage)
+			return nil, fmt.Errorf("invalid stage: %q (must be init, add, add_remote, list, or submit)", stage)
 		}
 	}
 
@@ -267,6 +271,138 @@ func handleArtifactBuildAdd(ctx context.Context, args map[string]any) (*mcp.Call
 			"path_name":    sanitizedPath,
 			"size":         file.Size,
 			"content_type": file.ContentType,
+		})
+	}
+
+	return mcp.NewToolResultJSON(map[string]any{
+		"id":          sessionID,
+		"files_added": len(addedFiles),
+		"files":       addedFiles,
+		"total_files": len(session.Files),
+	})
+}
+
+func handleArtifactBuildAddRemote(ctx context.Context, args map[string]any) (*mcp.CallToolResult, error) {
+	sessionID, _ := args["id"].(string)
+	if sessionID == "" {
+		return nil, fmt.Errorf("missing required field: id")
+	}
+
+	buildSessionsMu.RLock()
+	session, exists := buildSessions[sessionID]
+	buildSessionsMu.RUnlock()
+
+	if !exists {
+		return nil, fmt.Errorf("session not found: %s", sessionID)
+	}
+
+	filesArg, ok := args["files"].([]any)
+	if !ok || len(filesArg) == 0 {
+		return nil, fmt.Errorf("missing or empty 'files' array")
+	}
+
+	session.mu.Lock()
+	defer session.mu.Unlock()
+
+	addedFiles := []map[string]any{}
+
+	for idx, fileArg := range filesArg {
+		fileMap, ok := fileArg.(map[string]any)
+		if !ok {
+			return nil, fmt.Errorf("file at index %d is not an object", idx)
+		}
+
+		pathName, _ := fileMap["path_name"].(string)
+		if pathName == "" {
+			return nil, fmt.Errorf("file at index %d missing 'path_name'", idx)
+		}
+
+		urlStr, _ := fileMap["url"].(string)
+		if urlStr == "" {
+			return nil, fmt.Errorf("file %q missing 'url'", pathName)
+		}
+
+		// Sanitize path
+		sanitizedPath, err := nf.SanitizeTarPath(pathName)
+		if err != nil {
+			return nil, fmt.Errorf("invalid path_name %q: %w", pathName, err)
+		}
+
+		if sanitizedPath == "MANIFEST.json" {
+			return nil, fmt.Errorf("path_name cannot be MANIFEST.json (reserved)")
+		}
+
+		if _, exists := session.Files[sanitizedPath]; exists {
+			return nil, fmt.Errorf("duplicate path_name: %q", sanitizedPath)
+		}
+
+		// Download content from URL
+		resp, err := http.Get(urlStr)
+		if err != nil {
+			return nil, fmt.Errorf("failed to download %q from %q: %w", pathName, urlStr, err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+			return nil, fmt.Errorf("download %q failed with status %d: %s", pathName, resp.StatusCode, urlStr)
+		}
+
+		// Read content from response
+		content, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read content for %q: %w", pathName, err)
+		}
+
+		// Get optional fields
+		mimeType, _ := fileMap["mime_type"].(string)
+		if mimeType == "" {
+			// Try to infer from Content-Type header
+			mimeType = resp.Header.Get("Content-Type")
+			if mimeType == "" {
+				mimeType = "application/octet-stream"
+			}
+		}
+
+		// Validate size if provided
+		if sizeArg, ok := fileMap["size"]; ok {
+			var expectedSize int64
+			switch v := sizeArg.(type) {
+			case float64:
+				expectedSize = int64(v)
+			case int:
+				expectedSize = int64(v)
+			case int64:
+				expectedSize = v
+			}
+			if expectedSize > 0 && int64(len(content)) != expectedSize {
+				return nil, fmt.Errorf("file %q size mismatch: expected %d, got %d", pathName, expectedSize, len(content))
+			}
+		}
+
+		// Write content to staging directory
+		localPath := filepath.Join(session.StagingDir, sanitizedPath)
+		if err := os.MkdirAll(filepath.Dir(localPath), 0755); err != nil { // #nosec G301 -- staging directory in temp
+			return nil, fmt.Errorf("failed to create directory for %q: %w", pathName, err)
+		}
+
+		if err := os.WriteFile(localPath, content, 0644); err != nil { // #nosec G306 -- staging file in temp
+			return nil, fmt.Errorf("failed to write file %q: %w", pathName, err)
+		}
+
+		// Record file metadata
+		file := &artifactBuildFile{
+			PathName:    sanitizedPath,
+			Size:        int64(len(content)),
+			ContentType: mimeType,
+			LocalPath:   localPath,
+		}
+		session.Files[sanitizedPath] = file
+
+		addedFiles = append(addedFiles, map[string]any{
+			"path_name":    sanitizedPath,
+			"size":         file.Size,
+			"content_type": file.ContentType,
+			"url":          urlStr,
 		})
 	}
 
