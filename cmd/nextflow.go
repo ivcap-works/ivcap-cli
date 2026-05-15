@@ -20,8 +20,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
+	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -49,15 +53,18 @@ func init() {
 
 	nextflowCmd.AddCommand(nextflowGetJobCmd)
 	nextflowCmd.AddCommand(nextflowJobResultCmd)
-	nextflowJobResultCmd.Flags().StringVarP(&nextflowResultFile, "file", "f", "", "Optional: extract and display specific file from result tar")
+	nextflowJobResultCmd.Flags().StringVarP(&nextflowResultFile, "file", "f", "", "Optional: directory to download and extract result files into")
+	nextflowJobResultCmd.Flags().BoolVar(&nextflowResultLogs, "logs", false, "Show the job logs")
+	nextflowJobResultCmd.Flags().BoolVar(&nextflowResultOutput, "output", false, "Show the output directory contents")
+	nextflowJobResultCmd.Flags().StringVar(&nextflowResultProcess, "process", "", "Show contents of a specific process (e.g., fastqc)")
+	nextflowCmd.AddCommand(nextflowJobReportCmd)
+	nextflowJobReportCmd.Flags().BoolVar(&nextflowReportMultiQC, "multiqc", false, "Serve the MultiQC report if available")
 	nextflowCmd.AddCommand(nextflowCreateCmd)
 	nextflowCmd.AddCommand(nextflowUpdateCmd)
 	nextflowCmd.AddCommand(nextflowRetractCmd)
 	nextflowCmd.AddCommand(nextflowRunCmd)
-	addFileFlag(nextflowCreateCmd, "Path to local tar/tgz containing ivcap.yaml or ivcap-tool.yaml")
-	nextflowCreateCmd.Flags().StringVar(&nextflowServiceID, "service-id", "", "Service ID/URN to use for generated service description")
+	addFileFlag(nextflowCreateCmd, "Path to local tar/tgz containing ivcap.yaml or ivcap-tool.yaml with service-id field")
 	nextflowCreateCmd.Flags().StringVar(&nextflowCreateFormat, "format", "", "Output format for nextflow create result [json, yaml]")
-	cobra.CheckErr(nextflowCreateCmd.MarkFlagRequired("service-id"))
 
 	addFileFlag(nextflowUpdateCmd, "Path to local tar/tgz containing ivcap.yaml or ivcap-tool.yaml")
 	nextflowUpdateCmd.Flags().StringVar(&nextflowCreateFormat, "format", "", "Output format for nextflow update result [json, yaml]")
@@ -71,7 +78,6 @@ func init() {
 	nextflowRunCmd.Flags().BoolVar(&nextflowRunStreamFlag, "stream", false, "if set, print job related events to stdout")
 }
 
-var nextflowServiceID string
 var nextflowCreateFormat string
 var nextflowRunAspectURN string
 var nextflowRunWatchFlag bool
@@ -80,6 +86,10 @@ var nextflowRunSamplesheet string
 var nextflowJobsJsonFilter string
 var nextflowPipelinesJsonFilter string
 var nextflowResultFile string
+var nextflowResultLogs bool
+var nextflowResultOutput bool
+var nextflowResultProcess string
+var nextflowReportMultiQC bool
 
 var (
 	nextflowCmd = &cobra.Command{
@@ -89,7 +99,7 @@ var (
 
 	nextflowListCmd = &cobra.Command{
 		Use:     "list-jobs",
-		Aliases: []string{"list-j", "jlist", "list-job", "list-runs"},
+		Aliases: []string{"list-j", "jlist", "list-job", "list-runs", "job-list", "jobs-list"},
 		Short:   "List recent Nextflow jobs",
 		Long:    "List jobs that were created with Nextflow services (jobs with nextflow request schema)",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -176,23 +186,28 @@ var (
 		Short: "Create a Nextflow service definition from a local archive",
 		Args:  cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runNextflowCreateOrUpdate(context.Background(), nextflowServiceID)
+			// Service ID is extracted from the archive's ivcap.yaml
+			return runNextflowCreateOrUpdate(context.Background(), "")
 		},
 	}
 
 	nextflowUpdateCmd = &cobra.Command{
-		Use:   "update service-id [flags] -f package.tar|package.tgz",
+		Use:   "update [service-id] [flags] -f package.tar|package.tgz",
 		Short: "Update a Nextflow service definition from a local archive",
-		Args:  cobra.ExactArgs(1),
+		Long:  "Update a Nextflow service definition from a local archive. Service ID is extracted from the archive's ivcap.yaml or ivcap-tool.yaml if not provided as an argument.",
+		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			serviceID := GetHistory(args[0])
+			serviceID := ""
+			if len(args) > 0 {
+				serviceID = GetHistory(args[0])
+			}
 			return runNextflowCreateOrUpdate(context.Background(), serviceID)
 		},
 	}
 
 	nextflowGetJobCmd = &cobra.Command{
-		Use:     "get-job [flags] job_id",
-		Aliases: []string{"get", "get-run"},
+		Use:     "job-get [flags] job_id",
+		Aliases: []string{"get-job", "get", "get-run"},
 		Short:   "Get status or results of a Nextflow job",
 		Long:    "Fetch details about a single Nextflow job without needing the service/pipeline URN",
 		Args:    cobra.ExactArgs(1),
@@ -204,15 +219,28 @@ var (
 	}
 
 	nextflowJobResultCmd = &cobra.Command{
-		Use:     "job-result [flags] job_id [-f filename]",
+		Use:     "job-result [flags] job_id [-f directory]",
 		Aliases: []string{"result", "results"},
-		Short:   "List or extract files from a Nextflow job result artifact",
-		Long:    "Download and access the result artifact from a Nextflow job. Without -f, lists all files. With -f, extracts and displays the specified file.",
+		Short:   "List or download files from a Nextflow job result artifact",
+		Long:    "Download and access the result artifact from a Nextflow job. Without flags, shows summary. With -f, downloads/extracts files into the specified directory.",
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			jobID := GetHistory(args[0])
 			ctxt := context.Background()
 			return handleNextflowJobResult(ctxt, jobID, nextflowResultFile)
+		},
+	}
+
+	nextflowJobReportCmd = &cobra.Command{
+		Use:     "job-view job_id [--multiqc]",
+		Aliases: []string{"job-report", "report"},
+		Short:   "View Nextflow job execution report in a web browser",
+		Long:    "Download the output directory from a Nextflow job and serve the index.html file in a local web server. The report will be automatically opened in your browser if possible. With --multiqc, serves the MultiQC report if available.",
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			jobID := GetHistory(args[0])
+			ctxt := context.Background()
+			return handleNextflowJobReport(ctxt, jobID)
 		},
 	}
 
@@ -306,9 +334,6 @@ var (
 )
 
 func runNextflowCreateOrUpdate(ctxt context.Context, serviceID string) error {
-	if serviceID == "" {
-		cobra.CheckErr("Missing service id")
-	}
 	if fileName == "" {
 		cobra.CheckErr("Missing archive file '-f package.tar|package.tgz'")
 	}
@@ -324,21 +349,27 @@ func runNextflowCreateOrUpdate(ctxt context.Context, serviceID string) error {
 		return fmt.Errorf("neither %q nor %q found in archive %q", nf.SimpleToolFileName, nf.ToolFileName, fileName)
 	}
 
+	// Resolve service ID from provided ID or tool header
+	resolvedServiceID, err := nf.ResolveServiceID(serviceID, tool)
+	if err != nil {
+		return err
+	}
+
 	adapter := CreateAdapter(true)
 	artifactID, err := nf.UploadArchiveAsArtifact(ctxt, tool.Name, fileName, DEF_CHUNK_SIZE, adapter, silent, logger)
 	if err != nil {
 		cobra.CheckErr(fmt.Sprintf("while uploading archive as artifact: %v", err))
 	}
 
-	svc := nf.BuildServiceDescription(tool, serviceID, artifactID)
-	aspectID, err := nf.UpsertServiceDescriptionAspect(ctxt, serviceID, svc, adapter, logger)
+	svc := nf.BuildServiceDescription(tool, resolvedServiceID, artifactID)
+	aspectID, err := nf.UpsertServiceDescriptionAspect(ctxt, resolvedServiceID, svc, adapter, logger)
 	if err != nil {
 		cobra.CheckErr(fmt.Sprintf("while publishing service description aspect: %v", err))
 	}
 
 	res := &nf.CreateOutput{
 		OK:                    true,
-		ServiceID:             serviceID,
+		ServiceID:             resolvedServiceID,
 		PipelineArtifactURN:   artifactID,
 		ServiceAspectRecordID: aspectID,
 		ServiceDescription:    svc,
@@ -620,12 +651,24 @@ func handleNextflowJobResult(ctxt context.Context, jobID string, filePath string
 	adapter := CreateAdapter(true)
 
 	// Get the job to extract result artifact URN
-	job, _, err := readJob(ctxt, jobID)
+	job, _, _, _, err := readJob(ctxt, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to read job: %w", err)
 	}
 
-	// Extract results_artifact_urn from result-content
+	// Try to fetch the nextflow result aspect (new format) first
+	nextflowResultContent, err := readNextflowResultAspect(ctxt, jobID)
+	if err == nil && nextflowResultContent != nil {
+		// New format found, use it
+		return handleNextflowJobResultNewFormatWithContent(ctxt, jobID, nextflowResultContent, adapter)
+	}
+
+	// Check if this is the new format with separate log_urn, output_urn, and results
+	if nextflowResultLogs || nextflowResultOutput || nextflowResultProcess != "" {
+		return handleNextflowJobResultNewFormat(ctxt, jobID, job, adapter)
+	}
+
+	// Extract results_artifact_urn from result-content (old format)
 	var artifactURN string
 	if job.ResultContent != nil {
 		if contentMap, ok := job.ResultContent.(map[string]interface{}); ok {
@@ -688,6 +731,235 @@ func handleNextflowJobResult(ctxt context.Context, jobID string, filePath string
 	// Write to stdout
 	_, err = os.Stdout.Write(fileData)
 	return err
+}
+
+// handleNextflowJobResultNewFormat handles the new nextflow result format with separate artifacts
+func handleNextflowJobResultNewFormat(ctxt context.Context, jobID string, job *sdk.JobReadResponseBody, adapter *a.Adapter) error {
+	// Extract the new format fields from result-content
+	if job.ResultContent == nil {
+		return fmt.Errorf("job '%s' has no result content", jobID)
+	}
+
+	contentMap, ok := job.ResultContent.(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("job '%s' result content is not a map", jobID)
+	}
+
+	// Handle --logs flag
+	if nextflowResultLogs {
+		logURN, ok := contentMap["log_urn"].(string)
+		if !ok || logURN == "" {
+			return fmt.Errorf("job '%s' has no log artifact", jobID)
+		}
+		return displayArtifactContent(ctxt, logURN, adapter, "Job Logs")
+	}
+
+	// Handle --output flag
+	if nextflowResultOutput {
+		outputURN, ok := contentMap["output_urn"].(string)
+		if !ok || outputURN == "" {
+			return fmt.Errorf("job '%s' has no output artifact", jobID)
+		}
+		return displayArtifactFiles(ctxt, outputURN, adapter, "Output Directory")
+	}
+
+	// Handle --process flag
+	if nextflowResultProcess != "" {
+		results, ok := contentMap["results"].(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("job '%s' has no results in new format", jobID)
+		}
+		processURN, ok := results[nextflowResultProcess].(string)
+		if !ok || processURN == "" {
+			return fmt.Errorf("process '%s' not found in results", nextflowResultProcess)
+		}
+		return displayArtifactFiles(ctxt, processURN, adapter, fmt.Sprintf("Process: %s", nextflowResultProcess))
+	}
+
+	// No specific flag, show summary
+	return displayNextflowResultSummary(ctxt, jobID, contentMap, adapter)
+}
+
+// displayArtifactContent downloads and displays the raw content of an artifact (for logs)
+func displayArtifactContent(ctxt context.Context, artifactURN string, adapter *a.Adapter, title string) error {
+	data, mimeType, err := downloadTarArtifact(ctxt, artifactURN, adapter)
+	if err != nil {
+		return fmt.Errorf("failed to download artifact: %w", err)
+	}
+
+	// For logs, just output the raw content
+	if strings.Contains(mimeType, "text") || strings.Contains(mimeType, "plain") {
+		_, err := os.Stdout.Write(data)
+		return err
+	}
+
+	// If it's gzipped or tar, try to extract and display
+	if isTarFile(mimeType, data) {
+		// Try to list contents using MANIFEST.csv
+		manifest, err := extractManifest(data)
+		if err == nil && len(manifest) > 0 {
+			printManifestTable(title, manifest)
+			return nil
+		}
+	}
+
+	// Fall back to raw content
+	_, err = os.Stdout.Write(data)
+	return err
+}
+
+// displayArtifactFiles downloads an artifact and displays its file listing
+func displayArtifactFiles(ctxt context.Context, artifactURN string, adapter *a.Adapter, title string) error {
+	data, mimeType, err := downloadTarArtifact(ctxt, artifactURN, adapter)
+	if err != nil {
+		return fmt.Errorf("failed to download artifact: %w", err)
+	}
+
+	// Verify it's a tar file
+	if !isTarFile(mimeType, data) {
+		return fmt.Errorf("artifact is not a tar or tar.gz file (mime-type: %s)", mimeType)
+	}
+
+	// Try to extract and display MANIFEST.csv
+	manifest, err := extractManifest(data)
+	if err != nil {
+		return fmt.Errorf("failed to read manifest from artifact: %w", err)
+	}
+
+	if len(manifest) == 0 {
+		return fmt.Errorf("no files found in artifact manifest")
+	}
+
+	printManifestTable(title, manifest)
+	return nil
+}
+
+// displayNextflowResultSummary displays a summary of the new format results
+func displayNextflowResultSummary(ctxt context.Context, jobID string, contentMap map[string]interface{}, adapter *a.Adapter) error {
+	tw := table.NewWriter()
+	tw.SetStyle(table.StyleLight)
+	tw.Style().Options.SeparateColumns = false
+	tw.Style().Options.SeparateRows = false
+	tw.Style().Options.DrawBorder = false
+
+	rows := []table.Row{}
+
+	// Status
+	if status, ok := contentMap["status"].(string); ok {
+		rows = append(rows, table.Row{"Status", status})
+	}
+
+	// Log artifact
+	if logURN, ok := contentMap["log_urn"].(string); ok && logURN != "" {
+		rows = append(rows, table.Row{"Log", MakeHistory(&logURN)})
+	}
+
+	// Output artifact
+	if outputURN, ok := contentMap["output_urn"].(string); ok && outputURN != "" {
+		rows = append(rows, table.Row{"Output", MakeHistory(&outputURN)})
+	}
+
+	// Results (processes)
+	if results, ok := contentMap["results"].(map[string]interface{}); ok && len(results) > 0 {
+		rows = append(rows, table.Row{"", ""})
+		rows = append(rows, table.Row{"Processes", ""})
+		for procName, procURN := range results {
+			if urn, ok := procURN.(string); ok && urn != "" {
+				rows = append(rows, table.Row{"  " + procName, MakeHistory(&urn)})
+			}
+		}
+	}
+
+	tw.AppendRows(rows)
+	tw.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, Align: text.AlignRight},
+		{Number: 2, WidthMax: 100, WidthMaxEnforcer: WrapSoftSoft},
+	})
+
+	fmt.Printf("\n%s\n\n", tw.Render())
+	fmt.Printf("Use --logs, --output, or --process=NAME to view details\n\n")
+
+	return nil
+}
+
+// ManifestEntry represents a row from MANIFEST.csv
+type ManifestEntry struct {
+	Name     string
+	Size     int64
+	MimeType string
+	Path     string
+}
+
+// extractManifest extracts MANIFEST.csv from a tar artifact and parses it
+func extractManifest(data []byte) ([]ManifestEntry, error) {
+	manifestData, err := extractFileFromTar(data, "MANIFEST.csv")
+	if err != nil {
+		return nil, fmt.Errorf("MANIFEST.csv not found in artifact: %w", err)
+	}
+
+	// Parse CSV
+	reader := csv.NewReader(strings.NewReader(string(manifestData)))
+	records, err := reader.ReadAll()
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse MANIFEST.csv: %w", err)
+	}
+
+	if len(records) < 2 {
+		return nil, fmt.Errorf("MANIFEST.csv has no data rows")
+	}
+
+	var entries []ManifestEntry
+	// Skip header row
+	for i := 1; i < len(records); i++ {
+		record := records[i]
+		if len(record) < 4 {
+			continue
+		}
+
+		size, err := strconv.ParseInt(record[1], 10, 64)
+		if err != nil {
+			size = 0
+		}
+
+		entries = append(entries, ManifestEntry{
+			Name:     record[0],
+			Size:     size,
+			MimeType: record[2],
+			Path:     record[3],
+		})
+	}
+
+	return entries, nil
+}
+
+// printManifestTable prints a table of manifest entries
+func printManifestTable(title string, entries []ManifestEntry) {
+	tw2 := table.NewWriter()
+	tw2.AppendHeader(table.Row{"Name", "Size", "Type"})
+	tw2.SetStyle(table.StyleLight)
+
+	rows := make([]table.Row, len(entries))
+	for i, e := range entries {
+		rows[i] = table.Row{e.Path, safeBytes(&e.Size), e.MimeType}
+	}
+	tw2.AppendRows(rows)
+
+	tw := table.NewWriter()
+	tw.SetStyle(table.StyleLight)
+	tw.Style().Options.SeparateColumns = false
+	tw.Style().Options.SeparateRows = false
+	tw.Style().Options.DrawBorder = false
+	tw.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 1, Align: text.AlignRight},
+	})
+
+	p := []table.Row{
+		{title, ""},
+		{"", tw2.Render()},
+	}
+	tw.AppendRows(p)
+
+	fmt.Printf("\n%s\n\n", tw.Render())
 }
 
 // printNextflowResultTable prints a table of Nextflow result files with history tags
@@ -810,6 +1082,625 @@ func getNextflowCachedArtifactID() string {
 	}
 
 	return string(data)
+}
+
+// readNextflowResultAspect reads the nextflow.result.1 aspect for a job
+func readNextflowResultAspect(ctxt context.Context, jobID string) (map[string]interface{}, error) {
+	selector := sdk.AspectSelector{
+		Entity:         jobID,
+		SchemaPrefix:   "urn:ivcap:schema:nextflow.result.1",
+		IncludeContent: true,
+	}
+
+	list, _, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(list.Items) == 0 {
+		return nil, fmt.Errorf("no nextflow result aspect found")
+	}
+
+	// Get the first (and should be only) item
+	if content, ok := list.Items[0].Content.(map[string]interface{}); ok {
+		return content, nil
+	}
+
+	return nil, fmt.Errorf("nextflow result aspect content is not a map")
+}
+
+// handleNextflowJobResultNewFormatWithContent handles the new nextflow result format using the aspect content directly
+func handleNextflowJobResultNewFormatWithContent(ctxt context.Context, jobID string, contentMap map[string]interface{}, adapter *a.Adapter) error {
+	// Handle --logs flag
+	if nextflowResultLogs {
+		logURN, ok := contentMap["log_urn"].(string)
+		if !ok || logURN == "" {
+			return fmt.Errorf("job '%s' has no log artifact", jobID)
+		}
+		if nextflowResultFile != "" {
+			return downloadArtifactAsLog(ctxt, logURN, adapter, jobID, nextflowResultFile)
+		}
+		return displayArtifactContent(ctxt, logURN, adapter, "Job Logs")
+	}
+
+	// Handle --output flag
+	if nextflowResultOutput {
+		outputURN, ok := contentMap["output_urn"].(string)
+		if !ok || outputURN == "" {
+			return fmt.Errorf("job '%s' has no output artifact", jobID)
+		}
+		if nextflowResultFile != "" {
+			return downloadArtifactAsFiles(ctxt, outputURN, adapter, nextflowResultFile)
+		}
+		return displayArtifactFiles(ctxt, outputURN, adapter, "Output Directory")
+	}
+
+	// Handle --process flag
+	if nextflowResultProcess != "" {
+		results, ok := contentMap["results"].(map[string]interface{})
+		if !ok {
+			return fmt.Errorf("job '%s' has no results in new format", jobID)
+		}
+		processURN, ok := results[nextflowResultProcess].(string)
+		if !ok || processURN == "" {
+			return fmt.Errorf("process '%s' not found in results", nextflowResultProcess)
+		}
+		if nextflowResultFile != "" {
+			return downloadArtifactAsFiles(ctxt, processURN, adapter, nextflowResultFile)
+		}
+		return displayArtifactFiles(ctxt, processURN, adapter, fmt.Sprintf("Process: %s", nextflowResultProcess))
+	}
+
+	// If -f flag is provided without other flags, extract the summary artifacts into the directory
+	if nextflowResultFile != "" {
+		return downloadNextflowResultSummary(ctxt, jobID, contentMap, adapter, nextflowResultFile)
+	}
+
+	// No specific flag, show summary
+	return displayNextflowResultSummary(ctxt, jobID, contentMap, adapter)
+}
+
+// downloadArtifactAsLog downloads a log artifact and saves it as log.{jobID}.txt in the directory
+func downloadArtifactAsLog(ctxt context.Context, artifactURN string, adapter *a.Adapter, jobID string, dirPath string) error {
+	data, _, err := downloadTarArtifact(ctxt, artifactURN, adapter)
+	if err != nil {
+		return fmt.Errorf("failed to download log artifact: %w", err)
+	}
+
+	// Create directory if it doesn't exist
+	if err := os.MkdirAll(dirPath, 0755); err != nil { // #nosec G301 -- user-specified directory
+		return fmt.Errorf("failed to create directory %s: %w", dirPath, err)
+	}
+
+	// Extract job UUID from job ID (format: urn:ivcap:job:UUID)
+	jobUUID := jobID
+	if parts := strings.Split(jobID, ":"); len(parts) > 0 {
+		jobUUID = parts[len(parts)-1]
+	}
+
+	// Save log file
+	logPath := filepath.Join(dirPath, fmt.Sprintf("log.%s.txt", jobUUID))
+	if err := os.WriteFile(logPath, data, 0644); err != nil { // #nosec G306 -- user-specified directory
+		return fmt.Errorf("failed to write log file: %w", err)
+	}
+
+	fmt.Printf("Saved log to: %s\n", logPath)
+	return nil
+}
+
+// downloadArtifactAsFiles downloads a tar artifact and extracts all files to the directory
+func downloadArtifactAsFiles(ctxt context.Context, artifactURN string, adapter *a.Adapter, dirPath string) error {
+	data, mimeType, err := downloadTarArtifact(ctxt, artifactURN, adapter)
+	if err != nil {
+		return fmt.Errorf("failed to download artifact: %w", err)
+	}
+
+	// Verify it's a tar file
+	if !isTarFile(mimeType, data) {
+		return fmt.Errorf("artifact is not a tar or tar.gz file (mime-type: %s)", mimeType)
+	}
+
+	// Create directory if it doesn't exist
+	if err := os.MkdirAll(dirPath, 0755); err != nil { // #nosec G301 -- user-specified directory
+		return fmt.Errorf("failed to create directory %s: %w", dirPath, err)
+	}
+
+	// Extract tar contents
+	tr, err := openTarReader(data)
+	if err != nil {
+		return fmt.Errorf("failed to open tar reader: %w", err)
+	}
+
+	count := 0
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read tar entry: %w", err)
+		}
+
+		// Skip directories
+		if header.Typeflag == 53 { // tar.TypeDir
+			continue
+		}
+
+		// Create file path
+		filePath := filepath.Join(dirPath, filepath.FromSlash(header.Name))
+		fileDir := filepath.Dir(filePath)
+
+		// Create directory if needed
+		if err := os.MkdirAll(fileDir, 0755); err != nil { // #nosec G301 -- user-specified directory
+			return fmt.Errorf("failed to create directory %s: %w", fileDir, err)
+		}
+
+		// Extract file
+		file, err := os.Create(filePath) // #nosec G304 -- user-specified directory
+		if err != nil {
+			return fmt.Errorf("failed to create file %s: %w", filePath, err)
+		}
+		defer file.Close()
+
+		_, err = io.Copy(file, tr)
+		if err != nil {
+			return fmt.Errorf("failed to extract file %s: %w", filePath, err)
+		}
+
+		count++
+	}
+
+	fmt.Printf("Extracted %d files to: %s\n", count, dirPath)
+	return nil
+}
+
+// downloadNextflowResultSummary downloads all artifacts from the summary and extracts them into subdirectories
+func downloadNextflowResultSummary(ctxt context.Context, jobID string, contentMap map[string]interface{}, adapter *a.Adapter, basePath string) error {
+	// Create base directory if it doesn't exist
+	if err := os.MkdirAll(basePath, 0755); err != nil { // #nosec G301 -- user-specified directory
+		return fmt.Errorf("failed to create directory %s: %w", basePath, err)
+	}
+
+	// Download logs if available
+	if logURN, ok := contentMap["log_urn"].(string); ok && logURN != "" {
+		if err := downloadArtifactAsLog(ctxt, logURN, adapter, jobID, basePath); err != nil {
+			return fmt.Errorf("failed to download logs: %w", err)
+		}
+	}
+
+	// Download output if available
+	if outputURN, ok := contentMap["output_urn"].(string); ok && outputURN != "" {
+		outputDir := filepath.Join(basePath, "output")
+		if err := downloadArtifactAsFiles(ctxt, outputURN, adapter, outputDir); err != nil {
+			return fmt.Errorf("failed to download output: %w", err)
+		}
+	}
+
+	// Download results (processes) if available
+	if results, ok := contentMap["results"].(map[string]interface{}); ok {
+		for procName, procURN := range results {
+			if urn, ok := procURN.(string); ok && urn != "" {
+				procDir := filepath.Join(basePath, "results", procName)
+				if err := downloadArtifactAsFiles(ctxt, urn, adapter, procDir); err != nil {
+					return fmt.Errorf("failed to download results for process %s: %w", procName, err)
+				}
+			}
+		}
+	}
+
+	return nil
+}
+
+// handleNextflowJobReport downloads the output directory and serves the execution report in a web browser
+func handleNextflowJobReport(ctxt context.Context, jobID string) error {
+	adapter := CreateAdapter(true)
+
+	// Try to fetch the nextflow result aspect (new format) first
+	nextflowResultContent, err := readNextflowResultAspect(ctxt, jobID)
+	if err != nil {
+		return fmt.Errorf("failed to read nextflow result aspect: %w", err)
+	}
+
+	if nextflowResultContent == nil {
+		return fmt.Errorf("job '%s' has no result content", jobID)
+	}
+
+	// Handle --multiqc flag
+	if nextflowReportMultiQC {
+		results, ok := nextflowResultContent["results"].(map[string]interface{})
+		if !ok || results == nil {
+			return fmt.Errorf("job '%s' has no results in new format", jobID)
+		}
+
+		multiqcURN, ok := results["multiqc"].(string)
+		if !ok || multiqcURN == "" {
+			return fmt.Errorf("no multiqc process found in job results")
+		}
+
+		return serveMultiQCReport(ctxt, adapter, multiqcURN)
+	}
+
+	// Get the output URN
+	outputURN, ok := nextflowResultContent["output_urn"].(string)
+	if !ok || outputURN == "" {
+		return fmt.Errorf("job '%s' has no output artifact", jobID)
+	}
+
+	// Create a temporary directory for the report
+	tmpDir, err := os.MkdirTemp("", "nextflow-report-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary directory: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Download and extract output files
+	data, mimeType, err := downloadTarArtifact(ctxt, outputURN, adapter)
+	if err != nil {
+		return fmt.Errorf("failed to download output artifact: %w", err)
+	}
+
+	// Verify it's a tar file
+	if !isTarFile(mimeType, data) {
+		return fmt.Errorf("output artifact is not a tar or tar.gz file (mime-type: %s)", mimeType)
+	}
+
+	// Extract tar contents
+	tr, err := openTarReader(data)
+	if err != nil {
+		return fmt.Errorf("failed to open tar reader: %w", err)
+	}
+
+	var reportFile string
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read tar entry: %w", err)
+		}
+
+		// Skip directories
+		if header.Typeflag == 53 { // tar.TypeDir
+			continue
+		}
+
+		// Create file path
+		filePath := filepath.Join(tmpDir, filepath.FromSlash(header.Name))
+		fileDir := filepath.Dir(filePath)
+
+		// Create directory if needed
+		if err := os.MkdirAll(fileDir, 0755); err != nil { // #nosec G301 -- temporary directory
+			return fmt.Errorf("failed to create directory: %w", err)
+		}
+
+		// Extract file
+		file, err := os.Create(filePath) // #nosec G304 -- temporary directory
+		if err != nil {
+			return fmt.Errorf("failed to create file: %w", err)
+		}
+		defer file.Close()
+
+		_, err = io.Copy(file, tr)
+		if err != nil {
+			return fmt.Errorf("failed to extract file: %w", err)
+		}
+
+		// Check if this is the index.html file
+		if strings.HasSuffix(header.Name, "index.html") {
+			reportFile = filePath
+		}
+	}
+
+	if reportFile == "" {
+		return fmt.Errorf("no index.html file found in output directory")
+	}
+
+	// Start a web server on an available port
+	listener, err := listenOnAvailablePort()
+	if err != nil {
+		return fmt.Errorf("failed to start web server: %w", err)
+	}
+	defer listener.Close()
+
+	port := listener.Addr().(*net.TCPAddr).Port
+	url := fmt.Sprintf("http://localhost:%d", port)
+
+	// Serve the report and all extracted files
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			// Serve the index.html as root
+			http.ServeFile(w, r, reportFile)
+		} else {
+			// Serve other files from the extracted tar contents
+			// Remove leading slash and join with tmpDir
+			requestPath := strings.TrimPrefix(r.URL.Path, "/")
+			filePath := filepath.Join(tmpDir, filepath.FromSlash(requestPath))
+
+			// Security check: ensure the requested file is within tmpDir
+			absFilePath, err := filepath.Abs(filePath)
+			absTmpDir, err2 := filepath.Abs(tmpDir)
+			if err != nil || err2 != nil || !strings.HasPrefix(absFilePath, absTmpDir) {
+				http.NotFound(w, r)
+				return
+			}
+
+			// Try to serve the file
+			if _, err := os.Stat(filePath); err == nil { // #nosec G703 -- path already validated above
+				http.ServeFile(w, r, filePath)
+				return
+			}
+
+			// If file not found at exact path, try to find it by searching tmpDir
+			// This handles cases where files are in subdirectories
+			foundPath := findFileByName(tmpDir, filepath.Base(requestPath))
+			if foundPath != "" {
+				http.ServeFile(w, r, foundPath)
+				return
+			}
+
+			// Not found
+			http.NotFound(w, r)
+		}
+	})
+
+	// Print URL
+	fmt.Printf("\n\nNextflow Execution Report\n")
+	fmt.Printf("========================\n")
+	fmt.Printf("Report URL: %s\n\n", url)
+
+	// Try to open in browser
+	openBrowser(url)
+
+	// Start server (blocking)
+	fmt.Printf("Press Ctrl+C to stop the server\n\n")
+	if err := http.Serve(listener, nil); err != nil { // #nosec G114 -- local development server
+		return fmt.Errorf("web server error: %w", err)
+	}
+
+	return nil
+}
+
+// listenOnAvailablePort finds and returns an available TCP port
+func listenOnAvailablePort() (net.Listener, error) {
+	listener, err := net.Listen("tcp", "localhost:0")
+	if err != nil {
+		return nil, err
+	}
+	return listener, nil
+}
+
+// findFileByName recursively searches for a file by name in a directory
+func findFileByName(dir, filename string) string {
+	_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if !info.IsDir() && filepath.Base(path) == filename {
+			return filepath.SkipDir // Stop walking after finding match
+		}
+		return nil
+	})
+
+	// Second pass to find and return the file
+	var foundPath string
+	_ = filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return nil
+		}
+		if foundPath == "" && !info.IsDir() && filepath.Base(path) == filename {
+			foundPath = path
+			return filepath.SkipDir
+		}
+		return nil
+	})
+	return foundPath
+}
+
+// serveMultiQCReport downloads and serves the MultiQC report in a web browser
+func serveMultiQCReport(ctxt context.Context, adapter *a.Adapter, multiqcURN string) error {
+	// Download the MultiQC artifact
+	data, mimeType, err := downloadTarArtifact(ctxt, multiqcURN, adapter)
+	if err != nil {
+		return fmt.Errorf("failed to download multiqc artifact: %w", err)
+	}
+
+	// Verify it's a tar file
+	if !isTarFile(mimeType, data) {
+		return fmt.Errorf("multiqc artifact is not a tar or tar.gz file (mime-type: %s)", mimeType)
+	}
+
+	// Create a temporary directory for the MultiQC report
+	tmpDir, err := os.MkdirTemp("", "multiqc-report-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temporary directory: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Extract tar contents
+	tr, err := openTarReader(data)
+	if err != nil {
+		return fmt.Errorf("failed to open tar reader: %w", err)
+	}
+
+	for {
+		header, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("failed to read tar entry: %w", err)
+		}
+
+		// Skip directories
+		if header.Typeflag == 53 { // tar.TypeDir
+			continue
+		}
+
+		// Create file path
+		filePath := filepath.Join(tmpDir, filepath.FromSlash(header.Name))
+		fileDir := filepath.Dir(filePath)
+
+		// Create directory if needed
+		if err := os.MkdirAll(fileDir, 0755); err != nil { // #nosec G301 -- temporary directory
+			return fmt.Errorf("failed to create directory: %w", err)
+		}
+
+		// Extract file
+		file, err := os.Create(filePath) // #nosec G304 -- temporary directory
+		if err != nil {
+			return fmt.Errorf("failed to create file: %w", err)
+		}
+		defer file.Close()
+
+		_, err = io.Copy(file, tr)
+		if err != nil {
+			return fmt.Errorf("failed to extract file: %w", err)
+		}
+	}
+
+	// Extract and read MANIFEST.csv to find HTML file
+	manifestData, err := extractFileFromTar(data, "MANIFEST.csv")
+	if err != nil {
+		return fmt.Errorf("MANIFEST.csv not found in multiqc artifact: %w", err)
+	}
+
+	// Parse MANIFEST.csv to find HTML files
+	reader := csv.NewReader(strings.NewReader(string(manifestData)))
+	records, err := reader.ReadAll()
+	if err != nil {
+		return fmt.Errorf("failed to parse MANIFEST.csv: %w", err)
+	}
+
+	var htmlFile string
+	var htmlFiles []string
+
+	// Skip header row and look for HTML files
+	for i := 1; i < len(records); i++ {
+		record := records[i]
+		if len(record) < 4 {
+			continue
+		}
+
+		filename := record[0]
+		mimetype := record[2]
+
+		// Look for HTML files
+		if strings.HasSuffix(strings.ToLower(filename), ".html") && (strings.Contains(mimetype, "text/html") || strings.Contains(mimetype, "html")) {
+			htmlFiles = append(htmlFiles, filename)
+			// Prefer multiqc.html by name
+			if strings.Contains(strings.ToLower(filename), "multiqc.html") {
+				htmlFile = filename
+			} else if htmlFile == "" {
+				htmlFile = filename // Use as fallback
+			}
+		}
+	}
+
+	if htmlFile == "" {
+		if len(htmlFiles) > 0 {
+			// Use the first HTML file found
+			htmlFile = htmlFiles[0]
+		} else {
+			return fmt.Errorf("no HTML file found in MANIFEST.csv")
+		}
+	}
+
+	// Verify the file exists after extraction
+	htmlFilePath := filepath.Join(tmpDir, htmlFile)
+	info, err := os.Stat(htmlFilePath)
+	if err != nil {
+		return fmt.Errorf("multiqc HTML file not found at %s: %w", htmlFilePath, err)
+	}
+	if info.Size() == 0 {
+		return fmt.Errorf("multiqc HTML file is empty: %s", htmlFile)
+	}
+
+	// Start a web server on an available port
+	listener, err := listenOnAvailablePort()
+	if err != nil {
+		return fmt.Errorf("failed to start web server: %w", err)
+	}
+	defer listener.Close()
+
+	port := listener.Addr().(*net.TCPAddr).Port
+	url := fmt.Sprintf("http://localhost:%d", port)
+
+	// Serve the MultiQC report and all extracted files
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			// Serve the HTML file as root (use full path)
+			http.ServeFile(w, r, htmlFilePath)
+		} else {
+			// Serve other files from the extracted tar contents
+			requestPath := strings.TrimPrefix(r.URL.Path, "/")
+			filePath := filepath.Join(tmpDir, filepath.FromSlash(requestPath))
+
+			// Security check: ensure the requested file is within tmpDir
+			absFilePath, err := filepath.Abs(filePath)
+			absTmpDir, err2 := filepath.Abs(tmpDir)
+			if err != nil || err2 != nil || !strings.HasPrefix(absFilePath, absTmpDir) {
+				http.NotFound(w, r)
+				return
+			}
+
+			// Try to serve the file
+			if _, err := os.Stat(filePath); err == nil { // #nosec G703 -- path already validated above
+				http.ServeFile(w, r, filePath)
+				return
+			}
+
+			// If file not found at exact path, try to find it by searching tmpDir
+			foundPath := findFileByName(tmpDir, filepath.Base(requestPath))
+			if foundPath != "" {
+				http.ServeFile(w, r, foundPath)
+				return
+			}
+
+			// Not found
+			http.NotFound(w, r)
+		}
+	})
+
+	// Print URL
+	fmt.Printf("\n\nMultiQC Report\n")
+	fmt.Printf("==============\n")
+	fmt.Printf("Report URL: %s\n\n", url)
+
+	// Try to open in browser
+	openBrowser(url)
+
+	// Start server (blocking)
+	fmt.Printf("Press Ctrl+C to stop the server\n\n")
+	if err := http.Serve(listener, nil); err != nil { // #nosec G114 -- local development server
+		return fmt.Errorf("web server error: %w", err)
+	}
+
+	return nil
+}
+
+// openBrowser tries to open the URL in the default browser
+func openBrowser(url string) {
+	var cmd string
+	var args []string
+
+	switch {
+	case os.Getenv("DISPLAY") != "" || os.Getenv("WAYLAND_DISPLAY") != "" || os.Getenv("COLORTERM") != "":
+		// Linux with display
+		cmd = "xdg-open"
+		args = []string{url}
+	default:
+		// Try macOS
+		cmd = "open"
+		args = []string{url}
+	}
+
+	// Try to open the browser but don't fail if it doesn't work
+	// #nosec G204 - URL is safe and constructed by our code
+	if err := exec.Command(cmd, args...).Start(); err != nil {
+		// Silently ignore - we already printed the URL
+		logger.Debug("Could not open browser", log.String("url", url), log.Error(err))
+	}
 }
 
 // retractNextflowService queries for and retracts the service aspect(s) for a given service ID

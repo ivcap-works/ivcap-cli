@@ -182,16 +182,16 @@ func TestShouldReturnAsText(t *testing.T) {
 		expected bool
 	}{
 		{
-			name:     "no accept header defaults to base64",
+			name:     "no accept header returns text-compatible content as text by default",
 			mimeType: "text/plain",
 			accept:   nil,
-			expected: false,
+			expected: true,
 		},
 		{
-			name:     "empty accept array defaults to base64",
+			name:     "empty accept array returns text-compatible content as text by default",
 			mimeType: "text/plain",
 			accept:   []string{},
-			expected: false,
+			expected: true,
 		},
 		{
 			name:     "exact match text/plain",

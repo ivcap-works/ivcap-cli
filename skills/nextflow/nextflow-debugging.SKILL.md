@@ -159,44 +159,47 @@ ivcap nextflow run "$SERVICE_ID" -f input.json
 
 ## Accessing Nextflow Logs When Runs Fail
 
-When a Nextflow pipeline fails, the job result includes a `results_artifact_urn` that contains the Nextflow execution logs and metadata.
+When a Nextflow pipeline fails, the job result now includes a separate `log_urn` artifact containing the Nextflow execution logs (no need to extract from a large results artifact).
 
-**Job result structure (when failed):**
+**Job result structure (new format):**
 
 ```yaml
 $schema: urn:ivcap:schema:nextflow.result.1
 job_id: urn:ivcap:job:9c1db38c-e180-4570-9874-e85db9bda90f
-results_artifact_urn: urn:ivcap:artifact:4d8fcdff-273a-4498-936a-a92333935696
 status: failed
+log_urn: urn:ivcap:artifact:4d8fcdff-273a-4498-936a-a92333935696
+output_urn: urn:ivcap:artifact:5e9gdfee-374b-5599-a47b-b93444a46707
+results:
+  process_name: urn:ivcap:artifact:...
 ```
 
-### Getting the Nextflow Log
+### Getting the Nextflow Log (New, Simpler Way)
 
-The `results_artifact_urn` contains a directory structure with the Nextflow log file located at:
-
-```
-./<job_uuid>/.nextflow.log
-```
-
-Where `<job_uuid>` is extracted from the `job_id` (the UUID part after `urn:ivcap:job:`).
+The `log_urn` contains the Nextflow log file directly - **no extraction needed!**
 
 **CLI Method:**
 
 ```bash
-# 1. Get the job result (contains results_artifact_urn)
+# 1. Get the job result (contains log_urn, output_urn, results)
 JOB_ID="urn:ivcap:job:9c1db38c-e180-4570-9874-e85db9bda90f"
-ivcap job get "$JOB_ID" --output json > job_result.json
+ivcap nextflow job-get "$JOB_ID" --output json > job_result.json
 
-# 2. Extract the results artifact URN
-RESULTS_ARTIFACT=$(jq -r '.results_artifact_urn' job_result.json)
+# 2. Extract the log artifact URN
+LOG_ARTIFACT=$(jq -r '.log_urn' job_result.json)
 
-# 3. Download the artifact
-ivcap artifact download "$RESULTS_ARTIFACT" -o results.tar.gz
+# 3. Download and view the log directly
+ivcap artifact download "$LOG_ARTIFACT" -o nextflow.log
+cat nextflow.log
+```
 
-# 4. Extract and view the Nextflow log
-tar xzf results.tar.gz
-JOB_UUID=$(echo "$JOB_ID" | sed 's/.*://')  # Extract UUID from URN
-cat "./$JOB_UUID/.nextflow.log"
+**Even Simpler - Use the Built-in Command:**
+
+```bash
+# View logs directly without manual extraction
+ivcap nextflow job-result "$JOB_ID" --logs
+
+# Or download logs to a directory
+ivcap nextflow job-result "$JOB_ID" --logs -f /path/to/logs
 ```
 
 **MCP Method:**
@@ -206,13 +209,12 @@ cat "./$JOB_UUID/.nextflow.log"
   "tool": "artifact_get",
   "arguments": {
     "id": "urn:ivcap:artifact:4d8fcdff-273a-4498-936a-a92333935696",
-    "path": "9c1db38c-e180-4570-9874-e85db9bda90f/.nextflow.log",
     "accept": ["text/plain"]
   }
 }
 ```
 
-**Important:** When fetching text files (`.nextflow.log`, `.csv`, `.tsv`, or any text files) from artifacts using `artifact_get`, **always include an appropriate `"accept"` parameter** in the arguments. Without this, the MCP tool returns the content as base64-encoded data instead of plain text, making it difficult to read and analyze.
+**Key Difference:** The log artifact is now standalone - the content is the log file itself, not a tar archive that needs extraction. Always include `"accept": ["text/plain"]` to get readable text instead of base64-encoded data.
 
 **Supported text formats:**
 - `"accept": ["text/plain"]` - For log files, plain text files (also accepts CSV and TSV as plain text)

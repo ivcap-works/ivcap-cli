@@ -241,28 +241,118 @@ artifact_build(
 
 When a Nextflow job fails during execution:
 
-### Check Job Status
+### Check Job Status (Updated Format)
 ```python
-response = job_status(job_id="urn:ivcap:job:...")
-print(response["result"]["status"])  # "succeeded" or "failed"
-results_urn = response["result"]["results_artifact_urn"]
+# CLI: Get job details
+job = ivcap nextflow job-get urn:ivcap:job:...
+# Shows: IVCAP Status, Nxf Status, Log, and Processes
+
+# MCP: Use job_status tool for completed jobs
+job = job_status(job_id="urn:ivcap:job:...")
+
+# MCP returns nextflow result structure (for Nextflow jobs):
+# {
+#   "nextflow_result": {
+#     "status": "succeeded",
+#     "log_urn": "urn:ivcap:artifact:...",
+#     "output_urn": "urn:ivcap:artifact:...",
+#     "results": {
+#       "fastqc": "urn:ivcap:artifact:...",
+#       "multiqc": "urn:ivcap:artifact:...",
+#       "trimming": "urn:ivcap:artifact:..."
+#     }
+#   },
+#   "_meta": {
+#     "type": "nextflow",
+#     "status": "succeeded"
+#   }
+# }
+
+# Extract result artifacts
+nxf_result = job["nextflow_result"]
+log_urn = nxf_result["log_urn"]  # Direct log file (text artifact)
+output_urn = nxf_result["output_urn"]  # Output directory (tar artifact)
+results = nxf_result["results"]  # Process-specific results
 ```
 
-### Fetch Nextflow Log from Failed Job
+### Fetch Nextflow Log from Job (Direct Access - No Extraction)
 ```python
-job_uuid = job_id.split(":")[-1]
+# CLI: Log URN is displayed directly
+ivcap nextflow job-get urn:ivcap:job:... | grep "Log"
+# Output: Log  urn:ivcap:artifact:c0d9fea0-... (@N)
+
+# Then download the log
+ivcap artifact get @N > job.log
+cat job.log | grep ERROR
+
+# MCP: Log is a standalone text artifact
+job = job_status(job_id="urn:ivcap:job:...")
+log_urn = job["nextflow_result"]["log_urn"]
 
 log_content = artifact_get(
-    id=results_urn,
-    path=f"{job_uuid}/.nextflow.log",
+    id=log_urn,
     accept=["text/plain"]
 )
 
-# Look for errors
+# Analyze the log
 if "ERROR" in log_content:
     for line in log_content.split('\n'):
-        if "ERROR" in line:
+        if "ERROR" in line or "error" in line.lower():
             print(line)
+```
+
+### Example: Complete Job Debug Pattern (CLI)
+```bash
+# 1. Run job
+ivcap nextflow run urn:ivcap:service:abc123 -f params.json
+
+# 2. Check job status
+ivcap nextflow job-get urn:ivcap:job:def456
+
+# Output shows:
+# IVCAP Status  succeeded
+# Nxf Status    succeeded
+# Log           urn:ivcap:artifact:... (@2)
+# Processes
+#   fastqc      urn:ivcap:artifact:... (@3)
+#   multiqc     urn:ivcap:artifact:... (@4)
+
+# 3. Download and examine log
+ivcap artifact get @2 > pipeline.log
+grep ERROR pipeline.log
+
+# 4. Download process results
+ivcap artifact get @3 -f ./fastqc_results/
+```
+
+### Example: Complete Job Debug Pattern (MCP)
+```python
+# 1. Run job and get result (if completes within 30s)
+job_result = nextflow_run(service_id="urn:ivcap:service:...", input={...})
+
+# 2. If job still running, poll with job_status
+if job_result.get("poll_after_seconds"):
+    # Job not finished, wait and poll
+    import time
+    time.sleep(job_result["poll_after_seconds"])
+    job_result = job_status(job_id=job_result["job_id"])
+
+# 3. Check Nextflow result
+if job_result["_meta"]["type"] == "nextflow":
+    nxf_result = job_result["nextflow_result"]
+
+    if nxf_result["status"] == "failed":
+        # Fetch log directly (no tar extraction needed)
+        log_text = artifact_get(id=nxf_result["log_urn"], accept=["text/plain"])
+
+        # Analyze the log
+        for line in log_text.split('\n'):
+            if "ERROR" in line:
+                print(f"Error: {line}")
+
+        # Access per-process results
+        for process_name, result_urn in nxf_result["results"].items():
+            print(f"Process {process_name}: {result_urn}")
 ```
 
 ### Common Failure Causes

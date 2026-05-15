@@ -1,23 +1,20 @@
-## ivcap nextflow job-result
+## ivcap nextflow job-view
 
-List or download files from a Nextflow job result artifact
+View Nextflow job execution report in a web browser
 
 ### Synopsis
 
-Download and access the result artifact from a Nextflow job. Without flags, shows summary. With -f, downloads/extracts files into the specified directory.
+Download the output directory from a Nextflow job and serve the index.html file in a local web server. The report will be automatically opened in your browser if possible. With --multiqc, serves the MultiQC report if available.
 
 ```
-ivcap nextflow job-result [flags] job_id [-f directory]
+ivcap nextflow job-view job_id [--multiqc] [flags]
 ```
 
 ### Options
 
 ```
-  -f, --file string      Optional: directory to download and extract result files into
-  -h, --help             help for job-result
-      --logs             Show the job logs
-      --output           Show the output directory contents
-      --process string   Show contents of a specific process (e.g., fastqc)
+  -h, --help      help for job-view
+      --multiqc   Serve the MultiQC report if available
 ```
 
 ### Options inherited from parent commands
@@ -27,6 +24,7 @@ ivcap nextflow job-result [flags] job_id [-f directory]
       --context string        Context (deployment) to use
       --debug                 Set logging level to DEBUG
       --no-history            Do not store history
+  -o, --output string         Set format for displaying output [json, yaml]
       --silent                Do not show any progress information
       --timeout int           Max. number of seconds to wait for completion (default 30)
 ```

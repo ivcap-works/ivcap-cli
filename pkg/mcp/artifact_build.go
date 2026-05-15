@@ -337,7 +337,7 @@ func handleArtifactBuildAddRemote(ctx context.Context, args map[string]any) (*mc
 		}
 
 		// Download content from URL
-		resp, err := http.Get(urlStr)
+		resp, err := http.Get(urlStr) // #nosec G107 -- URL is validated by caller via verify_url package
 		if err != nil {
 			return nil, fmt.Errorf("failed to download %q from %q: %w", pathName, urlStr, err)
 		}

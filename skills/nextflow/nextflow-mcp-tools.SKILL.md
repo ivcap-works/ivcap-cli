@@ -657,12 +657,19 @@ Response from nextflow_run():
   "status": "succeeded",
   "result": {
     "status": "succeeded",
-    "results_artifact_urn": "urn:ivcap:artifact:..."
+    "log_urn": "urn:ivcap:artifact:...",
+    "output_urn": "urn:ivcap:artifact:...",
+    "results": {
+      "process_name": "urn:ivcap:artifact:..."
+    }
   }
 }
 ```
 ✓ Job completed immediately
-✓ Results are in `result.results_artifact_urn`
+✓ **New format:** Results are now split into separate artifacts:
+  - `log_urn`: Direct access to Nextflow execution log (no extraction needed!)
+  - `output_urn`: Pipeline output directory
+  - `results`: Per-process results (map of process names to artifact URNs)
 
 ### Pattern 2: Polling Required (Slow Path)
 ```json
@@ -670,12 +677,16 @@ Response from nextflow_run():
 {
   "job_id": "urn:ivcap:job:...",
   "status": "executing",
-  "poll_after_seconds": 30,
-  "message": "Job still executing..."
+  "message": "Job still executing...",
+  "_meta": {
+    "job_id": "urn:ivcap:job:...",
+    "status": "executing",
+    "poll_after_seconds": 30
+  }
 }
 ```
 ⏳ Job is running
-→ Call `job_status(job_id=...)` after 30 seconds
+→ Call `job_status(job_id=...)` after 30 seconds (use `_meta.poll_after_seconds`)
 → Repeat until status is "succeeded" or "failed"
 
 ---
@@ -684,27 +695,145 @@ Response from nextflow_run():
 
 Results are stored in IVCAP artifacts. Use `artifact_get()` to retrieve them.
 
-### Pattern: Fetch CSV Results
+### ⚠️ CRITICAL: Always Use `accept` Parameter for LLM-Friendly Responses
+
+When calling `artifact_get`, **always specify the `accept` parameter** to get plain text responses instead of Base64-encoded blobs. This is essential for agent/LLM workflows because:
+
+- ✅ **With `accept`:** Response is flat, readable text (LLM-friendly)
+- ❌ **Without `accept`:** Response contains nested Base64 blobs (cognitive overhead for LLMs)
+
+### Pattern: Fetch and Parse Results
+
+**For Text Files (Logs, Config, etc.):**
 ```python
-# Get CSV with proper text formatting
+# ✅ CORRECT: Use accept parameter for plain text
+artifact_content = artifact_get(
+    id="urn:ivcap:artifact:...",
+    path="/logs/pipeline.log",
+    accept=["text/plain"]
+)
+
+# Content is now returned as plain text - easy to parse!
+# You can directly work with the content
+for line in artifact_content.splitlines():
+    if "ERROR" in line:
+        print(f"Found error: {line}")
+```
+
+**For CSV Results:**
+```python
+# ✅ CORRECT: Use accept with text/csv
 csv_content = artifact_get(
     id="urn:ivcap:artifact:...",
     path="/results/results.csv",
     accept=["text/csv"]
 )
 
-# Parse
+# Parse CSV directly from plain text response
 import csv
 reader = csv.DictReader(csv_content.splitlines())
 for row in reader:
     print(row)
 ```
 
-### Critical: Use `accept` Parameter
-- ✅ `accept: ["text/csv"]` → Returns readable CSV
-- ✅ `accept: ["text/plain"]` → Returns readable text
-- ✅ `accept: ["text/*"]` → Returns any text format
-- ❌ Omit `accept` → Returns base64-encoded data (harder to parse)
+**For JSON Results:**
+```python
+# ✅ CORRECT: Use accept with application/json
+json_content = artifact_get(
+    id="urn:ivcap:artifact:...",
+    path="/results/data.json",
+    accept=["application/json"]
+)
+
+# Parse directly from the response
+import json
+data = json.loads(json_content)
+print(data["key"])
+```
+
+### Response Structure with `accept`
+
+When using `accept` parameter, the response is optimized for readability:
+
+```json
+{
+  "content": [
+    {
+      "type": "text",
+      "text": "May-05 10:35:01.011 [main] DEBUG nextflow.cli.Launcher - Setting http proxy...\nProcessing sample 1...\nCompleted successfully"
+    }
+  ],
+  "isError": false
+}
+```
+
+Extract the content with:
+```python
+response = artifact_get(id="...", path="...", accept=["text/plain"])
+# response is already the plain text content - use it directly!
+for line in response.splitlines():
+    process(line)
+```
+
+### ⚠️ What NOT to Do
+
+❌ **This pattern is LLM-unfriendly:**
+```python
+# WRONG: Omitting accept parameter returns Base64
+artifact_content = artifact_get(
+    id="urn:ivcap:artifact:...",
+    path="/results/results.csv"
+    # No accept parameter!
+)
+
+# Response is nested Base64 blob:
+# {
+#   "result": {
+#     "content": [
+#       {
+#         "resource": {
+#           "blob": "VGhpcyBpcyBCYXNlNjQgZW5jb2RlZCBkYXRhLi4u"
+#         }
+#       }
+#     ]
+#   }
+# }
+
+# LLMs struggle to navigate this nested structure and decode Base64!
+```
+
+### Accept Parameter Values
+
+| Accept Type | Best For | Returns |
+|-----------|----------|---------|
+| `["text/plain"]` | Logs, text files, any readable text | Plain text |
+| `["text/csv"]` | CSV files, tabular data | Plain text CSV |
+| `["text/json"]` or `["application/json"]` | JSON files | Plain JSON text |
+| `["text/*"]` | Any text format | Plain text |
+| (omitted) | Binary files only | Base64-encoded blob |
+
+### Troubleshooting artifact_get with LLMs
+
+**Problem:** Agent says "I can't find the content" or returns Base64 strings
+
+**Solution:**
+1. Always include `accept` parameter matching the file type
+2. Verify file path exists in the artifact
+3. Use `artifact_get(id="...", path="/")` to list contents if unsure of path
+
+**Example: Debugging artifact contents**
+```python
+# List what's in the artifact
+list_result = artifact_get(
+    id="urn:ivcap:artifact:...",
+    path="/",  # List root directory
+    accept=["text/plain"]
+)
+
+# Now you know what files exist
+# Then fetch specific file with correct path
+```
+
 
 ---
 

@@ -437,3 +437,8 @@ func TestMCPPromptsListAndGet_ExposeSetupPrompt(t *testing.T) {
 		t.Fatalf("expected prompt messages")
 	}
 }
+
+// Note: The nextflow_create and nextflow_run tools are tested via integration tests.
+// The service ID validation and extraction is tested in pkg/nextflow tests.
+// See TestResolveServiceID_PrefersProvidedServiceID and TestResolveServiceID_ExtractsFromToolHeader
+// in pkg/nextflow package tests.

@@ -163,19 +163,16 @@ func toolResultBlob(b []byte, mimeType string, accept []string) (*mcp.CallToolRe
 
 	// Check if caller accepts text format and content is text-compatible
 	if shouldReturnAsText(mimeType, accept) {
+		// For text content: return plain text directly (no StructuredContent to avoid confusion)
+		// Clients get the actual content in Content field, not buried in metadata
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{mcp.NewTextContent(string(b))},
-			StructuredContent: map[string]any{
-				"content_type": mimeType, // MIME type of the actual data
-				"encoding":     "utf-8",  // Text encoding
-				"size":         len(b),   // Size in bytes
-			},
 		}, nil
 	}
 
-	// Default: return as base64-encoded blob
+	// Default: return as base64-encoded blob using BlobResource
+	// This clearly indicates the content is binary/encoded data
 	enc := base64.StdEncoding.EncodeToString(b)
-	// Use embedded resource so clients can render as a blob.
 	res := mcp.BlobResourceContents{
 		URI:      "urn:ivcap:artifact:data",
 		MIMEType: mimeType,
@@ -183,22 +180,14 @@ func toolResultBlob(b []byte, mimeType string, accept []string) (*mcp.CallToolRe
 	}
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{mcp.NewEmbeddedResource(res)},
-		StructuredContent: map[string]any{
-			"content_type": mimeType, // MIME type of the actual data
-			"encoding":     "base64", // How the data is encoded in the response
-			"size":         len(b),   // Size of the original (decoded) data in bytes
-			"encoded_size": len(enc), // Size of the base64-encoded string
-		},
 	}, nil
 }
 
 // shouldReturnAsText determines if content should be returned as text based on
 // the content's MIME type and the caller's accept preferences.
+// By default, text-compatible content is returned as text unless accept is
+// explicitly provided with binary-only types.
 func shouldReturnAsText(mimeType string, accept []string) bool {
-	if len(accept) == 0 {
-		return false // No preference, use default (base64)
-	}
-
 	// Check if mimeType is text-compatible
 	isTextType := strings.HasPrefix(mimeType, "text/") ||
 		mimeType == "application/json" ||
@@ -212,7 +201,12 @@ func shouldReturnAsText(mimeType string, accept []string) bool {
 		return false // Binary content, must use base64
 	}
 
-	// Check if any accept type matches
+	// If no accept preference is specified, return text-compatible content as text by default
+	if len(accept) == 0 {
+		return true
+	}
+
+	// Check if any accept type matches a text format
 	for _, acceptType := range accept {
 		acceptType = strings.TrimSpace(strings.ToLower(acceptType))
 		mimeTypeLower := strings.ToLower(mimeType)

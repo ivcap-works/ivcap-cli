@@ -29,8 +29,9 @@ import (
 // Built-in MCP tools for Nextflow service creation + job run.
 
 type nextflowCreateArgs struct {
-	// Service ID/URN to create/update service description for.
-	ServiceID string `json:"service_id"`
+	// Optional: Service ID/URN to create/update service description for.
+	// If not provided, will be extracted from the ivcap.yaml or ivcap-tool.yaml in the artifact.
+	ServiceID string `json:"service_id,omitempty"`
 	// Artifact URN/ID containing the pipeline tar.gz package.
 	ArtifactID string `json:"artifact_id"`
 	// Optional name for display purposes (metadata only).
@@ -53,7 +54,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		"properties": map[string]any{
 			"service_id": map[string]any{
 				"type":        "string",
-				"description": "Service URN/ID for the Nextflow service definition to create/update. MUST be in format 'urn:ivcap:service:<uuid>' where <uuid> is a valid UUIDv5 that you generate. The caller is responsible for creating this service ID. (Note: This requirement may change in future versions to auto-generate service IDs.)",
+				"description": "Optional: Service URN/ID for the Nextflow service definition to create/update. MUST be in format 'urn:ivcap:service:<uuid>' if provided. If not provided, will be extracted from the service-id field in ivcap.yaml or ivcap-tool.yaml within the artifact.",
 			},
 			"artifact_id": map[string]any{
 				"type":        "string",
@@ -68,7 +69,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 				"description": "Optional access policy.",
 			},
 		},
-		"required": []any{"service_id", "artifact_id"},
+		"required": []any{"artifact_id"},
 	}
 
 	tool := mcp.NewToolWithRawSchema(
@@ -86,9 +87,6 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		var parsed nextflowCreateArgs
 		if err := b.AsType(&parsed); err != nil {
 			return nil, err
-		}
-		if parsed.ServiceID == "" {
-			return nil, fmt.Errorf("missing service_id")
 		}
 		if parsed.ArtifactID == "" {
 			return nil, fmt.Errorf("missing artifact_id")
@@ -138,9 +136,15 @@ func addNextflowCreateTool(s *server.MCPServer) {
 			return nil, fmt.Errorf("neither %q nor %q found in artifact %s", nf.SimpleToolFileName, nf.ToolFileName, parsed.ArtifactID)
 		}
 
+		// Resolve service ID: use provided ID if valid, otherwise extract from tool header
+		serviceID, err := nf.ResolveServiceID(parsed.ServiceID, toolHdr)
+		if err != nil {
+			return nil, err
+		}
+
 		// Publish service description aspect (same logic as `ivcap nextflow create`).
-		svc := nf.BuildServiceDescription(toolHdr, parsed.ServiceID, parsed.ArtifactID)
-		aspectID, err := nf.UpsertServiceDescriptionAspect(ctxt, parsed.ServiceID, svc, adpt, srvCfg.Logger)
+		svc := nf.BuildServiceDescription(toolHdr, serviceID, parsed.ArtifactID)
+		aspectID, err := nf.UpsertServiceDescriptionAspect(ctxt, serviceID, svc, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
 				return NewLoginRequiredResult(), nil
@@ -150,7 +154,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 
 		return mcp.NewToolResultJSON(map[string]any{
 			"ok":                       true,
-			"service_id":               parsed.ServiceID,
+			"service_id":               serviceID,
 			"pipeline_artifact_urn":    parsed.ArtifactID,
 			"service_aspect_record_id": aspectID,
 			"tool": map[string]any{

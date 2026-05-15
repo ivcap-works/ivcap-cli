@@ -191,7 +191,7 @@ func waitForResult(
 	if err != nil {
 		return err
 	}
-	return displayJob(job, pyld)
+	return displayJob(job, pyld, nil, nil)
 }
 
 func watchJob(ctxt context.Context, jobID string, maxChecks int, wait int) (*sdk.JobReadResponseBody, a.Payload, error) {
@@ -199,7 +199,7 @@ func watchJob(ctxt context.Context, jobID string, maxChecks int, wait int) (*sdk
 	tries := 0
 	for !done {
 		time.Sleep(time.Duration(wait) * time.Second)
-		job, pyld, err := readJob(ctxt, jobID)
+		job, pyld, _, _, err := readJob(ctxt, jobID)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -234,24 +234,24 @@ func streamJobResults(ctxt context.Context, jobCreate *sdk.JobCreateT) error {
 }
 
 func readDisplayJob(ctxt context.Context, jobID string) error {
-	job, pyld, err := readJob(ctxt, jobID)
+	job, pyld, jobResultAspect, nextflowResultAspect, err := readJob(ctxt, jobID)
 	if err != nil {
 		return err
 	}
-	return displayJob(job, pyld)
+	return displayJob(job, pyld, jobResultAspect, nextflowResultAspect)
 }
 
-func displayJob(job *sdk.JobReadResponseBody, pyld a.Payload) error {
+func displayJob(job *sdk.JobReadResponseBody, pyld a.Payload, jobResultAspect map[string]any, nextflowResultAspect map[string]any) error {
 	switch outputFormat {
 	case "json", "yaml":
 		return a.ReplyPrinter(pyld, outputFormat == "yaml")
 	default:
-		printJob(job, false)
+		printJob(job, jobResultAspect, nextflowResultAspect, false)
 	}
 	return nil
 }
 
-func readJob(ctxt context.Context, jobID string) (*sdk.JobReadResponseBody, a.Payload, error) {
+func readJob(ctxt context.Context, jobID string) (*sdk.JobReadResponseBody, a.Payload, map[string]any, map[string]any, error) {
 	selector := sdk.AspectSelector{
 		Entity:         jobID,
 		SchemaPrefix:   JOB_SCHEMA,
@@ -269,11 +269,71 @@ func readJob(ctxt context.Context, jobID string) (*sdk.JobReadResponseBody, a.Pa
 			cobra.CheckErr("Cannot find 'service-id' for this job")
 		}
 	} else {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	req := &sdk.ReadServiceJobRequest{ServiceId: serviceId, JobId: jobID}
 	job, pyld, err := sdk.ReadServiceJob(context.Background(), req, CreateAdapter(true), logger)
-	return job, pyld, err
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	// Try to fetch job.result.1 aspect (execution phase information)
+	jobResultAspect := readJobResultAspect(ctxt, jobID)
+
+	// Try to fetch nextflow.result.1 aspect (detailed results after completion)
+	nextflowResultAspect := readNextflowResultAspectFromJob(ctxt, jobID)
+
+	return job, pyld, jobResultAspect, nextflowResultAspect, nil
+}
+
+// readJobResultAspect reads the job.result.1 aspect for a job (execution phase information)
+func readJobResultAspect(ctxt context.Context, jobID string) map[string]any {
+	selector := sdk.AspectSelector{
+		Entity:         jobID,
+		SchemaPrefix:   "urn:ivcap:schema:job.result.1",
+		IncludeContent: true,
+	}
+
+	list, _, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger)
+	if err != nil {
+		return nil
+	}
+
+	if len(list.Items) == 0 {
+		return nil
+	}
+
+	// Get the first (and should be only) item
+	if content, ok := list.Items[0].Content.(map[string]any); ok {
+		return content
+	}
+
+	return nil
+}
+
+// readNextflowResultAspectFromJob reads the nextflow.result.1 aspect for a job
+func readNextflowResultAspectFromJob(ctxt context.Context, jobID string) map[string]any {
+	selector := sdk.AspectSelector{
+		Entity:         jobID,
+		SchemaPrefix:   "urn:ivcap:schema:nextflow.result.1",
+		IncludeContent: true,
+	}
+
+	list, _, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger)
+	if err != nil {
+		return nil
+	}
+
+	if len(list.Items) == 0 {
+		return nil
+	}
+
+	// Get the first (and should be only) item
+	if content, ok := list.Items[0].Content.(map[string]any); ok {
+		return content
+	}
+
+	return nil
 }
 
 func printJobListTable(list *aspect.ListResponseBody, wide bool) {
@@ -326,7 +386,7 @@ func printJobListTable(list *aspect.ListResponseBody, wide bool) {
 	fmt.Printf("\n%s\n\n", tw.Render())
 }
 
-func printJob(job *sdk.JobReadResponseBody, wide bool) {
+func printJob(job *sdk.JobReadResponseBody, jobResultAspect map[string]any, nextflowResultAspect map[string]any, wide bool) {
 
 	tw := table.NewWriter()
 	tw.SetStyle(table.StyleLight)
@@ -341,20 +401,54 @@ func printJob(job *sdk.JobReadResponseBody, wide bool) {
 		rows = append(rows, table.Row{"Name", safeString(job.Name)})
 	}
 
-	// Status
-	rows = append(rows, table.Row{"Status", safeString(job.Status)})
+	// IVCAP Job Status
+	rows = append(rows, table.Row{"IVCAP Status", safeString(job.Status)})
 
-	// Result (extract results_artifact_urn from result-content if available, otherwise "-")
-	resultDisplay := "-"
-	if job.ResultContent != nil {
-		// Try to parse ResultContent as JSON and extract results_artifact_urn
-		if contentMap, ok := job.ResultContent.(map[string]interface{}); ok {
-			if artifactUrn, ok := contentMap["results_artifact_urn"].(string); ok && artifactUrn != "" {
-				resultDisplay = fmt.Sprintf("%s (%s)", artifactUrn, MakeHistory(&artifactUrn))
-			}
+	// Job Phase Information (from job.result.1 aspect)
+	if jobResultAspect != nil {
+		if phase, ok := jobResultAspect["phase"].(string); ok && phase != "" {
+			rows = append(rows, table.Row{"Phase", phase})
 		}
 	}
-	rows = append(rows, table.Row{"Result", resultDisplay})
+
+	// Result - check nextflow.result.1 aspect first (finished Nextflow jobs)
+	// If available, display the status and process results from the aspect
+	if len(nextflowResultAspect) > 0 {
+		// Display status from nextflow result aspect
+		if status, ok := nextflowResultAspect["status"].(string); ok && status != "" {
+			rows = append(rows, table.Row{"Nxf Status", status})
+		}
+
+		// Display log artifact if available
+		if logURN, ok := nextflowResultAspect["log_urn"].(string); ok && logURN != "" {
+			logDisplay := fmt.Sprintf("%s (%s)", logURN, MakeHistory(&logURN))
+			rows = append(rows, table.Row{"Log", logDisplay})
+		}
+
+		// Display process results if available
+		if results, ok := nextflowResultAspect["results"].(map[string]interface{}); ok && len(results) > 0 {
+			rows = append(rows, table.Row{"", ""})
+			rows = append(rows, table.Row{"Processes", ""})
+			for procName, procURN := range results {
+				if urn, ok := procURN.(string); ok && urn != "" {
+					procDisplay := fmt.Sprintf("%s (%s)", urn, MakeHistory(&urn))
+					rows = append(rows, table.Row{"  " + procName, procDisplay})
+				}
+			}
+		}
+	} else {
+		// Fall back to old format: extract results_artifact_urn from result-content
+		resultDisplay := "-"
+		if job.ResultContent != nil {
+			// Try to parse ResultContent as JSON and extract results_artifact_urn
+			if contentMap, ok := job.ResultContent.(map[string]interface{}); ok {
+				if artifactUrn, ok := contentMap["results_artifact_urn"].(string); ok && artifactUrn != "" {
+					resultDisplay = fmt.Sprintf("%s (%s)", artifactUrn, MakeHistory(&artifactUrn))
+				}
+			}
+		}
+		rows = append(rows, table.Row{"Result", resultDisplay})
+	}
 
 	// Empty line separator
 	rows = append(rows, table.Row{"", ""})

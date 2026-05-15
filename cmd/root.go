@@ -183,7 +183,16 @@ func CreateDoc() {
 			}
 			// #nosec G204 - Path is cleaned, verified to exist, and protected by '--' separator
 			cmd := exec.Command("git", "checkout", "--", cleanPath)
-			if _, err = cmd.Output(); err != nil {
+			output, err := cmd.CombinedOutput()
+			if err != nil {
+				// Check if the error is because the file doesn't exist in git
+				// (e.g., newly generated files not yet committed)
+				errMsg := string(output)
+				if strings.Contains(errMsg, "pathspec") && strings.Contains(errMsg, "did not match") {
+					// File doesn't exist in git, just skip it
+					logger.Info("skipping newly generated file not yet in git", log.String("path", path))
+					return nil
+				}
 				return fmt.Errorf("while checking out not really changed file '%s' - %w", path, err)
 			}
 		} else {

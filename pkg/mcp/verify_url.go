@@ -29,10 +29,6 @@ import (
 // Verify the existence of a URL by performing an HTTP HEAD request.
 // Returns status code and headers information.
 
-type verifyURLArgs struct {
-	URL string `json:"url"`
-}
-
 func addVerifyURLTool(s *server.MCPServer) {
 	schema := map[string]any{
 		"type": "object",

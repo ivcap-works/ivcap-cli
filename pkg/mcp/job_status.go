@@ -102,6 +102,32 @@ func addJobStatusTool(s *server.MCPServer) {
 			if err != nil {
 				return nil, err
 			}
+
+			// For Nextflow jobs, try to fetch the nextflow.result.1 aspect for detailed results
+			var nextflowResult map[string]any
+			nfSelector := sdk.AspectSelector{
+				Entity:         parsed.JobID,
+				SchemaPrefix:   "urn:ivcap:schema:nextflow.result.1",
+				IncludeContent: true,
+			}
+			if nfList, _, err := sdk.ListAspect(ctxt, nfSelector, adpt, srvCfg.Logger); err == nil && len(nfList.Items) > 0 {
+				if content, ok := nfList.Items[0].Content.(map[string]any); ok {
+					nextflowResult = content
+				}
+			}
+
+			// If nextflow result is available, return it; otherwise use result-content
+			if len(nextflowResult) > 0 {
+				return mcp.NewToolResultJSON(map[string]any{
+					"nextflow_result": nextflowResult,
+					"_meta": map[string]any{
+						"job_id": parsed.JobID,
+						"status": status,
+						"type":   "nextflow",
+					},
+				})
+			}
+
 			// Job responses wrap the actual result payload in 'result-content'.
 			if rc, ok := o["result-content"].(map[string]any); ok {
 				return mcp.NewToolResultJSON(map[string]any{

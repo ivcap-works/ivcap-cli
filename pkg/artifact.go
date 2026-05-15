@@ -237,14 +237,22 @@ func CreateArtifactRaw(
 	path := artifactPath(nil, adpt)
 	headers := make(map[string]string)
 	contentLength := cmd.Size
-	if reader != nil {
-		headers["Upload-Length"] = fmt.Sprintf("%d", cmd.Size)
+
+	// Always set TUS headers when we have a known size, for proper session initialization
+	// This is required even when reader is nil, as the TUS protocol requires these headers
+	// to initialize the upload session before subsequent PATCH requests
+	if size > 0 {
+		headers["Upload-Length"] = fmt.Sprintf("%d", size)
 		headers["Tus-Resumable"] = "1.0.0"
-		if size > 0 {
-			headers["Upload-Length"] = fmt.Sprintf("%d", size)
-		}
+	}
+
+	// Always set Content-Type, either as the main header or as X-Content-Type alternative
+	// The Content-Type is needed even for deferred uploads to properly initialize the TUS session
+	if reader != nil {
 		headers["Content-Type"] = contentType
 	} else {
+		// For deferred uploads, still set Content-Type for TUS initialization
+		headers["Content-Type"] = contentType
 		headers["X-Content-Type"] = contentType
 		headers["X-Content-Length"] = fmt.Sprintf("%d", size)
 		contentLength = 0
