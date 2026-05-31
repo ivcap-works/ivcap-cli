@@ -53,6 +53,7 @@ const ToolFileName = "ivcap-tool.yaml"
 // Optional, simplified manifest. If present in the archive, this file is preferred over
 // ivcap-tool.yaml and will be converted to the richer ivcap-tool structure internally.
 const SimpleToolFileName = "ivcap.yaml"
+const SimpleToolFileNameAlt = "ivcap.yml"
 
 const UploadMetaPrefix = ".ivcap-nextflow-"
 
@@ -110,7 +111,7 @@ type SimpleToolHeader struct {
 		Name  string `yaml:"name" json:"name"`
 		Email string `yaml:"email" json:"email"`
 	} `yaml:"contact" json:"contact"`
-	Properties []SimpleProperty `yaml:"properties" json:"properties"`
+	Parameters []SimpleProperty `yaml:"parameters" json:"parameters"`
 	Samples    []SimpleProperty `yaml:"samples" json:"samples"`
 	Example    map[string]any   `yaml:"example" json:"example"`
 }
@@ -137,6 +138,30 @@ func LoadToolHeaderFromArchivePath(archivePath string) (*ToolHeader, string, err
 		if err != nil {
 			return nil, "", fmt.Errorf("invalid %q extracted from %q: %w", foundPath, archivePath, err)
 		}
+		// Validate that service-id is present
+		if strings.TrimSpace(tool.ServiceID) == "" {
+			return nil, "", fmt.Errorf("missing required 'service-id' field in %q extracted from %q", foundPath, archivePath)
+		}
+		return tool, foundPath, nil
+	}
+
+	// Try ivcap.yml as alternative extension
+	if b, foundPath, err := ExtractFileFromTarPath(archivePath, SimpleToolFileNameAlt); err != nil {
+		return nil, "", err
+	} else if b != nil {
+		var simple SimpleToolHeader
+		dec := yaml.NewDecoder(bytes.NewReader(b))
+		if err := dec.Decode(&simple); err != nil {
+			return nil, "", fmt.Errorf("while parsing %q extracted from %q: %w", foundPath, archivePath, err)
+		}
+		tool, err := ConvertSimpleToolToToolHeader(&simple)
+		if err != nil {
+			return nil, "", fmt.Errorf("invalid %q extracted from %q: %w", foundPath, archivePath, err)
+		}
+		// Validate that service-id is present
+		if strings.TrimSpace(tool.ServiceID) == "" {
+			return nil, "", fmt.Errorf("missing required 'service-id' field in %q extracted from %q", foundPath, archivePath)
+		}
 		return tool, foundPath, nil
 	}
 
@@ -146,7 +171,7 @@ func LoadToolHeaderFromArchivePath(archivePath string) (*ToolHeader, string, err
 		return nil, "", err
 	}
 	if b == nil {
-		return nil, "", nil
+		return nil, "", fmt.Errorf("neither %q, %q, nor %q found in archive %q - one of these files is required", SimpleToolFileName, SimpleToolFileNameAlt, ToolFileName, archivePath)
 	}
 	var tool ToolHeader
 	dec := yaml.NewDecoder(bytes.NewReader(b))
@@ -157,6 +182,74 @@ func LoadToolHeaderFromArchivePath(archivePath string) (*ToolHeader, string, err
 		return nil, "", fmt.Errorf("invalid fn-schema in %q extracted from %q: %w", foundPath, archivePath, err)
 	}
 	return &tool, foundPath, nil
+}
+
+// formatYAMLError creates a user-friendly error message for YAML parsing failures.
+func formatYAMLError(filePath string, err error) error {
+	guidance := ""
+	if filePath == SimpleToolFileName {
+		guidance = `
+
+Expected ivcap.yaml structure:
+  name: my-pipeline                    # Required: Pipeline name (string)
+  description: A brief description     # Optional: Pipeline description (string)
+  parameters:                          # Optional: Input parameters (array)
+    - name: sample_count               # Required: Parameter name (string)
+      type: integer                    # Optional: Parameter type (string, integer, number, boolean)
+      description: Number of samples   # Optional: Parameter description (string)
+      optional: false                  # Optional: Whether parameter is optional (boolean)
+  samples:                             # Optional: Sample inputs (array)
+    - name: input_file                 # Required: Sample name (string)
+      type: string                     # Optional: Sample type
+      description: Input data file     # Optional: Sample description
+  contact:                             # Optional: Contact info (object)
+    name: John Doe                     # Optional: Contact name (string)
+    email: john@example.com            # Optional: Contact email (string)
+  example:                             # Optional: Example inputs (object)
+    parameters:
+      sample_count: 10
+
+Troubleshooting:
+  - Check YAML indentation (use 2 or 4 spaces, not tabs)
+  - All string values should be unquoted or quoted with single/double quotes
+  - Field names must use lowercase with hyphens (e.g., sample_count not SampleCount)
+  - Arrays (parameters, samples) must have each item starting with a dash (-)
+  - Boolean values must be 'true' or 'false' (lowercase)
+
+Reference: skills://nextflow-mcp-tools/SKILL.md or skills://nextflow-pipeline-deployment/SKILL.md`
+	} else {
+		guidance = `
+
+Expected ivcap-tool.yaml structure:
+  $schema: urn:ivcap:schema.tool.1    # Required: Schema version (string)
+  name: my-pipeline                    # Required: Tool name (string)
+  description: Brief description       # Optional: Tool description (string)
+  fn-schema:                           # Required: Function schema (object)
+    $schema: http://json-schema.org/draft-07/schema#
+    $id: urn:ivcap:schema:my-pipeline.request.1
+    type: object
+    properties:
+      parameters:
+        type: object
+        properties:
+          sample_count:
+            type: integer
+            description: Number of samples
+    required: [parameters]
+  contact:                             # Optional: Contact info (object)
+    name: John Doe                     # Optional: Contact name (string)
+    email: john@example.com            # Optional: Contact email (string)
+
+Troubleshooting:
+  - Ensure fn-schema is a valid JSON Schema with $schema field
+  - fn-schema must include at least one of: type, properties, $ref, allOf, anyOf, oneOf
+  - $schema in fn-schema should reference json-schema.org meta-schema URL
+  - Field names must use lowercase with hyphens (e.g., fn-schema not fnSchema)
+
+Reference: skills://nextflow-pipeline-deployment/SKILL.md`
+	}
+
+	return fmt.Errorf("failed to parse %s: %w\n\nCommon YAML syntax issues:%s", filePath, err, guidance)
 }
 
 // LoadToolHeaderFromArchiveBytes reads ivcap.yaml or ivcap-tool.yaml from a tar/tar.gz
@@ -173,11 +266,11 @@ func LoadToolHeaderFromArchiveBytes(archive []byte) (*ToolHeader, string, error)
 		var simple SimpleToolHeader
 		dec := yaml.NewDecoder(bytes.NewReader(b))
 		if err := dec.Decode(&simple); err != nil {
-			return nil, "", fmt.Errorf("while parsing %s extracted from %s: %w", foundPath, "archive-bytes", err)
+			return nil, "", formatYAMLError(foundPath, err)
 		}
 		tool, err := ConvertSimpleToolToToolHeader(&simple)
 		if err != nil {
-			return nil, "", fmt.Errorf("invalid %s extracted from %s: %w", foundPath, "archive-bytes", err)
+			return nil, "", fmt.Errorf("invalid %s in archive: %w\n\nPlease check that:\n  - The file follows the correct YAML format\n  - All required fields are present and correctly typed\n  - Field names match the expected schema", foundPath, err)
 		}
 		return tool, foundPath, nil
 	}
@@ -189,10 +282,10 @@ func LoadToolHeaderFromArchiveBytes(archive []byte) (*ToolHeader, string, error)
 		var toolHdr ToolHeader
 		dec := yaml.NewDecoder(bytes.NewReader(toolYAML))
 		if err := dec.Decode(&toolHdr); err != nil {
-			return nil, "", fmt.Errorf("while parsing %s extracted from %s: %w", foundPath, "archive-bytes", err)
+			return nil, "", formatYAMLError(foundPath, err)
 		}
 		if err := ValidateFnSchema(toolHdr.FnSchema); err != nil {
-			return nil, "", fmt.Errorf("invalid fn-schema in %s: %w", foundPath, err)
+			return nil, "", fmt.Errorf("invalid fn-schema in %s: %w\n\nThe 'fn-schema' field must:\n  - Contain a valid JSON Schema (with $schema field)\n  - Include at least one of: type, properties, $ref, allOf, anyOf, oneOf\n  - Reference a valid json-schema.org meta-schema URL", foundPath, err)
 		}
 		return &toolHdr, foundPath, nil
 	}
@@ -236,10 +329,10 @@ func buildFnSchemaFromSimplifiedTool(simple *SimpleToolHeader) (map[string]any, 
 
 	paramProps := map[string]any{}
 	requiredParams := []any{}
-	for _, p := range simple.Properties {
+	for _, p := range simple.Parameters {
 		pn := strings.TrimSpace(p.Name)
 		if pn == "" {
-			return nil, fmt.Errorf("properties entry missing name")
+			return nil, fmt.Errorf("parameters entry missing name")
 		}
 		prop := map[string]any{}
 		if strings.TrimSpace(p.Type) != "" {
@@ -267,7 +360,7 @@ func buildFnSchemaFromSimplifiedTool(simple *SimpleToolHeader) (map[string]any, 
 		paramsObj["required"] = requiredParams
 	}
 
-	sampleItemSchemas := []any{}
+	sampleProps := map[string]any{}
 	for _, s := range simple.Samples {
 		sn := strings.TrimSpace(s.Name)
 		if sn == "" {
@@ -285,23 +378,21 @@ func buildFnSchemaFromSimplifiedTool(simple *SimpleToolHeader) (map[string]any, 
 		if strings.TrimSpace(s.Format) != "" {
 			it["format"] = strings.TrimSpace(s.Format)
 		}
-		sampleItemSchemas = append(sampleItemSchemas, it)
+		sampleProps[sn] = it
 	}
 
 	samplesSchema := map[string]any{
 		"type": "array",
 	}
-	if len(sampleItemSchemas) > 0 {
+	if len(sampleProps) > 0 {
 		samplesSchema["items"] = map[string]any{
-			"type":     "array",
-			"minItems": len(sampleItemSchemas),
-			"maxItems": len(sampleItemSchemas),
-			"items":    sampleItemSchemas,
+			"type":       "object",
+			"properties": sampleProps,
 		}
 	}
 
 	requiredTop := []any{"parameters"}
-	if len(sampleItemSchemas) > 0 {
+	if len(sampleProps) > 0 {
 		requiredTop = append(requiredTop, "samples")
 	}
 
@@ -453,6 +544,15 @@ func WriteUploadMeta(archivePath string, size int64, mtimeUnix int64, artifactID
 	_ = os.WriteFile(filepath.Clean(mp), b, 0644) // #nosec G306 -- stores only artifact id + basic file info
 }
 
+func DeleteUploadMeta(archivePath string) {
+	if archivePath == "-" {
+		return
+	}
+	mp := UploadMetaPath(archivePath)
+	// best-effort; ignore errors.
+	_ = os.Remove(filepath.Clean(mp))
+}
+
 func GuessArchiveContentType(p string) string {
 	pl := strings.ToLower(p)
 	if strings.HasSuffix(pl, ".tgz") || strings.HasSuffix(pl, ".tar.gz") || strings.HasSuffix(pl, ".gz") {
@@ -473,6 +573,46 @@ func GuessArchiveContentType(p string) string {
 		return "application/x-tar"
 	}
 	return ct
+}
+
+// --- Service URN validation ----------------------------------------------------------
+
+// IsServiceURN checks if a string is a valid IVCAP service URN.
+// Valid format: urn:ivcap:service:<uuid>
+func IsServiceURN(id string) bool {
+	// Simple pattern: urn:ivcap:service:<something>
+	// More strict validation can be added later if needed
+	return strings.HasPrefix(id, "urn:ivcap:service:")
+}
+
+// ResolveServiceID resolves the service ID from either the provided ID or the tool header.
+// If providedID is non-empty and is a valid service URN, it's used.
+// Otherwise, the ServiceID from the tool header is used.
+// Returns error if neither is available or if the resolved ID is not a valid service URN.
+func ResolveServiceID(providedID string, tool *ToolHeader) (string, error) {
+	// Prefer explicitly provided service ID if it's a valid URN
+	if providedID != "" {
+		if IsServiceURN(providedID) {
+			return providedID, nil
+		}
+		return "", fmt.Errorf("provided service-id is not a valid service URN (expected format: urn:ivcap:service:<uuid>): %q", providedID)
+	}
+
+	// Fall back to tool header's service-id
+	if tool == nil {
+		return "", fmt.Errorf("missing tool header")
+	}
+	toolServiceID := strings.TrimSpace(tool.ServiceID)
+	if toolServiceID == "" {
+		return "", fmt.Errorf("missing service-id: not provided via flag and not found in tool definition")
+	}
+
+	// Validate the tool's service-id
+	if !IsServiceURN(toolServiceID) {
+		return "", fmt.Errorf("service-id from tool definition is not a valid service URN (expected format: urn:ivcap:service:<uuid>): %q", toolServiceID)
+	}
+
+	return toolServiceID, nil
 }
 
 // --- JSON schema validation ----------------------------------------------------------
@@ -669,16 +809,32 @@ func UploadArchiveAsArtifact(
 		artifactID = mid
 		readResp, err := sdk.ReadArtifact(ctxt, &sdk.ReadArtifactRequest{Id: artifactID}, adapter, logger)
 		if err != nil {
+			// Clean up metadata on read error to force fresh upload
+			DeleteUploadMeta(archivePath)
 			return artifactID, fmt.Errorf("while reading artifact %s for resume: %w", artifactID, err)
 		}
 		if readResp == nil || readResp.DataHref == nil {
+			// Clean up metadata if artifact has no upload URL
+			DeleteUploadMeta(archivePath)
 			return artifactID, fmt.Errorf("artifact %s has no data upload URL", artifactID)
 		}
+
+		// If artifact is already "ready" (finalized), the upload is complete
+		if readResp.Status != nil && *readResp.Status == "ready" {
+			// Clean up metadata since upload is complete
+			DeleteUploadMeta(archivePath)
+			return artifactID, nil
+		}
+
 		p, err := (*adapter).GetPath(*readResp.DataHref)
 		if err != nil {
+			// Clean up metadata on path error to force fresh upload
+			DeleteUploadMeta(archivePath)
 			return artifactID, err
 		}
 		if err := tusUploadWithResume(ctxt, archivePath, size, p, chunkSize, adapter, silent, logger); err != nil {
+			// Clean up metadata on upload failure to force fresh upload next time
+			DeleteUploadMeta(archivePath)
 			return artifactID, err
 		}
 		return artifactID, nil

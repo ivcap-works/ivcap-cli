@@ -147,6 +147,9 @@ func addArtifactCreateTool(s *server.MCPServer) {
 
 		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 		ctxt, cancel := withTimeout(ctx)
@@ -155,6 +158,9 @@ func addArtifactCreateTool(s *server.MCPServer) {
 		// Create payload (reader, mime, size) either from single part or tar.gz.
 		payload, mimeType, size, err := mcpContentToArtifactPayload(ctxt, parsed.Content)
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 
@@ -167,7 +173,7 @@ func addArtifactCreateTool(s *server.MCPServer) {
 		resp, err := createArtifactFn(ctxt, creq, mimeType, size, nil, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
+				return NewLoginRequiredResult(), nil
 			}
 			return nil, err
 		}
@@ -185,7 +191,7 @@ func addArtifactCreateTool(s *server.MCPServer) {
 		}
 		if err := uploadArtifactFn(ctxt, payload, size, 0, chunkSize, p, adpt, true, srvCfg.Logger); err != nil {
 			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
+				return NewLoginRequiredResult(), nil
 			}
 			return nil, err
 		}

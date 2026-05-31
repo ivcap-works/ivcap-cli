@@ -40,7 +40,7 @@ func addAspectCreateTool(s *server.MCPServer) {
 		"properties": map[string]any{
 			"entity": map[string]any{
 				"type":        "string",
-				"description": "Entity URN/ID to attach the aspect to.",
+				"description": "Entity URN/ID to attach the aspect to. For IVCAP system entities (urn:ivcap:service:*, urn:ivcap:artifact:*, urn:ivcap:job:*, urn:ivcap:aspect:*, urn:ivcap:queue:*), the URN must end with a valid UUID. Other entity formats are allowed without validation.",
 			},
 			"schema": map[string]any{
 				"type":        "string",
@@ -85,6 +85,11 @@ func addAspectCreateTool(s *server.MCPServer) {
 			return nil, fmt.Errorf("missing body")
 		}
 
+		// Validate entity URN format for IVCAP entities
+		if err := validateEntityURNFn(parsed.Entity); err != nil {
+			return nil, err
+		}
+
 		// Ensure $schema is present, matching CLI behavior.
 		if _, ok := parsed.Body["$schema"]; !ok {
 			parsed.Body["$schema"] = parsed.Schema
@@ -96,6 +101,9 @@ func addAspectCreateTool(s *server.MCPServer) {
 
 		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 		ctxt, cancel := withTimeout(ctx)
@@ -104,7 +112,7 @@ func addAspectCreateTool(s *server.MCPServer) {
 		res, err := addUpdateAspectFn(ctxt, true, parsed.Entity, parsed.Schema, parsed.Policy, b, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
+				return NewLoginRequiredResult(), nil
 			}
 			return nil, err
 		}

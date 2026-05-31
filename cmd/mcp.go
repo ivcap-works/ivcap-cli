@@ -31,11 +31,15 @@ func init() {
 	rootCmd.AddCommand(mcpCmd)
 	mcpCmd.Flags().StringVarP(&toolSchema, "tool-schema", "s", "urn:sd-core:schema.ai-tool.1", "the schema URN used for describing MCP tools")
 	mcpCmd.Flags().IntVar(&mcpPort, "port", -1, "optional port to open for SSE connection to MCP server")
+	mcpCmd.Flags().BoolVar(&mcpWithLogging, "with-logging", false, "enable JSON-RPC request/response logging to file")
+	mcpCmd.Flags().StringVar(&mcpLogDir, "log-dir", "/tmp", "directory for MCP log files")
 }
 
 var (
-	toolSchema string
-	mcpPort    int
+	toolSchema     string
+	mcpPort        int
+	mcpWithLogging bool
+	mcpLogDir      string
 
 	mcpCmd = &cobra.Command{
 		Use:   "mcp",
@@ -43,10 +47,10 @@ var (
 		Long: `Start an MCP (Model Context Protocol) server.
 
 In addition to MCP Tools for calling platform services, this server also exposes
-the ivcap-cli release’s embedded agent skills via MCP Resources and Prompts
+the ivcap-cli release's embedded agent skills via MCP Resources and Prompts
 ("MCP-Provisioned Skills").
 
-Resources:
+Resources (preferred if your MCP client exposes resources/read to LLMs):
   - skills://manifest         JSON manifest of available skills
   - skills://catalog.json     JSON catalog (metadata + hashes; no bodies)
   - skills://CONTEXT.md       General agent best-practices for ivcap-cli
@@ -54,16 +58,26 @@ Resources:
   - skills://{name}/SKILL.md  Skill playbook body (markdown)
   - skills://file/{path}      Any embedded markdown file (e.g. category SKILLS.md)
 
+Bridge Tools (fallback for clients that don't expose resources/read):
+  - list_skills               List available skill playbooks (same as skills://manifest)
+  - read_skill                Read a skill playbook by name (same as skills://{name}/SKILL.md)
+
 Prompts:
   - use-ivcap-best-practices  Instructs an agent to load CONTEXT + relevant skills
+                              (prefers resources/read, falls back to tools if needed)
+
+Note: Many MCP clients (including Claude Desktop) don't currently expose resources/read
+to LLMs for programmatic access. The bridge tools provide equivalent functionality via
+tools/call until client support improves.
 
 Recommended MCP client system prompt:
 
 Before answering any task:
-1. Call resources/list on all connected MCP servers
+1. Call resources/list on all connected MCP servers (if available)
 2. Identify resources matching: *SKILL.md, *instructions*, *prompt*
-3. Fetch and read matching resources via resources/read
-4. Apply those instructions when completing the user's request
+3. Fetch and read matching resources via resources/read (if available)
+4. Otherwise use list_skills and read_skill tools
+5. Apply those instructions when completing the user's request
 `,
 		GroupID: agentSupportGroupID,
 
@@ -75,9 +89,14 @@ Before answering any task:
 				TimeoutSec:    timeout,
 				ChunkSize:     DEF_CHUNK_SIZE,
 				CreateAdapter: createMCPAdapter,
+				WithLogging:   mcpWithLogging,
+				LogDir:        mcpLogDir,
 			})
 			if mcpPort > 0 {
 				logger.Info("MCP Proxy Server starting as SSE server...", log.Int("port", mcpPort))
+				if mcpWithLogging {
+					logger.Warn("--with-logging is not yet supported for SSE mode, logging disabled")
+				}
 				hs := server.NewSSEServer(s,
 					server.WithSSEEndpoint("/mcp"),
 				)
@@ -86,8 +105,16 @@ Before answering any task:
 				}
 			} else {
 				logger.Info("MCP Proxy Server starting in STDIO mode...")
-				if err := server.ServeStdio(s); err != nil {
-					cobra.CheckErr(fmt.Sprintf("Server error: %v", err))
+				if mcpWithLogging {
+					logPath, err := mcppkg.ServeStdioWithLogging(s, mcpLogDir)
+					if err != nil {
+						cobra.CheckErr(fmt.Sprintf("Server error: %v", err))
+					}
+					logger.Info("MCP logging enabled", log.String("log-file", logPath))
+				} else {
+					if err := server.ServeStdio(s); err != nil {
+						cobra.CheckErr(fmt.Sprintf("Server error: %v", err))
+					}
 				}
 			}
 			return nil

@@ -10,6 +10,11 @@ __IVCAP__ has an extensive REST API which is usually called directly from applic
   * [Service](#service)
   * [Job](#job)
   * [Artifact](#artifact)
+  * [Collections](#collection)
+  * [DataFabric](#datafabric)
+  * [Nextflow](#nextflow)
+  * [Queues](#queue)
+  * [Secrets](#secret)
   * [Package](#package)
 * [Agent / automation usage](#agent--automation-usage)
   * [MCP-Provisioned Skills (Resources + Prompts)](#mcp-provisioned-skills-resources--prompts)
@@ -43,27 +48,33 @@ Built-in MCP tools also include helpers for working with Nextflow services:
 - `nextflow_run`: create a job for a Nextflow service from either an inline input payload or a request-aspect URN.
 
 ```
-% ivcap
 A command line tool to to more conveniently interact with the
 API exposed by a specific IVCAP deployment.
 
 Usage:
+  ivcap [flags]
   ivcap [command]
 
-Available Commands:
-  artifact    Create and manage artifacts
-  collection  Create and manage collections
-  completion  Generate the autocompletion script for the specified shell
-  context     Manage and set access to various IVCAP deployments
-  datafabric  Query the datafabric and create and manage aspects within
-  help        Help about any command
-  job         Create and manage jobs
-  mcp         Start an MCP server for all tools on an IVCAP platform
-  order       Create and manage orders
-  package     Push/pull and manage service packages
-  queue       Create and manage queues
-  secret      Set and list secrets
-  service     Create and manage services
+Commands:
+  artifact      Create and manage artifacts
+  collection    Create and manage collections
+  context       Manage and set access to various IVCAP deployments
+  datafabric    Query the datafabric and create and manage aspects within
+  job           Create and manage jobs
+  nextflow      Commands for working with Nextflow-based services
+  package       Push/pull and manage service packages
+  queue         Create and manage queues
+  secret        Set and list secrets
+  service       Create and manage services
+
+Agent support commands:
+  agent-context Print embedded agent context guidance (markdown)
+  mcp           Start an MCP server for accessing all tools on an IVCAP platform
+  skills        List and show agent skill docs embedded in this CLI release
+
+General support commands:
+  completion    Generate the autocompletion script for the specified shell
+  help          Help about any command
 
 Flags:
       --access-token string   Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]
@@ -378,6 +389,226 @@ Successfully wrote 50855 bytes to /tmp/out.png
 ```
 
 Follow this [link](./doc/ivcap_artifact.md) for more details about the `artifact` command.
+
+### Collections <a name="collection"></a>
+
+Collections allow you to organize and group artifacts and other resources.
+
+```
+% ivcap collection
+
+Create and manage collections
+
+Usage:
+  ivcap collection [command]
+
+Aliases:
+  collection, c
+
+Available Commands:
+  create      Create a new collection
+  get         Get a specific collection record
+  list        List defined collections
+
+Flags:
+  -h, --help   help for collection
+```
+
+To create a new collection:
+
+```
+% ivcap collection create --name "My Research Data"
+Collection 'My Research Data' created.
+```
+
+To list all collections:
+
+```
+% ivcap collection list
+```
+
+Follow this [link](./doc/ivcap_collection.md) for more details about the `collection` command.
+
+### DataFabric <a name="datafabric"></a>
+
+The DataFabric allows you to query and manage aspects (metadata) associated with entities.
+
+```
+% ivcap datafabric
+
+Query the datafabric and create and manage aspects within
+
+Usage:
+  ivcap datafabric [command]
+
+Aliases:
+  datafabric, df, aspect, as
+
+Available Commands:
+  add         Add aspect of a specific schema to an entity
+  get         Get a specific aspect record
+  query       Query the datafabric for any combination of entity, schema and time.
+  retract     Retract a specific aspect record
+  update      Update an aspect record for an entity and a specific schema
+
+Flags:
+  -h, --help   help for datafabric
+```
+
+To query the datafabric for aspects:
+
+```
+% ivcap datafabric query --entity urn:ivcap:entity:abc123 --schema my-schema:1
+```
+
+To add a new aspect:
+
+```
+% ivcap datafabric add --entity urn:ivcap:entity:abc123 --schema my-schema:1 -f aspect.json
+```
+
+Follow this [link](./doc/ivcap_datafabric.md) for more details about the `datafabric` command.
+
+### Nextflow <a name="nextflow"></a>
+
+Nextflow integration provides commands for managing Nextflow-based pipeline services and jobs.
+
+```
+% ivcap nextflow
+
+Commands for working with Nextflow-based services
+
+Usage:
+  ivcap nextflow [command]
+
+Available Commands:
+  create         Create a Nextflow service definition from a local archive
+  job-get        Get status or results of a Nextflow job
+  job-result     List or download files from a Nextflow job result artifact
+  job-view       View Nextflow job execution report in a web browser
+  list-jobs      List recent Nextflow jobs
+  list-pipelines List Nextflow pipeline services
+  retract        Retract the service aspect(s) created by 'nextflow create'
+  run            Alias for 'ivcap job create'
+  update         Update a Nextflow service definition from a local archive
+
+Flags:
+  -h, --help   help for nextflow
+```
+
+To list available Nextflow pipelines:
+
+```
+% ivcap nextflow list-pipelines
+```
+
+To run a Nextflow pipeline:
+
+```
+% ivcap nextflow run <service-id> -f input.json --watch
+```
+
+To view job results and reports:
+
+```
+% ivcap nextflow job-result <job-id>
+% ivcap nextflow job-view <job-id>
+```
+
+Follow this [link](./doc/ivcap_nextflow.md) for more details about the `nextflow` command.
+
+### Queues <a name="queue"></a>
+
+Queues allow you to manage message queues for asynchronous processing.
+
+```
+% ivcap queue
+
+Queues are used to store messages in a sequential order. You can create, read, update, and delete queues using this command. You can also add and remove messages from queues.
+
+Usage:
+  ivcap queue [command]
+
+Aliases:
+  queue, q, queues
+
+Available Commands:
+  create      Create a new queue
+  delete      Delete a queue
+  dequeue     Dequeue messages from a queue
+  enqueue     Enqueue a message to a queue
+  get         Fetch details about a single queue
+  list        List existing queues
+
+Flags:
+  -h, --help   help for queue
+```
+
+To create a queue:
+
+```
+% ivcap queue create my-queue
+Queue 'my-queue' created.
+```
+
+To enqueue a message:
+
+```
+% ivcap queue enqueue my-queue "message content"
+```
+
+To dequeue messages:
+
+```
+% ivcap queue dequeue my-queue
+```
+
+Follow this [link](./doc/ivcap_queue.md) for more details about the `queue` command.
+
+### Secrets <a name="secret"></a>
+
+Secrets allow you to store sensitive information securely.
+
+```
+% ivcap secret
+
+Set and list secrets
+
+Usage:
+  ivcap secret [command]
+
+Aliases:
+  secret, secrets
+
+Available Commands:
+  get         Get single secret, show its expiry time and sha1 value
+  list        List existing secrets
+  set         Set a single secret value, overwrite if already exists
+
+Flags:
+  -h, --help   help for secret
+```
+
+To set a secret:
+
+```
+% ivcap secret set my-api-key "super-secret-value"
+Secret 'my-api-key' set.
+```
+
+To list all secrets:
+
+```
+% ivcap secret list
+```
+
+To get a specific secret:
+
+```
+% ivcap secret get my-api-key
+```
+
+Follow this [link](./doc/ivcap_secret.md) for more details about the `secret` command.
 
 ### Packages <a name="package"></a>
 

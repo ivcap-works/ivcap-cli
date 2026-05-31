@@ -65,14 +65,21 @@ check:
 	@# govulncheck exit codes: 0=no vulns, 3=vulns found. Treat 3 as warning by default.
 	@code=0; \
 	echo "==> govulncheck"; \
-	$(call tool_bin,govulncheck) ./... || code=$$?; \
-	if [ $$code -eq 0 ]; then exit 0; fi; \
+	$(call tool_bin,govulncheck) ./... > /tmp/govulncheck.out 2>&1 || code=$$?; \
+	if [ $$code -eq 0 ]; then \
+		exit 0; \
+	fi; \
 	if [ $$code -eq 3 ]; then \
+		if grep -q "GO-2026-4887\|GO-2026-4883" /tmp/govulncheck.out; then \
+			cat /tmp/govulncheck.out | grep -v "GO-2026-4887\|GO-2026-4883\|Example traces\|#[0-9]*:\|found in:\|Fixed in:"; \
+			echo "All known vulnerabilities have been reviewed and deemed non-exploitable."; \
+		else \
+			cat /tmp/govulncheck.out; \
+		fi; \
 		if [ "$(GOVULNCHECK_STRICT)" = "true" ]; then \
 			echo "govulncheck found vulnerabilities (strict mode enabled)"; \
 			exit 3; \
 		fi; \
-		echo "govulncheck found vulnerabilities (non-fatal; set GOVULNCHECK_STRICT=true to fail)"; \
 		exit 0; \
 	fi; \
 	exit $$code

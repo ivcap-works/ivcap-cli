@@ -15,7 +15,6 @@
 package mcp
 
 import (
-	"bytes"
 	"context"
 	"fmt"
 
@@ -29,57 +28,16 @@ import (
 
 // Built-in MCP tools for Nextflow service creation + job run.
 
-type nextflowSource struct {
-	// Path inside the assembled archive.
-	Path string `json:"path"`
-	// One of: text, base64, url, artifact
-	Type string `json:"type"`
-	// For text
-	Text string `json:"text,omitempty"`
-	// For base64
-	Base64 string `json:"base64,omitempty"`
-	// For url
-	URL string `json:"url,omitempty"`
-	// For artifact
-	ArtifactID   string `json:"artifact_id,omitempty"`
-	ArtifactPath string `json:"artifact_path,omitempty"`
-	// Optional mime type for manifest.
-	MediaType string `json:"media_type,omitempty"`
-}
-
-// Map MCP structs to pkg/nextflow structs.
-func toPkgSources(in []nextflowSource) []nf.Source {
-	out := make([]nf.Source, 0, len(in))
-	for _, s := range in {
-		out = append(out, nf.Source{
-			Path:         s.Path,
-			Type:         s.Type,
-			Text:         s.Text,
-			Base64:       s.Base64,
-			URL:          s.URL,
-			ArtifactID:   s.ArtifactID,
-			ArtifactPath: s.ArtifactPath,
-			MediaType:    s.MediaType,
-		})
-	}
-	return out
-}
-
-func tarGzFromSourcesForMCP(ctx context.Context, sources []nextflowSource, adpt *a.Adapter) ([]byte, string, error) {
-	return nf.TarGzFromSources(ctx, toPkgSources(sources), adpt, srvCfg.Logger, fetchURLBytesFn, downloadArtifactBytesFn)
-}
-
 type nextflowCreateArgs struct {
-	// Service ID/URN to create/update service description for.
-	ServiceID string `json:"service_id"`
-	// Optional name override for created pipeline artifact.
+	// Optional: Service ID/URN to create/update service description for.
+	// If not provided, will be extracted from the ivcap.yaml or ivcap-tool.yaml in the artifact.
+	ServiceID string `json:"service_id,omitempty"`
+	// Artifact URN/ID containing the pipeline tar.gz package.
+	ArtifactID string `json:"artifact_id"`
+	// Optional name for display purposes (metadata only).
 	Name string `json:"name,omitempty"`
-	// Optional collection id/urn
-	Collection string `json:"collection,omitempty"`
 	// Optional policy
 	Policy string `json:"policy,omitempty"`
-	// Sources to assemble into a single tar.gz pipeline package.
-	Sources []nextflowSource `json:"sources"`
 }
 
 type nextflowRunArgs struct {
@@ -88,8 +46,6 @@ type nextflowRunArgs struct {
 	Input map[string]any `json:"input,omitempty"`
 	// URN of aspect containing job parameters (alternative to inline input)
 	AspectURN string `json:"aspect_urn,omitempty"`
-	// If true, wait for job completion and return result-content.
-	Watch bool `json:"watch,omitempty"`
 }
 
 func addNextflowCreateTool(s *server.MCPServer) {
@@ -98,46 +54,27 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		"properties": map[string]any{
 			"service_id": map[string]any{
 				"type":        "string",
-				"description": "Service URN/ID for the Nextflow service definition to create/update.",
+				"description": "Optional: Service URN/ID for the Nextflow service definition to create/update. MUST be in format 'urn:ivcap:service:<uuid>' if provided. If not provided, will be extracted from the service-id field in ivcap.yaml or ivcap-tool.yaml within the artifact.",
+			},
+			"artifact_id": map[string]any{
+				"type":        "string",
+				"description": "Artifact URN/ID containing the pipeline tar.gz package. Use the artifact_build tool to create and upload the artifact first.",
 			},
 			"name": map[string]any{
 				"type":        "string",
-				"description": "Optional name for the pipeline artifact (metadata).",
-			},
-			"collection": map[string]any{
-				"type":        "string",
-				"description": "Optional collection ID/URN to assign the pipeline artifact to.",
+				"description": "Optional name for display purposes (metadata only).",
 			},
 			"policy": map[string]any{
 				"type":        "string",
-				"description": "Optional access policy for the pipeline artifact.",
-			},
-			"sources": map[string]any{
-				"type":        "array",
-				"minItems":    1,
-				"description": "Files to assemble into the Nextflow package tar.gz. Each entry becomes a file at `path` inside the archive.",
-				"items": map[string]any{
-					"type": "object",
-					"properties": map[string]any{
-						"path":          map[string]any{"type": "string", "description": "Path in the assembled tar.gz (e.g. main.nf, nextflow.config, bin/script.sh, ivcap-tool.yaml)."},
-						"type":          map[string]any{"type": "string", "enum": []any{"text", "base64", "url", "artifact"}},
-						"text":          map[string]any{"type": "string"},
-						"base64":        map[string]any{"type": "string"},
-						"url":           map[string]any{"type": "string"},
-						"artifact_id":   map[string]any{"type": "string", "description": "Artifact URN/ID (when type=artifact)."},
-						"artifact_path": map[string]any{"type": "string", "description": "Optional path inside a tar artifact (when type=artifact)."},
-						"media_type":    map[string]any{"type": "string", "description": "Optional mime-type hint (stored in MANIFEST.json)."},
-					},
-					"required": []any{"path", "type"},
-				},
+				"description": "Optional access policy.",
 			},
 		},
-		"required": []any{"service_id", "sources"},
+		"required": []any{"artifact_id"},
 	}
 
 	tool := mcp.NewToolWithRawSchema(
 		"nextflow_create",
-		"Assemble a Nextflow pipeline package (.tar.gz) from a list of sources, upload as an artifact, validate `ivcap-tool.yaml`, and publish/update the service description aspect for the given service.",
+		"Deploy a Nextflow pipeline from a pre-built artifact. The artifact must contain the pipeline tar.gz package with ivcap.yaml or ivcap-tool.yaml. Use the artifact_build tool to create and upload the artifact first. For pipeline development best practices: see skills://nextflow-mcp-tools/SKILL.md (MCP tools usage), skills://nextflow-pipeline-deployment/SKILL.md (deployment), or skills://nextflow-mcp-debugging/SKILL.md (debugging). Use resources/read (preferred) or the built-in read_skill tool.",
 		MapToRaw(schema),
 	)
 
@@ -151,94 +88,74 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		if err := b.AsType(&parsed); err != nil {
 			return nil, err
 		}
-		if parsed.ServiceID == "" {
-			return nil, fmt.Errorf("missing service_id")
-		}
-		if len(parsed.Sources) == 0 {
-			return nil, fmt.Errorf("missing sources")
+		if parsed.ArtifactID == "" {
+			return nil, fmt.Errorf("missing artifact_id")
 		}
 
 		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 		ctxt, cancel := withTimeout(ctx)
 		defer cancel()
 
-		// Assemble package tar.gz.
-		pkgBytes, manifest, err := tarGzFromSourcesForMCP(ctxt, parsed.Sources, adpt)
+		// Fetch artifact metadata to get the data URL
+		art, err := readArtifactFn(ctxt, &sdk.ReadArtifactRequest{Id: parsed.ArtifactID}, adpt, srvCfg.Logger)
 		if err != nil {
-			return nil, err
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
+			return nil, fmt.Errorf("failed to read artifact %s: %w", parsed.ArtifactID, err)
+		}
+		if art == nil || art.DataHref == nil {
+			return nil, fmt.Errorf("artifact %s has no data", parsed.ArtifactID)
+		}
+
+		// Download and validate the artifact
+		pkgBytes, err := downloadArtifactBytesFn(ctxt, *art.DataHref, adpt)
+		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
+			return nil, fmt.Errorf("failed to download artifact %s: %w", parsed.ArtifactID, err)
 		}
 
 		// Validate that archive contains a tool description. Prefer ivcap.yaml if present,
 		// falling back to ivcap-tool.yaml.
 		toolHdr, foundPath, err := nf.LoadToolHeaderFromArchiveBytes(pkgBytes)
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 		if toolHdr == nil {
-			return nil, fmt.Errorf("neither %q nor %q found in assembled archive", nf.SimpleToolFileName, nf.ToolFileName)
+			return nil, fmt.Errorf("neither %q nor %q found in artifact %s", nf.SimpleToolFileName, nf.ToolFileName, parsed.ArtifactID)
 		}
 
-		artifactName := parsed.Name
-		if artifactName == "" {
-			artifactName = toolHdr.Name
-			if artifactName == "" {
-				artifactName = "nextflow-pipeline"
-			}
-		}
-
-		// Create + upload artifact.
-		mimeType := "application/gzip"
-		size := int64(len(pkgBytes))
-		creq := &sdk.CreateArtifactRequest{
-			Name:       artifactName,
-			Size:       size,
-			Collection: parsed.Collection,
-			Policy:     parsed.Policy,
-			Meta:       map[string]string{"ivcap.nextflow.manifest": manifest},
-		}
-		resp, err := createArtifactFn(ctxt, creq, mimeType, size, nil, adpt, srvCfg.Logger)
+		// Resolve service ID: use provided ID if valid, otherwise extract from tool header
+		serviceID, err := nf.ResolveServiceID(parsed.ServiceID, toolHdr)
 		if err != nil {
-			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
-			}
-			return nil, err
-		}
-		if resp == nil || resp.ID == nil || resp.DataHref == nil {
-			return nil, fmt.Errorf("unexpected create artifact response")
-		}
-		artifactID := *resp.ID
-		p, err := (*adpt).GetPath(*resp.DataHref)
-		if err != nil {
-			return nil, err
-		}
-		chunkSize := srvCfg.ChunkSize
-		if chunkSize == 0 {
-			chunkSize = 10000000
-		}
-		if err := uploadArtifactFn(ctxt, bytes.NewReader(pkgBytes), size, 0, chunkSize, p, adpt, true, srvCfg.Logger); err != nil {
-			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
-			}
 			return nil, err
 		}
 
 		// Publish service description aspect (same logic as `ivcap nextflow create`).
-		svc := nf.BuildServiceDescription(toolHdr, parsed.ServiceID, artifactID)
-		aspectID, err := nf.UpsertServiceDescriptionAspect(ctxt, parsed.ServiceID, svc, adpt, srvCfg.Logger)
+		svc := nf.BuildServiceDescription(toolHdr, serviceID, parsed.ArtifactID)
+		aspectID, err := nf.UpsertServiceDescriptionAspect(ctxt, serviceID, svc, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
+				return NewLoginRequiredResult(), nil
 			}
 			return nil, err
 		}
 
 		return mcp.NewToolResultJSON(map[string]any{
 			"ok":                       true,
-			"service_id":               parsed.ServiceID,
-			"pipeline_artifact_urn":    artifactID,
+			"service_id":               serviceID,
+			"pipeline_artifact_urn":    parsed.ArtifactID,
 			"service_aspect_record_id": aspectID,
 			"tool": map[string]any{
 				"name":        toolHdr.Name,
@@ -259,14 +176,13 @@ func addNextflowRunTool(s *server.MCPServer) {
 			"service_id": map[string]any{"type": "string", "description": "Service URN/ID to run."},
 			"input":      map[string]any{"type": "object", "description": "Inline job input payload (JSON object)."},
 			"aspect_urn": map[string]any{"type": "string", "description": "Alternative to input: URN of an aspect containing job parameters."},
-			"watch":      map[string]any{"type": "boolean", "description": "If true, wait for completion and return the job result-content."},
 		},
 		"required": []any{"service_id"},
 	}
 
 	tool := mcp.NewToolWithRawSchema(
 		"nextflow_run",
-		"Run (create a job for) a Nextflow service. Provide either inline `input` or a `aspect_urn` referencing request parameters.",
+		"Run (create a job for) a Nextflow service. Provide either inline `input` or a `aspect_urn` referencing request parameters. Returns either: (1) Fast path: immediate result if job completes within 30s, or (2) Slow path: job metadata with job_id and polling instructions if still running. Use job_status tool to check long-running jobs. For details on handling long-running jobs, read MCP resource: skills://ivcap-service-long-running/SKILL.md (use resources/read).",
 		MapToRaw(schema),
 	)
 
@@ -292,6 +208,9 @@ func addNextflowRunTool(s *server.MCPServer) {
 
 		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 		ctxt, cancel := withTimeout(ctx)
@@ -302,6 +221,9 @@ func addNextflowRunTool(s *server.MCPServer) {
 			// Use raw args conversion to preserve types.
 			jp, err := a.JsonPayloadFromAny(parsed.Input, srvCfg.Logger)
 			if err != nil {
+				if isAuthFailure(err) {
+					return NewLoginRequiredResult(), nil
+				}
 				return nil, err
 			}
 			pyld = jp
@@ -312,10 +234,19 @@ func addNextflowRunTool(s *server.MCPServer) {
 			}
 		}
 
+		// ╔══════════════════════════════════════════════════════════════════════════╗
+		// ║ TEMPORARY WORKAROUND - REMOVE WHEN IVCAP API NO LONGER REQUIRES $schema ║
+		// ╚══════════════════════════════════════════════════════════════════════════╝
+		// Ensure the payload has a $schema field (required by IVCAP API for now)
+		pyld, err = a.EnsureSchemaField(pyld)
+		if err != nil {
+			return nil, fmt.Errorf("failed to ensure $schema field: %w", err)
+		}
+
 		res, jobCreate, err := createServiceJobRawFn(ctxt, parsed.ServiceID, pyld, 0, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
+				return NewLoginRequiredResult(), nil
 			}
 			return nil, err
 		}
@@ -323,20 +254,34 @@ func addNextflowRunTool(s *server.MCPServer) {
 			return nil, fmt.Errorf("service call failed: %d", res.StatusCode())
 		}
 
-		// Async job mode.
+		// Async job mode - always use optimistic wait with 30-second timeout
 		if jobCreate != nil {
-			if parsed.Watch {
-				out, err := waitForServiceJob(ctxt, parsed.ServiceID, jobCreate, adpt)
-				if err != nil {
-					return nil, err
-				}
-				// Attach job-id too.
+			waitResult, err := waitForServiceJobOptimistic(ctxt, parsed.ServiceID, jobCreate, adpt, 30)
+			if err != nil {
+				return nil, err
+			}
+
+			if waitResult.IsComplete {
+				// Fast path - job completed
 				return mcp.NewToolResultJSON(map[string]any{
-					"job_id": jobCreate.JobID,
-					"result": out,
+					"job_id": waitResult.JobID,
+					"status": waitResult.Status,
+					"result": waitResult.Result,
 				})
 			}
-			return mcp.NewToolResultJSON(map[string]any{"job_id": jobCreate.JobID})
+
+			// Slow path - job still running
+			pollAfter := estimatePollInterval(waitResult.Status)
+			return mcp.NewToolResultJSON(map[string]any{
+				"job_id":  waitResult.JobID,
+				"status":  waitResult.Status,
+				"message": waitResult.Message,
+				"_meta": map[string]any{
+					"job_id":             waitResult.JobID,
+					"status":             waitResult.Status,
+					"poll_after_seconds": pollAfter,
+				},
+			})
 		}
 
 		// Immediate response mode.

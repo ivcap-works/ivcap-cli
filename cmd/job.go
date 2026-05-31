@@ -15,12 +15,9 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
-	"strings"
 	"time"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
@@ -30,7 +27,6 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/r3labs/sse/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -56,6 +52,12 @@ func init() {
 	createJobCmd.Flags().StringVarP(&aspectURN, "aspect", "a", "", "URN of aspect containing job parameters")
 	createJobCmd.Flags().BoolVar(&watchFlag, "watch", false, "if set, watch the job until it is finished")
 	createJobCmd.Flags().BoolVar(&streamFlag, "stream", false, "if set, print job related events to stdout")
+
+	// EVENTS
+	jobCmd.AddCommand(eventsJobCmd)
+	eventsJobCmd.Flags().IntVar(&maxMessages, "max-messages", 0, "Maximum number of messages to return (0 = unlimited)")
+	eventsJobCmd.Flags().IntVar(&maxWaitTime, "max-wait-time", 30, "Max wait time for new events in seconds")
+	eventsJobCmd.Flags().StringVar(&lastEventID, "last-event-id", "", "Last event ID to resume from")
 }
 
 var (
@@ -63,6 +65,9 @@ var (
 	aspectURN      string
 	watchFlag      bool
 	streamFlag     bool
+	maxMessages    int
+	maxWaitTime    int
+	lastEventID    string
 )
 
 var (
@@ -116,6 +121,29 @@ var (
 			recordID := GetHistory(args[0])
 			ctxt := context.Background()
 			return readDisplayJob(ctxt, recordID)
+		},
+	}
+
+	eventsJobCmd = &cobra.Command{
+		Use:   "events [flags] service-id job-id",
+		Short: "Stream events for a job",
+		Long: `Stream job-related events in real-time. Events are displayed as they occur.
+
+Examples:
+  ivcap job events urn:ivcap:service:123 urn:ivcap:job:456
+  ivcap job events --max-messages 10 service-id job-id
+  ivcap job events --last-event-id abc123 service-id job-id`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			serviceID := GetHistory(args[0])
+			jobID := GetHistory(args[1])
+			ctxt := context.Background()
+
+			var lastID *string
+			if lastEventID != "" {
+				lastID = &lastEventID
+			}
+			return streamJobEvents(ctxt, serviceID, jobID, lastID, maxMessages)
 		},
 	}
 
@@ -192,7 +220,7 @@ func waitForResult(
 	if err != nil {
 		return err
 	}
-	return displayJob(job, pyld)
+	return displayJob(job, pyld, nil, nil)
 }
 
 func watchJob(ctxt context.Context, jobID string, maxChecks int, wait int) (*sdk.JobReadResponseBody, a.Payload, error) {
@@ -200,7 +228,7 @@ func watchJob(ctxt context.Context, jobID string, maxChecks int, wait int) (*sdk
 	tries := 0
 	for !done {
 		time.Sleep(time.Duration(wait) * time.Second)
-		job, pyld, err := readJob(ctxt, jobID)
+		job, pyld, _, _, err := readJob(ctxt, jobID)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -218,41 +246,31 @@ func watchJob(ctxt context.Context, jobID string, maxChecks int, wait int) (*sdk
 }
 
 func streamJobResults(ctxt context.Context, jobCreate *sdk.JobCreateT) error {
-	onEvent := func(msg *sse.Event) {
-		var out bytes.Buffer
-		if err := json.Indent(&out, msg.Data, "", "  "); err == nil {
-			fmt.Println("---------")
-			s := out.String()
-			fmt.Println(s)
-		}
-	}
-	err := sdk.GetJobEvents(ctxt, jobCreate.ServiceID, jobCreate.JobID, nil, onEvent, CreateAdapter(true), logger)
-	if err != nil {
+	if err := streamJobEvents(ctxt, jobCreate.ServiceID, jobCreate.JobID, nil, 0); err != nil {
 		cobra.CheckErr(fmt.Sprintf("While watching events for job '%s' - %s", jobCreate.JobID, err))
 	}
-	fmt.Println("---------")
 	return readDisplayJob(ctxt, jobCreate.JobID)
 }
 
 func readDisplayJob(ctxt context.Context, jobID string) error {
-	job, pyld, err := readJob(ctxt, jobID)
+	job, pyld, jobResultAspect, nextflowResultAspect, err := readJob(ctxt, jobID)
 	if err != nil {
 		return err
 	}
-	return displayJob(job, pyld)
+	return displayJob(job, pyld, jobResultAspect, nextflowResultAspect)
 }
 
-func displayJob(job *sdk.JobReadResponseBody, pyld a.Payload) error {
+func displayJob(job *sdk.JobReadResponseBody, pyld a.Payload, jobResultAspect map[string]any, nextflowResultAspect map[string]any) error {
 	switch outputFormat {
 	case "json", "yaml":
 		return a.ReplyPrinter(pyld, outputFormat == "yaml")
 	default:
-		printJob(job, false)
+		printJob(job, jobResultAspect, nextflowResultAspect, false)
 	}
 	return nil
 }
 
-func readJob(ctxt context.Context, jobID string) (*sdk.JobReadResponseBody, a.Payload, error) {
+func readJob(ctxt context.Context, jobID string) (*sdk.JobReadResponseBody, a.Payload, map[string]any, map[string]any, error) {
 	selector := sdk.AspectSelector{
 		Entity:         jobID,
 		SchemaPrefix:   JOB_SCHEMA,
@@ -270,11 +288,71 @@ func readJob(ctxt context.Context, jobID string) (*sdk.JobReadResponseBody, a.Pa
 			cobra.CheckErr("Cannot find 'service-id' for this job")
 		}
 	} else {
-		return nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	req := &sdk.ReadServiceJobRequest{ServiceId: serviceId, JobId: jobID}
 	job, pyld, err := sdk.ReadServiceJob(context.Background(), req, CreateAdapter(true), logger)
-	return job, pyld, err
+	if err != nil {
+		return nil, nil, nil, nil, err
+	}
+
+	// Try to fetch job.result.1 aspect (execution phase information)
+	jobResultAspect := readJobResultAspect(ctxt, jobID)
+
+	// Try to fetch nextflow.result.1 aspect (detailed results after completion)
+	nextflowResultAspect := readNextflowResultAspectFromJob(ctxt, jobID)
+
+	return job, pyld, jobResultAspect, nextflowResultAspect, nil
+}
+
+// readJobResultAspect reads the job.result.1 aspect for a job (execution phase information)
+func readJobResultAspect(ctxt context.Context, jobID string) map[string]any {
+	selector := sdk.AspectSelector{
+		Entity:         jobID,
+		SchemaPrefix:   "urn:ivcap:schema:job.result.1",
+		IncludeContent: true,
+	}
+
+	list, _, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger)
+	if err != nil {
+		return nil
+	}
+
+	if len(list.Items) == 0 {
+		return nil
+	}
+
+	// Get the first (and should be only) item
+	if content, ok := list.Items[0].Content.(map[string]any); ok {
+		return content
+	}
+
+	return nil
+}
+
+// readNextflowResultAspectFromJob reads the nextflow.result.1 aspect for a job
+func readNextflowResultAspectFromJob(ctxt context.Context, jobID string) map[string]any {
+	selector := sdk.AspectSelector{
+		Entity:         jobID,
+		SchemaPrefix:   "urn:ivcap:schema:nextflow.result.1",
+		IncludeContent: true,
+	}
+
+	list, _, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger)
+	if err != nil {
+		return nil
+	}
+
+	if len(list.Items) == 0 {
+		return nil
+	}
+
+	// Get the first (and should be only) item
+	if content, ok := list.Items[0].Content.(map[string]any); ok {
+		return content
+	}
+
+	return nil
 }
 
 func printJobListTable(list *aspect.ListResponseBody, wide bool) {
@@ -327,7 +405,7 @@ func printJobListTable(list *aspect.ListResponseBody, wide bool) {
 	fmt.Printf("\n%s\n\n", tw.Render())
 }
 
-func printJob(job *sdk.JobReadResponseBody, wide bool) {
+func printJob(job *sdk.JobReadResponseBody, jobResultAspect map[string]any, nextflowResultAspect map[string]any, wide bool) {
 
 	tw := table.NewWriter()
 	tw.SetStyle(table.StyleLight)
@@ -336,51 +414,90 @@ func printJob(job *sdk.JobReadResponseBody, wide bool) {
 	tw.Style().Options.DrawBorder = false
 
 	rows := []table.Row{}
-	if job.Name != nil {
-		rows = append(rows, table.Row{"Name", safeString(job.Name)}, table.Row{"", ""})
-	}
-	id := fmt.Sprintf("%s (%s)", *job.ID, MakeHistory(job.ID))
-	var service string
-	// API should be updated to return service name as well
-	if job.Service != nil {
-		service = fmt.Sprintf("%s (%s)", *job.Service, MakeHistory(job.Service))
-	}
-	rows = append(rows,
-		table.Row{"ID", id},
-		table.Row{"Status", safeString(job.Status)},
-		table.Row{"Started At", safeDate(job.StartedAt, false)},
-	)
 
+	// Name at the top if available
+	if job.Name != nil {
+		rows = append(rows, table.Row{"Name", safeString(job.Name)})
+	}
+
+	// IVCAP Job Status
+	rows = append(rows, table.Row{"IVCAP Status", safeString(job.Status)})
+
+	// Job Phase Information (from job.result.1 aspect)
+	if jobResultAspect != nil {
+		if phase, ok := jobResultAspect["phase"].(string); ok && phase != "" {
+			rows = append(rows, table.Row{"Phase", phase})
+		}
+	}
+
+	// Result - check nextflow.result.1 aspect first (finished Nextflow jobs)
+	// If available, display the status and process results from the aspect
+	if len(nextflowResultAspect) > 0 {
+		// Display status from nextflow result aspect
+		if status, ok := nextflowResultAspect["status"].(string); ok && status != "" {
+			rows = append(rows, table.Row{"Nxf Status", status})
+		}
+
+		// Display log artifact if available
+		if logURN, ok := nextflowResultAspect["log_urn"].(string); ok && logURN != "" {
+			logDisplay := fmt.Sprintf("%s (%s)", logURN, MakeHistory(&logURN))
+			rows = append(rows, table.Row{"Log", logDisplay})
+		}
+
+		// Display process results if available
+		if results, ok := nextflowResultAspect["results"].(map[string]interface{}); ok && len(results) > 0 {
+			rows = append(rows, table.Row{"", ""})
+			rows = append(rows, table.Row{"Processes", ""})
+			for procName, procURN := range results {
+				if urn, ok := procURN.(string); ok && urn != "" {
+					procDisplay := fmt.Sprintf("%s (%s)", urn, MakeHistory(&urn))
+					rows = append(rows, table.Row{"  " + procName, procDisplay})
+				}
+			}
+		}
+	} else {
+		// Fall back to old format: extract results_artifact_urn from result-content
+		resultDisplay := "-"
+		if job.ResultContent != nil {
+			// Try to parse ResultContent as JSON and extract results_artifact_urn
+			if contentMap, ok := job.ResultContent.(map[string]interface{}); ok {
+				if artifactUrn, ok := contentMap["results_artifact_urn"].(string); ok && artifactUrn != "" {
+					resultDisplay = fmt.Sprintf("%s (%s)", artifactUrn, MakeHistory(&artifactUrn))
+				}
+			}
+		}
+		rows = append(rows, table.Row{"Result", resultDisplay})
+	}
+
+	// Empty line separator
+	rows = append(rows, table.Row{"", ""})
+
+	// ID
+	id := fmt.Sprintf("%s (%s)", *job.ID, MakeHistory(job.ID))
+	rows = append(rows, table.Row{"ID", id})
+
+	// Started At
+	rows = append(rows, table.Row{"Started At", safeDate(job.StartedAt, false)})
+
+	// Finished At (if available)
 	if job.FinishedAt != nil {
 		rows = append(rows,
 			table.Row{"Finished At", safeDate(job.FinishedAt, false)},
 		)
 	}
 
+	// Service
+	var service string
+	if job.Service != nil {
+		service = fmt.Sprintf("%s (%s)", *job.Service, MakeHistory(job.Service))
+	}
+	rows = append(rows, table.Row{"Service", service})
+
+	// Policy and Account
 	rows = append(rows,
-		table.Row{"Service", service},
 		table.Row{"Policy", safeString(job.Policy)},
 		table.Row{"Account", safeString(job.Account)},
 	)
-
-	if job.ResultContentType != nil {
-		ct := *job.ResultContentType
-		rows = append(rows,
-			table.Row{"", ""},
-			table.Row{"Result-Type", ct},
-		)
-
-		if ct == "application/json" || strings.HasPrefix(ct, "application/vnd.") {
-			content, err := a.ToString(job.ResultContent, false)
-			if err != nil {
-				fmt.Printf("ERROR: cannot print job result - %v\n", err)
-				return
-			}
-			rows = append(rows, table.Row{"Result", content})
-		} else {
-			rows = append(rows, table.Row{"Result", ".... cannot print"})
-		}
-	}
 
 	tw.AppendRows(rows)
 	tw.SetColumnConfigs([]table.ColumnConfig{

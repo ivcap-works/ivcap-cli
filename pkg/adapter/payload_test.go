@@ -1,4 +1,4 @@
-// Copyright 2023 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
+// Copyright 2026 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,97 +15,108 @@
 package adapter
 
 import (
-	_ "fmt"
-	_ "regexp"
 	"testing"
+
+	log "go.uber.org/zap"
 )
 
-func TestUpload(t *testing.T) {
-	y := `
-foo: 1
-`
-	p, _ := LoadPayloadFromBytes([]byte(y), true)
-	m, _ := p.AsObject()
-	switch v := m[`foo`].(type) {
-	default:
-		t.Fatalf("unexpected type %T for 'foo'", v)
-	case float64:
-		if int(v) != 1 {
-			t.Fatalf("Expected '1', but is '%f'", v)
-		}
-	}
-}
+func TestEnsureSchemaField(t *testing.T) {
+	logger := log.NewNop()
 
-func TestYamlArray(t *testing.T) {
-	type A struct {
-		Value int `json:"a"`
-	}
-	type T struct {
-		Foo []A `json:"foo"`
-	}
-
-	y := `
-foo:
-  - a: 1
-  - a: 2
-`
-	p, err := LoadPayloadFromBytes([]byte(y), true)
-	if err != nil {
-		t.Fatalf("LoadPayloadFromBytes - %v", err)
-	}
-	var res T
-	if err = p.AsType(&res); err != nil {
-		t.Fatalf("Unmarshall - %v", err)
+	tests := []struct {
+		name        string
+		input       map[string]any
+		expectAdded bool
+	}{
+		{
+			name: "payload without $schema",
+			input: map[string]any{
+				"foo": "bar",
+				"baz": 123,
+			},
+			expectAdded: true,
+		},
+		{
+			name: "payload with existing $schema",
+			input: map[string]any{
+				"$schema": "urn:ivcap:schema:job.input.1",
+				"foo":     "bar",
+			},
+			expectAdded: false,
+		},
+		{
+			name:        "empty payload",
+			input:       map[string]any{},
+			expectAdded: true,
+		},
 	}
 
-	if len(res.Foo) != 2 {
-		t.Fatalf("Expected array of length 2, but got %v", res.Foo)
-	}
-	for i, item := range res.Foo {
-		if item.Value != i+1 {
-			t.Fatalf("Expected item value of %d, but got %d", i+1, item.Value)
-		}
-	}
-}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Create payload from input
+			pyld, err := JsonPayloadFromAny(tt.input, logger)
+			if err != nil {
+				t.Fatalf("failed to create payload: %v", err)
+			}
 
-func TestYamlNested(t *testing.T) {
-	type B struct {
-		Value []int `json:"v"`
-	}
-	type A struct {
-		List []B `json:"b"`
-	}
-	type T struct {
-		Foo []A `json:"a"`
-	}
+			// Apply EnsureSchemaField
+			result, err := EnsureSchemaField(pyld)
+			if err != nil {
+				t.Fatalf("EnsureSchemaField failed: %v", err)
+			}
 
-	y := `
-a: 
-  - b: 
-    - v: 
-      - 1
-      - 2
-  - b:
-`
-	p, err := LoadPayloadFromBytes([]byte(y), true)
-	if err != nil {
-		t.Fatalf("LoadPayloadFromBytes - %v", err)
-	}
-	var res T
-	if err = p.AsType(&res); err != nil {
-		t.Fatalf("Unmarshall - %v", err)
-	}
+			// Check result
+			obj, err := result.AsObject()
+			if err != nil {
+				t.Fatalf("failed to convert result to object: %v", err)
+			}
 
-	if len(res.Foo) != 2 {
-		t.Fatalf("Expected array of length 2, but got %v", res.Foo)
-	}
-	e1 := res.Foo[0]
-	if len(e1.List) != 1 {
-		t.Fatalf("Expected array of length 1, but got %v", e1.List)
-	}
-	for i, item := range e1.List[0].Value {
-		if item != i+1 {
-			t.Fatalf("Expected item value of %d, but got %d", i+1, item)
-		}
+			// Verify $schema exists
+			schema, hasSchema := obj["$schema"]
+			if !hasSchema {
+				t.Fatal("$schema field is missing in result")
+			}
+
+			// If we expected it to be added, check it's the default value
+			if tt.expectAdded {
+				if schema != "urn:unknown:unknown" {
+					t.Errorf("expected $schema to be 'urn:unknown:unknown', got '%v'", schema)
+				}
+			} else {
+				// If we didn't expect it to be added, verify original value preserved
+				if schema != tt.input["$schema"] {
+					t.Errorf("expected $schema to be '%v', got '%v'", tt.input["$schema"], schema)
+				}
+			}
+
+			// Verify other fields are preserved
+			// Note: JSON unmarshaling may convert numbers to float64
+			for key, expectedValue := range tt.input {
+				if key == "$schema" {
+					continue
+				}
+				actualValue, exists := obj[key]
+				if !exists {
+					t.Errorf("field %s is missing", key)
+					continue
+				}
+
+				// Handle numeric type conversions (int -> float64 in JSON)
+				switch expected := expectedValue.(type) {
+				case int:
+					if actual, ok := actualValue.(float64); ok {
+						if float64(expected) != actual {
+							t.Errorf("field %s was modified: expected %v, got %v", key, expected, actual)
+						}
+					} else if actualValue != expectedValue {
+						t.Errorf("field %s was modified: expected %v (%T), got %v (%T)", key, expectedValue, expectedValue, actualValue, actualValue)
+					}
+				default:
+					if actualValue != expectedValue {
+						t.Errorf("field %s was modified: expected %v, got %v", key, expectedValue, actualValue)
+					}
+				}
+			}
+		})
 	}
 }

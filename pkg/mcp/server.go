@@ -19,9 +19,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"sort"
 	"sync"
-	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
@@ -68,6 +68,7 @@ var builtInToolNames = map[string]bool{
 	"select_tools":    true,
 	"artifact_create": true,
 	"artifact_get":    true,
+	"artifact_build":  true,
 	"aspect_search":   true,
 	"aspect_get":      true,
 	"aspect_create":   true,
@@ -76,6 +77,10 @@ var builtInToolNames = map[string]bool{
 	"service_list":    true,
 	"service_get":     true,
 	"service_run":     true,
+	"job_status":      true,
+	"verify_url":      true,
+	"read_skill":      true,
+	"search":          true,
 }
 
 var (
@@ -166,7 +171,7 @@ func filterToolsBySessionAllowlist(ctx context.Context, tools []mcp.Tool) []mcp.
 		res = append(res, *selectTools)
 	}
 	// Keep stable order for built-ins after select_tools.
-	builtInOrder := []string{"artifact_create", "artifact_get", "aspect_search", "aspect_get", "aspect_create", "service_list", "service_get", "service_run", "nextflow_create", "nextflow_run"}
+	builtInOrder := []string{"artifact_create", "artifact_get", "artifact_build", "aspect_search", "aspect_get", "aspect_create", "service_list", "service_get", "service_run", "job_status", "verify_url", "nextflow_create", "nextflow_run", "read_skill", "search"}
 	for _, n := range builtInOrder {
 		if t, ok := toolMap[n]; ok {
 			res = append(res, t)
@@ -211,12 +216,15 @@ func parseTool(item map[string]any) (string, mcp.Tool, server.ToolHandlerFunc, s
 		return "", mcp.Tool{}, nil, "", fmt.Errorf("tool aspect missing 'service-id' field or not a string")
 	}
 
+	// Append note about long-running job handling to description
+	enhancedDescription := description + " | Response patterns: (1) Fast path: immediate result if job completes within 30s, or (2) Slow path: job metadata with job_id and polling instructions if still running. Use job_status tool to check long-running jobs. See skills://ivcap-service-long-running/SKILL.md for details."
+
 	handler := func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		return runTool(ctx, serviceID, request)
 	}
 	tool := mcp.NewToolWithRawSchema(
 		name,
-		description,
+		enhancedDescription,
 		MapToRaw(schema),
 	)
 	return name, tool, handler, serviceID, nil
@@ -276,6 +284,9 @@ func addToolDiscoveryTool(s *server.MCPServer, disco *mcpDiscoveryState) {
 		// Use platform semantic search to find relevant services, then resolve their tool aspects.
 		matchingTools, toolScores, servicesFound, servicesWithoutTools, err := discoverToolsViaServiceSearch(ctx, interestVal, server.ServerFromContext(ctx))
 		if err != nil {
+			if isAuthFailure(err) {
+				return NewLoginRequiredResult(), nil
+			}
 			return nil, err
 		}
 		discoState.setDiscoveredTools(matchingTools)
@@ -378,6 +389,8 @@ func discoverToolsViaServiceSearch(ctx context.Context, interest string, s *serv
 	pyld, err := listServicesRawFn(ctx, req, adpt, srvCfg.Logger)
 	if err != nil {
 		if isAuthFailure(err) {
+			// Note: discoverToolsViaServiceSearch is called from select_tools handler,
+			// so we still return an error here which will be handled by the caller
 			return nil, nil, nil, nil, ErrLoginRequired
 		}
 		return nil, nil, nil, nil, err
@@ -493,12 +506,15 @@ func runTool(ctx context.Context, serviceID string, request mcp.CallToolRequest)
 	}
 	adpt, err := createAdapter(srvCfg.TimeoutSec)
 	if err != nil {
+		if isAuthFailure(err) {
+			return NewLoginRequiredResult(), nil
+		}
 		return nil, err
 	}
 	res, jobCreate, err := createServiceJobRawFn(ctx, serviceID, pyld, 0, adpt, srvCfg.Logger)
 	if err != nil {
 		if isAuthFailure(err) {
-			return nil, ErrLoginRequired
+			return NewLoginRequiredResult(), nil
 		}
 		return nil, err
 	}
@@ -507,61 +523,35 @@ func runTool(ctx context.Context, serviceID string, request mcp.CallToolRequest)
 	}
 	var result map[string]interface{}
 	if jobCreate != nil {
-		jobRes, err := waitForServiceJob(ctx, serviceID, jobCreate, adpt)
+		// Use optimistic wait with 30-second timeout for tool-discovered services
+		waitResult, err := waitForServiceJobOptimistic(ctx, serviceID, jobCreate, adpt, 30)
 		if err != nil {
 			return nil, err
 		}
-		result = jobRes
+
+		if waitResult.IsComplete {
+			// Fast path - job completed
+			result = waitResult.Result
+		} else {
+			// Slow path - job still running
+			pollAfter := estimatePollInterval(waitResult.Status)
+			return mcp.NewToolResultJSON(map[string]any{
+				"job_id":  waitResult.JobID,
+				"status":  waitResult.Status,
+				"message": waitResult.Message,
+				"_meta": map[string]any{
+					"job_id":             waitResult.JobID,
+					"status":             waitResult.Status,
+					"poll_after_seconds": pollAfter,
+				},
+			})
+		}
 	} else {
 		if result, err = res.AsObject(); err != nil {
 			return nil, err
 		}
 	}
 	return mcp.NewToolResultJSON(result)
-}
-
-func waitForServiceJob(
-	ctx context.Context,
-	serviceID string,
-	jobCreate *sdk.JobCreateT,
-	adpt *a.Adapter,
-) (map[string]any, error) {
-	jobID := jobCreate.JobID
-	if jobCreate.ServiceID != "" {
-		serviceID = jobCreate.ServiceID
-	}
-
-	// Mirror CLI behaviour: poll for completion (but keep it simple for MCP).
-	maxChecks := 100
-	wait := 2
-
-	for tries := 0; tries < maxChecks; tries++ {
-		time.Sleep(time.Duration(wait) * time.Second)
-		job, pyld, err := sdk.ReadServiceJob(ctx, &sdk.ReadServiceJobRequest{ServiceId: serviceID, JobId: jobID}, adpt, srvCfg.Logger)
-		if err != nil {
-			if isAuthFailure(err) {
-				return nil, ErrLoginRequired
-			}
-			return nil, err
-		}
-		status := "?"
-		if job != nil && job.Status != nil {
-			status = *job.Status
-		}
-		done := status != "?" && status != "scheduled" && status != "executing"
-		if done {
-			o, err := pyld.AsObject()
-			if err != nil {
-				return nil, err
-			}
-			// Job responses wrap the actual result payload in 'result-content'.
-			if rc, ok := o["result-content"].(map[string]any); ok {
-				return rc, nil
-			}
-			return nil, fmt.Errorf("unexpected result content from job")
-		}
-	}
-	return nil, fmt.Errorf("timed out waiting for job to finish")
 }
 
 func isAuthFailure(err error) bool {
@@ -578,4 +568,32 @@ func isAuthFailure(err error) bool {
 	}
 	// Also treat missing/expired token as auth failure when surfaced explicitly.
 	return errors.Is(err, ErrLoginRequired)
+}
+
+// ServeStdioWithLogging starts an MCP server in STDIO mode with JSON-RPC logging enabled.
+// It returns the path to the log file.
+func ServeStdioWithLogging(s *server.MCPServer, logDir string) (string, error) {
+	// Create the logger
+	logger, err := newMCPLogger(logDir)
+	if err != nil {
+		return "", fmt.Errorf("failed to create MCP logger: %w", err)
+	}
+	defer func() { _ = logger.close() }()
+
+	// Get the log file path
+	logPath := logger.file.Name()
+
+	// Wrap stdin and stdout with logging
+	stdin := &loggingReader{r: os.Stdin, logger: logger}
+	stdout := &loggingWriter{w: os.Stdout, logger: logger}
+
+	// Create StdioServer and start listening with wrapped stdin/stdout
+	stdioServer := server.NewStdioServer(s)
+	ctx := context.Background()
+
+	if err := stdioServer.Listen(ctx, stdin, stdout); err != nil {
+		return logPath, err
+	}
+
+	return logPath, nil
 }

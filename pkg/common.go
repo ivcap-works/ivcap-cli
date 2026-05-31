@@ -17,7 +17,9 @@ package client
 import (
 	"fmt"
 	"net/url"
+	"regexp"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -62,4 +64,53 @@ func createListPath(cmd *ListRequest, path string) (*url.URL, error) {
 
 	u.RawQuery = query.Encode()
 	return u, nil
+}
+
+// ValidateEntityURN validates that entities starting with specific IVCAP system entity prefixes
+// end with a valid UUID. Any entity not matching these prefixes is allowed without validation.
+// Returns an error if validation fails.
+func ValidateEntityURN(entity string) error {
+	// Check if entity starts with one of the validated IVCAP system entity types
+	validatedPrefixes := []string{
+		"urn:ivcap:service:",
+		"urn:ivcap:artifact:",
+		"urn:ivcap:job:",
+		"urn:ivcap:aspect:",
+		"urn:ivcap:queue:",
+	}
+
+	matchesPrefix := false
+	for _, prefix := range validatedPrefixes {
+		if strings.HasPrefix(entity, prefix) {
+			matchesPrefix = true
+			break
+		}
+	}
+
+	// If it doesn't match any validated prefix, no validation needed
+	if !matchesPrefix {
+		return nil
+	}
+
+	// Extract the UUID part (everything after the last ':')
+	parts := strings.Split(entity, ":")
+	if len(parts) < 4 {
+		return fmt.Errorf("invalid entity URN format: %s", entity)
+	}
+
+	uuid := parts[len(parts)-1]
+
+	// UUID v4 regex pattern (standard format: 8-4-4-4-12 hex digits)
+	// Also accepts UUID without hyphens
+	uuidPattern := `^[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$`
+	matched, err := regexp.MatchString(uuidPattern, uuid)
+	if err != nil {
+		return fmt.Errorf("error validating UUID: %w", err)
+	}
+
+	if !matched {
+		return fmt.Errorf("invalid entity URN: %s does not end with a valid UUID (got: %s)", entity, uuid)
+	}
+
+	return nil
 }
