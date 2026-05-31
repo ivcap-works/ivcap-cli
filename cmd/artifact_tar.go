@@ -405,7 +405,7 @@ func writeOutput(data []byte) error {
 		if err != nil {
 			return fmt.Errorf("failed to create output file: %w", err)
 		}
-		defer outFile.Close()
+		defer func() { _ = outFile.Close() }()
 	}
 
 	_, err = outFile.Write(data)

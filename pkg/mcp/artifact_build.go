@@ -341,7 +341,7 @@ func handleArtifactBuildAddRemote(ctx context.Context, args map[string]any) (*mc
 		if err != nil {
 			return nil, fmt.Errorf("failed to download %q from %q: %w", pathName, urlStr, err)
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			return nil, fmt.Errorf("download %q failed with status %d: %s", pathName, resp.StatusCode, urlStr)

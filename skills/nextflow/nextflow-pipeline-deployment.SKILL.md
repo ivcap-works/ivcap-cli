@@ -343,6 +343,25 @@ process PROCESS_SAMPLES {
 
 **Pro tip:** Use `--watch --stream` together for real-time monitoring during development.
 
+### Step 3: Monitor Running Jobs
+
+Stream events for a running job:
+
+```bash
+# Stream events in real-time
+ivcap nextflow events <service-id> <job-id>
+
+# Limit number of events
+ivcap nextflow events --max-messages 50 <service-id> <job-id>
+
+# Resume from a specific event
+ivcap nextflow events --last-event-id <event-id> <service-id> <job-id>
+```
+
+The `events` command displays job progress, logs, and status updates as they occur. Use `ivcap job events` for the generic equivalent outside the `nextflow` subcommand group.
+
+---
+
 ### Accessing Pipeline Results (CSV, TSV, JSON Files)
 
 After a pipeline run completes successfully, you can fetch result files from the results artifact using the `artifact_get` MCP tool. Many Nextflow pipelines output tabular data as CSV or TSV files.

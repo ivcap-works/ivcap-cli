@@ -15,6 +15,9 @@
 package cmd
 
 import (
+	"bytes"
+	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -25,6 +28,7 @@ import (
 	"time"
 
 	"github.com/araddon/dateparse"
+	"github.com/r3labs/sse/v2"
 	"github.com/spf13/cobra"
 	yaml "gopkg.in/yaml.v2"
 
@@ -432,4 +436,41 @@ func makeConfigFilePath(fileName string) (path string) {
 	configDir := GetConfigDir(true) // Create the configuration directory if it doesn't exist
 	path = configDir + string(os.PathSeparator) + fileName
 	return
+}
+
+// streamJobEvents streams SSE events for a job, printing each to stdout.
+// maxMessages: if > 0, stop after that many events are printed.
+// lastEventID: if non-nil, resume streaming from that event ID.
+func streamJobEvents(ctxt context.Context, serviceID, jobID string, lastEventID *string, maxMessages int) error {
+	msgCount := 0
+	onEvent := func(msg *sse.Event) {
+		if maxMessages > 0 && msgCount >= maxMessages {
+			return
+		}
+		msgCount++
+
+		var out bytes.Buffer
+		if err := json.Indent(&out, msg.Data, "", "  "); err == nil {
+			fmt.Println("─────────")
+			fmt.Printf("Event: %s\n", string(msg.Event))
+			if len(msg.ID) > 0 {
+				fmt.Printf("ID: %s\n", string(msg.ID))
+			}
+			fmt.Println(out.String())
+		} else {
+			// not JSON — print raw
+			fmt.Println("─────────")
+			fmt.Printf("Event: %s\n", string(msg.Event))
+			if len(msg.ID) > 0 {
+				fmt.Printf("ID: %s\n", string(msg.ID))
+			}
+			fmt.Println(string(msg.Data))
+		}
+	}
+
+	if err := sdk.GetJobEvents(ctxt, serviceID, jobID, lastEventID, onEvent, CreateAdapter(true), logger); err != nil {
+		return fmt.Errorf("failed to stream events: %w", err)
+	}
+	fmt.Println("─────────")
+	return nil
 }

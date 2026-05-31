@@ -15,9 +15,7 @@
 package cmd
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"math"
 	"time"
@@ -29,7 +27,6 @@ import (
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
-	"github.com/r3labs/sse/v2"
 	"github.com/spf13/cobra"
 )
 
@@ -55,6 +52,12 @@ func init() {
 	createJobCmd.Flags().StringVarP(&aspectURN, "aspect", "a", "", "URN of aspect containing job parameters")
 	createJobCmd.Flags().BoolVar(&watchFlag, "watch", false, "if set, watch the job until it is finished")
 	createJobCmd.Flags().BoolVar(&streamFlag, "stream", false, "if set, print job related events to stdout")
+
+	// EVENTS
+	jobCmd.AddCommand(eventsJobCmd)
+	eventsJobCmd.Flags().IntVar(&maxMessages, "max-messages", 0, "Maximum number of messages to return (0 = unlimited)")
+	eventsJobCmd.Flags().IntVar(&maxWaitTime, "max-wait-time", 30, "Max wait time for new events in seconds")
+	eventsJobCmd.Flags().StringVar(&lastEventID, "last-event-id", "", "Last event ID to resume from")
 }
 
 var (
@@ -62,6 +65,9 @@ var (
 	aspectURN      string
 	watchFlag      bool
 	streamFlag     bool
+	maxMessages    int
+	maxWaitTime    int
+	lastEventID    string
 )
 
 var (
@@ -115,6 +121,29 @@ var (
 			recordID := GetHistory(args[0])
 			ctxt := context.Background()
 			return readDisplayJob(ctxt, recordID)
+		},
+	}
+
+	eventsJobCmd = &cobra.Command{
+		Use:   "events [flags] service-id job-id",
+		Short: "Stream events for a job",
+		Long: `Stream job-related events in real-time. Events are displayed as they occur.
+
+Examples:
+  ivcap job events urn:ivcap:service:123 urn:ivcap:job:456
+  ivcap job events --max-messages 10 service-id job-id
+  ivcap job events --last-event-id abc123 service-id job-id`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			serviceID := GetHistory(args[0])
+			jobID := GetHistory(args[1])
+			ctxt := context.Background()
+
+			var lastID *string
+			if lastEventID != "" {
+				lastID = &lastEventID
+			}
+			return streamJobEvents(ctxt, serviceID, jobID, lastID, maxMessages)
 		},
 	}
 
@@ -217,19 +246,9 @@ func watchJob(ctxt context.Context, jobID string, maxChecks int, wait int) (*sdk
 }
 
 func streamJobResults(ctxt context.Context, jobCreate *sdk.JobCreateT) error {
-	onEvent := func(msg *sse.Event) {
-		var out bytes.Buffer
-		if err := json.Indent(&out, msg.Data, "", "  "); err == nil {
-			fmt.Println("---------")
-			s := out.String()
-			fmt.Println(s)
-		}
-	}
-	err := sdk.GetJobEvents(ctxt, jobCreate.ServiceID, jobCreate.JobID, nil, onEvent, CreateAdapter(true), logger)
-	if err != nil {
+	if err := streamJobEvents(ctxt, jobCreate.ServiceID, jobCreate.JobID, nil, 0); err != nil {
 		cobra.CheckErr(fmt.Sprintf("While watching events for job '%s' - %s", jobCreate.JobID, err))
 	}
-	fmt.Println("---------")
 	return readDisplayJob(ctxt, jobCreate.JobID)
 }
 

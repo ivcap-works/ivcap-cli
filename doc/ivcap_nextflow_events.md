@@ -1,25 +1,27 @@
-## ivcap nextflow run
+## ivcap nextflow events
 
-Alias for 'ivcap job create'
+Stream events for a Nextflow job
 
 ### Synopsis
 
-Alias for 'ivcap job create' (creates a job for a given service ID with provided input).
+Stream job-related events in real-time for a Nextflow service. Events are displayed as they occur.
+
+Examples:
+  ivcap nextflow events urn:ivcap:service:123 urn:ivcap:job:456
+  ivcap nextflow events --max-messages 10 service-id job-id
+  ivcap nextflow events --last-event-id abc123 service-id job-id
 
 ```
-ivcap nextflow run [flags] service-id [-f job-input|-] [-a aspect-urn] [-s|--samplesheet file.csv|-] [--watch] [--stream]
+ivcap nextflow events [flags] service-id job-id
 ```
 
 ### Options
 
 ```
-  -a, --aspect string        URN of aspect containing job parameters
-  -f, --file string          Path to job input file (use '-' for stdin)
-      --format string        Format of input file [json, yaml] (default "json")
-  -h, --help                 help for run
-  -s, --samplesheet string   Path to CSV samplesheet file (use '-' for stdin)
-      --stream               if set, print job related events to stdout
-      --watch                if set, watch the job until it is finished
+  -h, --help                   help for events
+      --last-event-id string   Last event ID to resume from
+      --max-messages int       Maximum number of messages to return (0 = unlimited)
+      --max-wait-time int      Max wait time for new events in seconds (default 30)
 ```
 
 ### Options inherited from parent commands

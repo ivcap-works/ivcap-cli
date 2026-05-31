@@ -63,6 +63,13 @@ func init() {
 	nextflowCmd.AddCommand(nextflowUpdateCmd)
 	nextflowCmd.AddCommand(nextflowRetractCmd)
 	nextflowCmd.AddCommand(nextflowRunCmd)
+	nextflowCmd.AddCommand(nextflowEventsCmd)
+
+	// events command flags
+	nextflowEventsCmd.Flags().IntVar(&nextflowEventsMaxMessages, "max-messages", 0, "Maximum number of messages to return (0 = unlimited)")
+	nextflowEventsCmd.Flags().IntVar(&nextflowEventsMaxWaitTime, "max-wait-time", 30, "Max wait time for new events in seconds")
+	nextflowEventsCmd.Flags().StringVar(&nextflowEventsLastEventID, "last-event-id", "", "Last event ID to resume from")
+
 	addFileFlag(nextflowCreateCmd, "Path to local tar/tgz containing ivcap.yaml or ivcap-tool.yaml with service-id field")
 	nextflowCreateCmd.Flags().StringVar(&nextflowCreateFormat, "format", "", "Output format for nextflow create result [json, yaml]")
 
@@ -90,6 +97,9 @@ var nextflowResultLogs bool
 var nextflowResultOutput bool
 var nextflowResultProcess string
 var nextflowReportMultiQC bool
+var nextflowEventsMaxMessages int
+var nextflowEventsMaxWaitTime int
+var nextflowEventsLastEventID string
 
 var (
 	nextflowCmd = &cobra.Command{
@@ -331,6 +341,29 @@ var (
 			return readDisplayJob(ctxt, jobID)
 		},
 	}
+
+	nextflowEventsCmd = &cobra.Command{
+		Use:   "events [flags] service-id job-id",
+		Short: "Stream events for a Nextflow job",
+		Long: `Stream job-related events in real-time for a Nextflow service. Events are displayed as they occur.
+
+Examples:
+  ivcap nextflow events urn:ivcap:service:123 urn:ivcap:job:456
+  ivcap nextflow events --max-messages 10 service-id job-id
+  ivcap nextflow events --last-event-id abc123 service-id job-id`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			serviceID := GetHistory(args[0])
+			jobID := GetHistory(args[1])
+			ctxt := context.Background()
+
+			var lastID *string
+			if nextflowEventsLastEventID != "" {
+				lastID = &nextflowEventsLastEventID
+			}
+			return streamJobEvents(ctxt, serviceID, jobID, lastID, nextflowEventsMaxMessages)
+		},
+	}
 )
 
 func runNextflowCreateOrUpdate(ctxt context.Context, serviceID string) error {
@@ -433,7 +466,7 @@ func parseSamplesheet(fileName string) ([]map[string]interface{}, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to open samplesheet: %w", err)
 		}
-		defer reader.Close()
+		defer func() { _ = reader.Close() }()
 	}
 
 	// Create CSV reader
@@ -1240,7 +1273,7 @@ func downloadArtifactAsFiles(ctxt context.Context, artifactURN string, adapter *
 		if err != nil {
 			return fmt.Errorf("failed to create file %s: %w", filePath, err)
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		_, err = io.Copy(file, tr)
 		if err != nil {
@@ -1331,7 +1364,7 @@ func handleNextflowJobReport(ctxt context.Context, jobID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to create temporary directory: %w", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Download and extract output files
 	data, mimeType, err := downloadTarArtifact(ctxt, outputURN, adapter)
@@ -1379,7 +1412,7 @@ func handleNextflowJobReport(ctxt context.Context, jobID string) error {
 		if err != nil {
 			return fmt.Errorf("failed to create file: %w", err)
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		_, err = io.Copy(file, tr)
 		if err != nil {
@@ -1401,7 +1434,7 @@ func handleNextflowJobReport(ctxt context.Context, jobID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to start web server: %w", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	port := listener.Addr().(*net.TCPAddr).Port
 	url := fmt.Sprintf("http://localhost:%d", port)
@@ -1515,7 +1548,7 @@ func serveMultiQCReport(ctxt context.Context, adapter *a.Adapter, multiqcURN str
 	if err != nil {
 		return fmt.Errorf("failed to create temporary directory: %w", err)
 	}
-	defer os.RemoveAll(tmpDir)
+	defer func() { _ = os.RemoveAll(tmpDir) }()
 
 	// Extract tar contents
 	tr, err := openTarReader(data)
@@ -1551,7 +1584,7 @@ func serveMultiQCReport(ctxt context.Context, adapter *a.Adapter, multiqcURN str
 		if err != nil {
 			return fmt.Errorf("failed to create file: %w", err)
 		}
-		defer file.Close()
+		defer func() { _ = file.Close() }()
 
 		_, err = io.Copy(file, tr)
 		if err != nil {
@@ -1621,7 +1654,7 @@ func serveMultiQCReport(ctxt context.Context, adapter *a.Adapter, multiqcURN str
 	if err != nil {
 		return fmt.Errorf("failed to start web server: %w", err)
 	}
-	defer listener.Close()
+	defer func() { _ = listener.Close() }()
 
 	port := listener.Addr().(*net.TCPAddr).Port
 	url := fmt.Sprintf("http://localhost:%d", port)

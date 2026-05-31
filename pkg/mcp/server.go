@@ -578,7 +578,7 @@ func ServeStdioWithLogging(s *server.MCPServer, logDir string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to create MCP logger: %w", err)
 	}
-	defer logger.close()
+	defer func() { _ = logger.close() }()
 
 	// Get the log file path
 	logPath := logger.file.Name()

@@ -20,8 +20,26 @@ Get job status:
 ivcap --output json job get <job-urn>
 ```
 
-Stream job events:
+Stream job events (recommended):
 
 ```bash
-ivcap --output json job get <job-urn> --stream
+ivcap job events <service-id> <job-id>
+```
+
+Stream job events with limit:
+
+```bash
+ivcap job events --max-messages 10 <service-id> <job-id>
+```
+
+Resume from last event:
+
+```bash
+ivcap job events --last-event-id <event-id> <service-id> <job-id>
+```
+
+Alternative - create job with streaming:
+
+```bash
+ivcap job create <service-id> -f input.json --stream
 ```
