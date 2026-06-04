@@ -684,7 +684,7 @@ func handleNextflowJobResult(ctxt context.Context, jobID string, filePath string
 	adapter := CreateAdapter(true)
 
 	// Get the job to extract result artifact URN
-	job, _, _, _, err := readJob(ctxt, jobID)
+	job, _, _, _, _, err := readJob(ctxt, jobID)
 	if err != nil {
 		return fmt.Errorf("failed to read job: %w", err)
 	}
