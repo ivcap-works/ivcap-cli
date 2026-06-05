@@ -34,48 +34,16 @@ import (
 
 const JOB_SCHEMA = "urn:ivcap:schema:job.2"
 
-// jobResultPreviewLines is the maximum number of JSON lines shown when
-// previewing a job's output content (out-content-urn).
-const jobResultPreviewLines = 10
+// maxResultLines is the maximum number of text lines to show for a job result
+// in the human-readable table output.  Long results are truncated with a count
+// of the omitted lines so that the terminal output stays manageable.
+const maxResultLines = 10
+
+// maxResultLineWidth is the maximum number of characters per line when
+// displaying job result content.  Lines longer than this are trimmed with "..."
+const maxResultLineWidth = 80
 
 const CREATE_FROM_ASPECT = sdk.CreateFromAspectTemplate
-
-// jobOutContent holds pre-fetched output content info for inline display.
-type jobOutContent struct {
-	urn     string // out-content-urn from job result aspect
-	preview string // first jobResultPreviewLines lines of JSON, or empty
-}
-
-// fetchJobOutContent inspects the jobResultAspect for "out-content-type" /
-// "out-content-urn". When the URN is present and the content type is
-// "application/json" it fetches the aspect and returns the first
-// jobResultPreviewLines lines of the pretty-printed JSON as preview.
-func fetchJobOutContent(ctxt context.Context, jobResultAspect map[string]any) *jobOutContent {
-	outContentUrn, _ := jobResultAspect["out-content-urn"].(string)
-	if outContentUrn == "" {
-		return nil
-	}
-	outContentType, _ := jobResultAspect["out-content-type"].(string)
-
-	result := &jobOutContent{urn: outContentUrn}
-
-	if outContentType == "application/json" {
-		asp, err := sdk.GetAspect(ctxt, outContentUrn, CreateAdapter(true), logger)
-		if err == nil && asp != nil && asp.Content != nil {
-			jsonBytes, err := json.MarshalIndent(asp.Content, "", "  ")
-			if err == nil {
-				lines := strings.Split(string(jsonBytes), "\n")
-				if len(lines) > jobResultPreviewLines {
-					result.preview = strings.Join(lines[:jobResultPreviewLines], "\n") + "\n..."
-				} else {
-					result.preview = strings.Join(lines, "\n")
-				}
-			}
-		}
-	}
-
-	return result
-}
 
 func init() {
 	rootCmd.AddCommand(jobCmd)
@@ -146,7 +114,7 @@ var (
 				case "yaml":
 					return a.ReplyPrinter(res, true)
 				default:
-					printJobListTable(list)
+					printJobListTable(list, false)
 				}
 				return nil
 			} else {
@@ -168,24 +136,19 @@ var (
 	}
 
 	eventsJobCmd = &cobra.Command{
-		Use:   "events [flags] job-id",
+		Use:   "events [flags] service-id job-id",
 		Short: "Stream events for a job",
 		Long: `Stream job-related events in real-time. Events are displayed as they occur.
-The service ID is automatically resolved from the job ID.
 
 Examples:
-  ivcap job events urn:ivcap:job:456
-  ivcap job events --max-messages 10 job-id
-  ivcap job events --last-event-id abc123 job-id`,
-		Args: cobra.ExactArgs(1),
+  ivcap job events urn:ivcap:service:123 urn:ivcap:job:456
+  ivcap job events --max-messages 10 service-id job-id
+  ivcap job events --last-event-id abc123 service-id job-id`,
+		Args: cobra.ExactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			jobID := GetHistory(args[0])
+			serviceID := GetHistory(args[0])
+			jobID := GetHistory(args[1])
 			ctxt := context.Background()
-
-			serviceID, err := lookupServiceIDForJob(ctxt, jobID)
-			if err != nil {
-				return err
-			}
 
 			var lastID *string
 			if lastEventID != "" {
@@ -249,7 +212,7 @@ func waitForResult(
 	jobCreate *sdk.JobCreateT,
 	serviceID string,
 ) error {
-	jobCreate.ServiceID = serviceID
+	// jobCreate.ServiceID = serviceID
 	if streamFlag {
 		return streamJobResults(ctxt, jobCreate)
 	}
@@ -268,7 +231,7 @@ func waitForResult(
 	if err != nil {
 		return err
 	}
-	return displayJob(job, pyld, nil, nil, nil)
+	return displayJob(job, pyld, nil, nil)
 }
 
 func watchJob(ctxt context.Context, jobID string, maxChecks int, wait int) (*sdk.JobReadResponseBody, a.Payload, error) {
@@ -276,7 +239,7 @@ func watchJob(ctxt context.Context, jobID string, maxChecks int, wait int) (*sdk
 	tries := 0
 	for !done {
 		time.Sleep(time.Duration(wait) * time.Second)
-		job, pyld, _, _, _, err := readJob(ctxt, jobID)
+		job, pyld, _, _, err := readJob(ctxt, jobID)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -297,110 +260,60 @@ func streamJobResults(ctxt context.Context, jobCreate *sdk.JobCreateT) error {
 	if err := streamJobEvents(ctxt, jobCreate.ServiceID, jobCreate.JobID, nil, 0); err != nil {
 		cobra.CheckErr(fmt.Sprintf("While watching events for job '%s' - %s", jobCreate.JobID, err))
 	}
-	// Use the serviceID we already have from the job creation response — avoids a
-	// lookupServiceIDForJob round-trip that can fail if the aspects endpoint is not
-	// reachable or the job aspect has not been persisted yet.
-	job, pyld, jobResultAspect, nextflowResultAspect, outContent, err := readJobWithServiceID(ctxt, jobCreate.ServiceID, jobCreate.JobID)
-	if err != nil {
-		return err
-	}
-	return displayJob(job, pyld, jobResultAspect, nextflowResultAspect, outContent)
+	return readDisplayJob(ctxt, jobCreate.JobID)
 }
 
 func readDisplayJob(ctxt context.Context, jobID string) error {
-	job, pyld, jobResultAspect, nextflowResultAspect, outContent, err := readJob(ctxt, jobID)
+	job, pyld, jobResultAspect, nextflowResultAspect, err := readJob(ctxt, jobID)
 	if err != nil {
 		return err
 	}
-	return displayJob(job, pyld, jobResultAspect, nextflowResultAspect, outContent)
+	return displayJob(job, pyld, jobResultAspect, nextflowResultAspect)
 }
 
-func displayJob(job *sdk.JobReadResponseBody, pyld a.Payload, jobResultAspect map[string]any, nextflowResultAspect map[string]any, outContent *jobOutContent) error {
+func displayJob(job *sdk.JobReadResponseBody, pyld a.Payload, jobResultAspect map[string]any, nextflowResultAspect map[string]any) error {
 	switch outputFormat {
 	case "json", "yaml":
 		return a.ReplyPrinter(pyld, outputFormat == "yaml")
 	default:
-		printJob(job, jobResultAspect, nextflowResultAspect, outContent, false)
+		printJob(job, jobResultAspect, nextflowResultAspect, false)
 	}
 	return nil
 }
 
-// lookupServiceIDForJob resolves the service ID for a given job ID by querying the job aspect.
-func lookupServiceIDForJob(ctxt context.Context, jobID string) (string, error) {
+func readJob(ctxt context.Context, jobID string) (*sdk.JobReadResponseBody, a.Payload, map[string]any, map[string]any, error) {
 	selector := sdk.AspectSelector{
 		Entity:         jobID,
 		SchemaPrefix:   JOB_SCHEMA,
 		IncludeContent: true,
 	}
-	list, _, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger)
-	if err != nil {
-		return "", err
+	var serviceId string
+	if list, _, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger); err == nil {
+		if len(list.Items) != 1 {
+			cobra.CheckErr("Cannot find job")
+		}
+		c := list.Items[0].Content.(map[string]any)
+		if s, ok := c["service-id"].(string); ok {
+			serviceId = s
+		} else {
+			cobra.CheckErr("Cannot find 'service-id' for this job")
+		}
+	} else {
+		return nil, nil, nil, nil, err
 	}
-	if len(list.Items) != 1 {
-		return "", fmt.Errorf("cannot find job '%s'", jobID)
-	}
-	c := list.Items[0].Content.(map[string]any)
-	if s, ok := c["service-id"].(string); ok {
-		return s, nil
-	}
-	return "", fmt.Errorf("cannot find 'service-id' for job '%s'", jobID)
-}
-
-func readJob(ctxt context.Context, jobID string) (*sdk.JobReadResponseBody, a.Payload, map[string]any, map[string]any, *jobOutContent, error) {
-	serviceId, err := lookupServiceIDForJob(ctxt, jobID)
-	if err != nil {
-		return nil, nil, nil, nil, nil, err
-	}
-	return readJobWithServiceID(ctxt, serviceId, jobID)
-}
-
-// readJobWithServiceID fetches job details when the serviceID is already known,
-// bypassing the lookupServiceIDForJob aspects round-trip.
-func readJobWithServiceID(ctxt context.Context, serviceId, jobID string) (*sdk.JobReadResponseBody, a.Payload, map[string]any, map[string]any, *jobOutContent, error) {
 	req := &sdk.ReadServiceJobRequest{ServiceId: serviceId, JobId: jobID}
-	job, pyld, err := sdk.ReadServiceJob(ctxt, req, CreateAdapter(true), logger)
+	job, pyld, err := sdk.ReadServiceJob(context.Background(), req, CreateAdapter(true), logger)
 	if err != nil {
-		return nil, nil, nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 
 	// Try to fetch job.result.1 aspect (execution phase information)
 	jobResultAspect := readJobResultAspect(ctxt, jobID)
 
-	// Detect Nextflow jobs from result-content.$schema — no extra API call needed.
-	// The server always inlines result-content in the job status response.
-	var nextflowResultAspect map[string]any
-	if contentMap, ok := job.ResultContent.(map[string]any); ok {
-		if schema, ok := contentMap["$schema"].(string); ok && strings.Contains(schema, "nextflow") {
-			// result-content IS the nextflow result object; use it directly.
-			nextflowResultAspect = contentMap
-		}
-	}
+	// Try to fetch nextflow.result.1 aspect (detailed results after completion)
+	nextflowResultAspect := readNextflowResultAspectFromJob(ctxt, jobID)
 
-	// Check the top-level result-content-urn / result-content-type fields.
-	// Only set outContent when this is NOT a nextflow job (nextflow uses the
-	// nextflowResultAspect display path instead).
-	var outContent *jobOutContent
-	if nextflowResultAspect == nil && job.ResultContentUrn != nil && *job.ResultContentUrn != "" {
-		outContent = &jobOutContent{urn: *job.ResultContentUrn}
-		// Treat application/json AND any application/vnd.ivcap.* type as JSON
-		if job.ResultContentType != nil && isJSONContentType(*job.ResultContentType) && job.ResultContent != nil {
-			jsonBytes, err := json.MarshalIndent(job.ResultContent, "", "  ")
-			if err == nil {
-				lines := strings.Split(string(jsonBytes), "\n")
-				if len(lines) > jobResultPreviewLines {
-					outContent.preview = strings.Join(lines[:jobResultPreviewLines], "\n") + "\n..."
-				} else {
-					outContent.preview = strings.Join(lines, "\n")
-				}
-			}
-		}
-	}
-	// Also try the job.result.1 aspect for out-content-type / out-content-urn (fallback).
-	if outContent == nil && nextflowResultAspect == nil && jobResultAspect != nil {
-		outContent = fetchJobOutContent(ctxt, jobResultAspect)
-	}
-
-	return job, pyld, jobResultAspect, nextflowResultAspect, outContent, nil
+	return job, pyld, jobResultAspect, nextflowResultAspect, nil
 }
 
 // readJobResultAspect reads the job.result.1 aspect for a job (execution phase information)
@@ -428,13 +341,54 @@ func readJobResultAspect(ctxt context.Context, jobID string) map[string]any {
 	return nil
 }
 
-// isJSONContentType returns true for application/json and IVCAP vendor types
-// (application/vnd.ivcap.*), which are all JSON-based.
-func isJSONContentType(ct string) bool {
-	return ct == "application/json" || strings.HasPrefix(ct, "application/vnd.ivcap.")
+// readNextflowResultAspectFromJob reads the nextflow.result.1 aspect for a job
+func readNextflowResultAspectFromJob(ctxt context.Context, jobID string) map[string]any {
+	selector := sdk.AspectSelector{
+		Entity:         jobID,
+		SchemaPrefix:   "urn:ivcap:schema:nextflow.result.1",
+		IncludeContent: true,
+	}
+
+	list, _, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger)
+	if err != nil {
+		return nil
+	}
+
+	if len(list.Items) == 0 {
+		return nil
+	}
+
+	// Get the first (and should be only) item
+	if content, ok := list.Items[0].Content.(map[string]any); ok {
+		return content
+	}
+
+	return nil
 }
 
-func printJobListTable(list *aspect.ListResponseBody) {
+// truncateResultContent formats a text blob for display in the Result table row.
+// It limits to maxResultLines lines and maxResultLineWidth characters per line.
+// Truncation indicators are always placed on their own line.
+func truncateResultContent(text string) string {
+	lines := strings.Split(text, "\n")
+
+	// Truncate each individual line to maxResultLineWidth characters
+	for i, line := range lines {
+		if len(line) > maxResultLineWidth {
+			lines[i] = line[:maxResultLineWidth] + "..."
+		}
+	}
+
+	// Cap total line count; put the "more lines" notice on its own new line
+	if len(lines) > maxResultLines {
+		omitted := len(lines) - maxResultLines
+		lines = append(lines[:maxResultLines], fmt.Sprintf("... (%d more lines)", omitted))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func printJobListTable(list *aspect.ListResponseBody, wide bool) {
 	tw2 := table.NewWriter()
 	tw2.AppendHeader(table.Row{"ID", "Service", "Status", "Requested At"})
 	tw2.SetStyle(table.StyleLight)
@@ -484,7 +438,7 @@ func printJobListTable(list *aspect.ListResponseBody) {
 	fmt.Printf("\n%s\n\n", tw.Render())
 }
 
-func printJob(job *sdk.JobReadResponseBody, jobResultAspect map[string]any, nextflowResultAspect map[string]any, outContent *jobOutContent, wide bool) {
+func printJob(job *sdk.JobReadResponseBody, jobResultAspect map[string]any, nextflowResultAspect map[string]any, wide bool) {
 
 	tw := table.NewWriter()
 	tw.SetStyle(table.StyleLight)
@@ -534,21 +488,28 @@ func printJob(job *sdk.JobReadResponseBody, jobResultAspect map[string]any, next
 				}
 			}
 		}
-	} else if outContent != nil {
-		// Job result aspect contains out-content-urn: display it with history token
-		urnDisplay := fmt.Sprintf("%s (%s)", outContent.urn, MakeHistory(&outContent.urn))
-		rows = append(rows, table.Row{"Result", urnDisplay})
-		if outContent.preview != "" {
-			rows = append(rows, table.Row{"", outContent.preview})
-		}
 	} else {
-		// Fall back to old format: extract results_artifact_urn from result-content
+		// Show ResultContentUrn (if present) followed by the result content
+		// JSON truncated to maxResultLines lines so the terminal stays readable.
 		resultDisplay := "-"
-		if job.ResultContent != nil {
+		if job.ResultContentUrn != nil {
+			urn := *job.ResultContentUrn
+			resultDisplay = fmt.Sprintf("%s (%s)", urn, MakeHistory(&urn))
+			if job.ResultContent != nil {
+				if jsonBytes, err := json.MarshalIndent(job.ResultContent, "", "  "); err == nil {
+					resultDisplay += "\n" + truncateResultContent(string(jsonBytes))
+				}
+			}
+		} else if job.ResultContent != nil {
 			// Try to parse ResultContent as JSON and extract results_artifact_urn
 			if contentMap, ok := job.ResultContent.(map[string]interface{}); ok {
 				if artifactUrn, ok := contentMap["results_artifact_urn"].(string); ok && artifactUrn != "" {
 					resultDisplay = fmt.Sprintf("%s (%s)", artifactUrn, MakeHistory(&artifactUrn))
+				} else {
+					// No well-known URN field – render the raw content truncated
+					if jsonBytes, err := json.MarshalIndent(job.ResultContent, "", "  "); err == nil {
+						resultDisplay = truncateResultContent(string(jsonBytes))
+					}
 				}
 			}
 		}
