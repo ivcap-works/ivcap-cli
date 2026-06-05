@@ -16,8 +16,10 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
@@ -31,6 +33,15 @@ import (
 )
 
 const JOB_SCHEMA = "urn:ivcap:schema:job.2"
+
+// maxResultLines is the maximum number of text lines to show for a job result
+// in the human-readable table output.  Long results are truncated with a count
+// of the omitted lines so that the terminal output stays manageable.
+const maxResultLines = 10
+
+// maxResultLineWidth is the maximum number of characters per line when
+// displaying job result content.  Lines longer than this are trimmed with "..."
+const maxResultLineWidth = 80
 
 const CREATE_FROM_ASPECT = sdk.CreateFromAspectTemplate
 
@@ -355,6 +366,28 @@ func readNextflowResultAspectFromJob(ctxt context.Context, jobID string) map[str
 	return nil
 }
 
+// truncateResultContent formats a text blob for display in the Result table row.
+// It limits to maxResultLines lines and maxResultLineWidth characters per line.
+// Truncation indicators are always placed on their own line.
+func truncateResultContent(text string) string {
+	lines := strings.Split(text, "\n")
+
+	// Truncate each individual line to maxResultLineWidth characters
+	for i, line := range lines {
+		if len(line) > maxResultLineWidth {
+			lines[i] = line[:maxResultLineWidth] + "..."
+		}
+	}
+
+	// Cap total line count; put the "more lines" notice on its own new line
+	if len(lines) > maxResultLines {
+		omitted := len(lines) - maxResultLines
+		lines = append(lines[:maxResultLines], fmt.Sprintf("... (%d more lines)", omitted))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
 func printJobListTable(list *aspect.ListResponseBody, wide bool) {
 	tw2 := table.NewWriter()
 	tw2.AppendHeader(table.Row{"ID", "Service", "Status", "Requested At"})
@@ -456,13 +489,27 @@ func printJob(job *sdk.JobReadResponseBody, jobResultAspect map[string]any, next
 			}
 		}
 	} else {
-		// Fall back to old format: extract results_artifact_urn from result-content
+		// Show ResultContentUrn (if present) followed by the result content
+		// JSON truncated to maxResultLines lines so the terminal stays readable.
 		resultDisplay := "-"
-		if job.ResultContent != nil {
+		if job.ResultContentUrn != nil {
+			urn := *job.ResultContentUrn
+			resultDisplay = fmt.Sprintf("%s (%s)", urn, MakeHistory(&urn))
+			if job.ResultContent != nil {
+				if jsonBytes, err := json.MarshalIndent(job.ResultContent, "", "  "); err == nil {
+					resultDisplay += "\n" + truncateResultContent(string(jsonBytes))
+				}
+			}
+		} else if job.ResultContent != nil {
 			// Try to parse ResultContent as JSON and extract results_artifact_urn
 			if contentMap, ok := job.ResultContent.(map[string]interface{}); ok {
 				if artifactUrn, ok := contentMap["results_artifact_urn"].(string); ok && artifactUrn != "" {
 					resultDisplay = fmt.Sprintf("%s (%s)", artifactUrn, MakeHistory(&artifactUrn))
+				} else {
+					// No well-known URN field – render the raw content truncated
+					if jsonBytes, err := json.MarshalIndent(job.ResultContent, "", "  "); err == nil {
+						resultDisplay = truncateResultContent(string(jsonBytes))
+					}
 				}
 			}
 		}
