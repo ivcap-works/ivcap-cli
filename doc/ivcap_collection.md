@@ -23,7 +23,8 @@ Create and manage collections
 ### SEE ALSO
 
 * [ivcap](ivcap.md)	 - A command line tool to interact with a IVCAP deployment
-* [ivcap collection create](ivcap_collection_create.md)	 - Create a new collection
+* [ivcap collection add](ivcap_collection_add.md)	 - Add item(s) to an existing collection
+* [ivcap collection create](ivcap_collection_create.md)	 - Create a new collection definition
 * [ivcap collection get](ivcap_collection_get.md)	 - Get a specific collection record
 * [ivcap collection list](ivcap_collection_list.md)	 - List defined collections
 

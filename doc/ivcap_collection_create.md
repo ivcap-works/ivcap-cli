@@ -1,16 +1,26 @@
 ## ivcap collection create
 
-Create a new collection
+Create a new collection definition
+
+### Synopsis
+
+Create a new collection definition stored as a DataFabric aspect.
+
+The collectionURN must be a well-formed URN that will serve as the entity
+identifier for all collection-item records. After creating the collection,
+use 'collection add' to add artifact (or other entity) URNs to it.
 
 ```
-ivcap collection create collectionURN [flags] --dir
+ivcap collection create collectionURN [flags]
 ```
 
 ### Options
 
 ```
-      --dir string   Path to directory containing files to add to collection
-  -h, --help         help for create
+      --description string   Optional description of the collection
+  -h, --help                 help for create
+  -n, --name string          Human friendly name
+  -p, --policy string        Policy controlling access
 ```
 
 ### Options inherited from parent commands

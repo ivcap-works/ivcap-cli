@@ -404,6 +404,15 @@ func uploadArtifact(
 		cobra.CheckErr(fmt.Sprintf("while upload - %v", err))
 		return
 	}
+	if artifactCollection != "" {
+		if err = addItemToCollection(ctxt, artifactCollection, artifactID, adapter); err != nil {
+			cobra.CheckErr(fmt.Sprintf("while adding artifact '%s' to collection '%s' - %v", artifactID, artifactCollection, err))
+			return
+		}
+		if !silent {
+			fmt.Printf("Added artifact to collection '%s'\n", artifactCollection)
+		}
+	}
 	if silent {
 		// print artifact ID anyway
 		fmt.Printf("%s\n", artifactID)
