@@ -19,6 +19,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	log "go.uber.org/zap"
 
@@ -217,6 +218,15 @@ func CreateServiceJobRaw(ctxt context.Context, serviceId string, pyld adapter.Pa
 func GetJobEvents(ctxt context.Context, serviceId string, jobId string, lastEventID *string, onEvent func(*sse.Event), adpt *adapter.Adapter, logger *log.Logger) error {
 	path := serviceJobPath(serviceId, &jobId) + "/events"
 	return (*adpt).GetSSE(ctxt, path, lastEventID, onEvent, nil, logger)
+}
+
+/**** URN HELPERS ****/
+
+// IsServiceURN checks if a string is a valid IVCAP service URN.
+// Valid format: urn:ivcap:service:<something-non-empty>
+func IsServiceURN(id string) bool {
+	const prefix = "urn:ivcap:service:"
+	return strings.HasPrefix(id, prefix) && len(id) > len(prefix)
 }
 
 /**** UTILS ****/

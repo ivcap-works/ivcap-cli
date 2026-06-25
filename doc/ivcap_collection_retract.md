@@ -1,26 +1,25 @@
-## ivcap collection create
+## ivcap collection retract
 
-Create a new collection definition
+Fully retract a collection and all its item memberships
 
 ### Synopsis
 
-Create a new collection definition stored as a DataFabric aspect.
+Fully retract a collection from the DataFabric.
 
-The collectionURN must be a well-formed URN that will serve as the entity
-identifier for all collection-item records. After creating the collection,
-use 'collection add' to add artifact (or other entity) URNs to it.
+All collection-item aspects (urn:ivcap:schema:collection-item.1) for the
+collection are retracted first, then the collection definition aspect
+(urn:ivcap:schema:collection.1) itself is retracted.
+
+This operation cannot be undone.
 
 ```
-ivcap collection create collectionURN [flags]
+ivcap collection retract collectionURN [flags]
 ```
 
 ### Options
 
 ```
-      --description string   Optional description of the collection
-  -h, --help                 help for create
-  -n, --name string          Human friendly name
-  -p, --policy string        Policy controlling access
+  -h, --help   help for retract
 ```
 
 ### Options inherited from parent commands
