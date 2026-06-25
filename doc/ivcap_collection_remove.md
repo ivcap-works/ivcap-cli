@@ -1,26 +1,24 @@
-## ivcap collection create
+## ivcap collection remove
 
-Create a new collection definition
+Remove item(s) from a collection
 
 ### Synopsis
 
-Create a new collection definition stored as a DataFabric aspect.
+Remove one or more items from an existing collection.
 
-The collectionURN must be a well-formed URN that will serve as the entity
-identifier for all collection-item records. After creating the collection,
-use 'collection add' to add artifact (or other entity) URNs to it.
+For each item URN provided, the corresponding collection-item aspect
+(urn:ivcap:schema:collection-item.1) is retracted from the DataFabric.
+
+Items that are not currently members of the collection are silently skipped.
 
 ```
-ivcap collection create collectionURN [flags]
+ivcap collection remove collectionURN urn [urn...] [flags]
 ```
 
 ### Options
 
 ```
-      --description string   Optional description of the collection
-  -h, --help                 help for create
-  -n, --name string          Human friendly name
-  -p, --policy string        Policy controlling access
+  -h, --help   help for remove
 ```
 
 ### Options inherited from parent commands

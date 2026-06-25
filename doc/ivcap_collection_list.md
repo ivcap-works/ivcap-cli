@@ -2,6 +2,18 @@
 
 List defined collections
 
+### Synopsis
+
+List defined collections.
+
+Use --name to filter by the collection name stored in the aspect content.
+The value is a JSONPath comparison expression applied to the '$.name' field,
+for example:
+
+  ivcap collection list --name '== "My Collection"'
+  ivcap collection list --name 'starts with "test"'
+  ivcap collection list --name 'like_regex ".*ocean.*" flag "i"'
+
 ```
 ivcap collection list [flags]
 ```
@@ -13,6 +25,8 @@ ivcap collection list [flags]
       --filter string     filter list (e.g. "name~=Fred")
   -h, --help              help for list
   -l, --limit int         max number of records to be returned (default 10)
+      --name string       Filter by name using a JSONPath comparison expression applied to $.name,
+                          e.g. '== "My Collection"', 'starts with "test"', 'like_regex ".*research.*" flag "i"'
       --order-by string   feature to order list by (e.g. "created-at,status")
       --order-desc        if set, order in descending order
   -p, --page string       page cursor

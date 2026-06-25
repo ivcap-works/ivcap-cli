@@ -81,7 +81,8 @@ func ValidateEntityURN(entity string) error {
 
 	matchesPrefix := false
 	for _, prefix := range validatedPrefixes {
-		if strings.HasPrefix(entity, prefix) {
+		// Match either a full URN (entity starts with prefix) or a bare type name (entity + ":" equals prefix)
+		if strings.HasPrefix(entity, prefix) || entity+":"+"" == prefix {
 			matchesPrefix = true
 			break
 		}

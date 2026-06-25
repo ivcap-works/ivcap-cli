@@ -150,8 +150,8 @@ func TestMCPToolsList_InitiallyHasBuiltins(t *testing.T) {
 	if err := json.Unmarshal(b, &parsed); err != nil {
 		t.Fatalf("cannot unmarshal result: %v", err)
 	}
-	if len(parsed.Tools) != 11 {
-		t.Fatalf("expected 11 tools initially, got %d", len(parsed.Tools))
+	if len(parsed.Tools) != 16 {
+		t.Fatalf("expected 16 tools initially, got %d", len(parsed.Tools))
 	}
 	if parsed.Tools[0].Name != "select_tools" {
 		t.Fatalf("expected first tool to be select_tools, got %q", parsed.Tools[0].Name)
@@ -160,7 +160,7 @@ func TestMCPToolsList_InitiallyHasBuiltins(t *testing.T) {
 	for _, t0 := range parsed.Tools {
 		got[t0.Name] = true
 	}
-	if !got["select_tools"] || !got["artifact_create"] || !got["artifact_get"] || !got["aspect_search"] || !got["aspect_get"] || !got["aspect_create"] || !got["service_list"] || !got["service_get"] || !got["service_run"] || !got["nextflow_create"] || !got["nextflow_run"] {
+	if !got["select_tools"] || !got["artifact_create"] || !got["artifact_get"] || !got["aspect_search"] || !got["aspect_get"] || !got["aspect_create"] || !got["artifact_build"] || !got["service_list"] || !got["service_get"] || !got["service_run"] || !got["job_status"] || !got["verify_url"] || !got["nextflow_create"] || !got["nextflow_run"] || !got["read_skill"] || !got["search"] {
 		t.Fatalf("expected built-in tools; got %+v", got)
 	}
 }

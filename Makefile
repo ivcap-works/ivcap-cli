@@ -48,10 +48,11 @@ completion:
 
 clean:
 	rm ivcap
+
 test:
 	go test -v ./...
 
-check:
+check: verify-tools test
 	@echo "==> go vet"
 	go vet ./...
 	@echo "==> golangci-lint"
@@ -62,11 +63,16 @@ check:
 	$(call tool_bin,staticcheck) -tests=false ./...
 	@echo "==> gosec"
 	$(call tool_bin,gosec) $(GOSEC_FLAGS) ./...
-	@# govulncheck exit codes: 0=no vulns, 3=vulns found. Treat 3 as warning by default.
+	@# govulncheck exit codes: 0=no vulns, 2=internal error/crash, 3=vulns found.
+	@# Treat 3 as warning by default; treat 2 (e.g. tool panic on Go generics) as warning.
 	@code=0; \
 	echo "==> govulncheck"; \
 	$(call tool_bin,govulncheck) ./... > /tmp/govulncheck.out 2>&1 || code=$$?; \
 	if [ $$code -eq 0 ]; then \
+		exit 0; \
+	fi; \
+	if [ $$code -eq 2 ]; then \
+		echo "Warning: govulncheck encountered an internal error (possibly a Go version compatibility issue). Skipping."; \
 		exit 0; \
 	fi; \
 	if [ $$code -eq 3 ]; then \

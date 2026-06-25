@@ -54,6 +54,7 @@ ivcap skills show nextflow-mcp-tools
 - Services: `skills://file/service/SKILLS.md`
 - Jobs: `skills://file/job/SKILLS.md`
 - Artifacts: `skills://file/artifact/SKILLS.md`
+- Collections: `skills://file/collection/SKILLS.md`
 - Data Fabric: `skills://file/datafabric/SKILLS.md`
 
 ### Pipelines / workflows

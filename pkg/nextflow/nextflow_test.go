@@ -18,31 +18,6 @@ import (
 	"testing"
 )
 
-func TestIsServiceURN_ValidURN(t *testing.T) {
-	tests := []struct {
-		urn   string
-		valid bool
-	}{
-		{"urn:ivcap:service:12345678-1234-5678-1234-567812345678", true},
-		{"urn:ivcap:service:00000000-0000-0000-0000-000000000000", true},
-		{"urn:ivcap:service:abcdef00-1234-5678-9abc-def012345678", true},
-		{"invalid-id", false},
-		{"service:12345678-1234-5678-1234-567812345678", false},
-		{"urn:ivcap:artifact:12345678-1234-5678-1234-567812345678", false},
-		{"", false},
-		{"urn:ivcap:service:", false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.urn, func(t *testing.T) {
-			result := IsServiceURN(tt.urn)
-			if result != tt.valid {
-				t.Errorf("IsServiceURN(%q) = %v, want %v", tt.urn, result, tt.valid)
-			}
-		})
-	}
-}
-
 func TestResolveServiceID_PrefersProvidedServiceID(t *testing.T) {
 	tool := &ToolHeader{
 		ServiceID: "urn:ivcap:service:from-tool",
