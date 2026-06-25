@@ -441,36 +441,110 @@ func makeConfigFilePath(fileName string) (path string) {
 // streamJobEvents streams SSE events for a job, printing each to stdout.
 // maxMessages: if > 0, stop after that many events are printed.
 // lastEventID: if non-nil, resume streaming from that event ID.
+//
+// If the server closes the connection before a terminal event is observed
+// (i.e. a job phase of Succeeded / Failed / Error) the function automatically
+// reconnects using the last received event ID so that no events are replayed.
 func streamJobEvents(ctxt context.Context, serviceID, jobID string, lastEventID *string, maxMessages int) error {
 	msgCount := 0
+
+	// lastSeenID is updated on every incoming event so that reconnects resume
+	// from exactly where we left off.
+	lastSeenID := lastEventID
+	terminal := false
+
 	onEvent := func(msg *sse.Event) {
+		// Track the last received event ID for reconnect.
+		if len(msg.ID) > 0 {
+			id := string(msg.ID)
+			lastSeenID = &id
+		}
+
+		// Detect whether this event signals a terminal job state.
+		if isTerminalJobEvent(msg) {
+			terminal = true
+		}
+
 		if maxMessages > 0 && msgCount >= maxMessages {
 			return
 		}
 		msgCount++
 
+		fmt.Println("─────────")
+		if len(msg.Event) > 0 {
+			fmt.Printf("Event: %s\n", string(msg.Event))
+		}
+		if len(msg.ID) > 0 {
+			// Try to extract the "type" field from the JSON body and append it
+			// to the ID line for easier at-a-glance identification, e.g.:
+			//   ID: 00063365 - ivcap.job.succeeded
+			idLine := string(msg.ID)
+			var payload map[string]any
+			if err := json.Unmarshal(msg.Data, &payload); err == nil {
+				if t, ok := payload["type"].(string); ok && t != "" {
+					idLine = idLine + " - " + t
+				}
+			}
+			fmt.Printf("ID: %s\n", idLine)
+		}
 		var out bytes.Buffer
 		if err := json.Indent(&out, msg.Data, "", "  "); err == nil {
-			fmt.Println("─────────")
-			fmt.Printf("Event: %s\n", string(msg.Event))
-			if len(msg.ID) > 0 {
-				fmt.Printf("ID: %s\n", string(msg.ID))
-			}
 			fmt.Println(out.String())
 		} else {
-			// not JSON — print raw
-			fmt.Println("─────────")
-			fmt.Printf("Event: %s\n", string(msg.Event))
-			if len(msg.ID) > 0 {
-				fmt.Printf("ID: %s\n", string(msg.ID))
-			}
 			fmt.Println(string(msg.Data))
 		}
 	}
 
-	if err := sdk.GetJobEvents(ctxt, serviceID, jobID, lastEventID, onEvent, CreateAdapter(true), logger); err != nil {
-		return fmt.Errorf("failed to stream events: %w", err)
+	const reconnectDelay = 3 * time.Second
+	for {
+		if err := sdk.GetJobEvents(ctxt, serviceID, jobID, lastSeenID, onEvent, CreateAdapter(true), logger); err != nil {
+			return fmt.Errorf("failed to stream events: %w", err)
+		}
+		// Stream ended cleanly (server closed connection).
+		if terminal {
+			break
+		}
+		if maxMessages > 0 && msgCount >= maxMessages {
+			break
+		}
+		// Job still running — reconnect after a short pause.
+		logger.Sugar().Debugf("server closed connection, reconnecting in %s…", reconnectDelay)
+		select {
+		case <-ctxt.Done():
+			return ctxt.Err()
+		case <-time.After(reconnectDelay):
+		}
 	}
+
 	fmt.Println("─────────")
 	return nil
+}
+
+// isTerminalJobEvent returns true when the event indicates the job has reached
+// a final state (Succeeded, Failed, or Error) and no further events are expected.
+func isTerminalJobEvent(msg *sse.Event) bool {
+	var payload map[string]any
+	if err := json.Unmarshal(msg.Data, &payload); err != nil {
+		return false
+	}
+
+	// Argo-phase events carry the phase inside "data.phase".
+	if data, ok := payload["data"].(map[string]any); ok {
+		if phase, ok := data["phase"].(string); ok {
+			switch phase {
+			case "Succeeded", "Failed", "Error":
+				return true
+			}
+		}
+	}
+
+	// Generic IVCAP job-level completion event types.
+	if t, ok := payload["type"].(string); ok {
+		switch t {
+		case "ivcap.job.completed", "ivcap.job.failed", "ivcap.job.succeeded":
+			return true
+		}
+	}
+
+	return false
 }
