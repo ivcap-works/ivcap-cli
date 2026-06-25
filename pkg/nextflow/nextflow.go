@@ -575,16 +575,6 @@ func GuessArchiveContentType(p string) string {
 	return ct
 }
 
-// --- Service URN validation ----------------------------------------------------------
-
-// IsServiceURN checks if a string is a valid IVCAP service URN.
-// Valid format: urn:ivcap:service:<uuid>
-func IsServiceURN(id string) bool {
-	// Simple pattern: urn:ivcap:service:<something>
-	// More strict validation can be added later if needed
-	return strings.HasPrefix(id, "urn:ivcap:service:")
-}
-
 // ResolveServiceID resolves the service ID from either the provided ID or the tool header.
 // If providedID is non-empty and is a valid service URN, it's used.
 // Otherwise, the ServiceID from the tool header is used.
@@ -592,7 +582,7 @@ func IsServiceURN(id string) bool {
 func ResolveServiceID(providedID string, tool *ToolHeader) (string, error) {
 	// Prefer explicitly provided service ID if it's a valid URN
 	if providedID != "" {
-		if IsServiceURN(providedID) {
+		if sdk.IsServiceURN(providedID) {
 			return providedID, nil
 		}
 		return "", fmt.Errorf("provided service-id is not a valid service URN (expected format: urn:ivcap:service:<uuid>): %q", providedID)
@@ -608,7 +598,7 @@ func ResolveServiceID(providedID string, tool *ToolHeader) (string, error) {
 	}
 
 	// Validate the tool's service-id
-	if !IsServiceURN(toolServiceID) {
+	if !sdk.IsServiceURN(toolServiceID) {
 		return "", fmt.Errorf("service-id from tool definition is not a valid service URN (expected format: urn:ivcap:service:<uuid>): %q", toolServiceID)
 	}
 

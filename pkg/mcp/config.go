@@ -37,7 +37,7 @@ var ErrLoginRequired = errors.New(LoginRequiredMessage)
 func NewLoginRequiredResult() *mcpgo.CallToolResult {
 	return &mcpgo.CallToolResult{
 		Content: []mcpgo.Content{
-			mcpgo.NewTextContent("Authentication required. Your IVCAP session has expired. Please run 'ivcap context login' in your terminal to refresh your credentials, then retry."),
+			mcpgo.NewTextContent("Authentication required. Your IVCAP session has expired. Please run 'ivcap login' in your terminal to refresh your credentials, then retry."),
 		},
 		IsError: true,
 	}
