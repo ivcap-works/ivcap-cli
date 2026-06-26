@@ -1,0 +1,34 @@
+## ivcap package list
+
+list service packages
+
+### Synopsis
+
+List the service packages by image or image:tag under current account, image can have other account-id as prefix, if you have the permission to read.
+
+```
+ivcap package list image[:tag] [flags]
+```
+
+### Options
+
+```
+  -h, --help   help for list
+```
+
+### Options inherited from parent commands
+
+```
+      --access-token string   Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]
+      --context string        Context (deployment) to use
+      --debug                 Set logging level to DEBUG
+      --no-history            Do not store history
+  -o, --output string         Set format for displaying output [json, yaml]
+      --silent                Do not show any progress information
+      --timeout int           Max. number of seconds to wait for completion (default 30)
+```
+
+### SEE ALSO
+
+* [ivcap package](ivcap_package.md)	 - Push/pull and manage service packages
+

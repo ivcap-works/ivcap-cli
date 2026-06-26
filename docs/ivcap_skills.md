@@ -1,0 +1,37 @@
+## ivcap skills
+
+List and show agent skill docs embedded in this CLI release
+
+### Synopsis
+
+Skills are small, version-matched markdown documents embedded into this CLI.
+They are meant to be cheap and reliable for agents to access offline.
+
+Each skill file must start with YAML front-matter. Expected head-matter schema:
+  YAML front-matter delimited by '---' with required keys: name, version, description, requires.bins[]
+
+
+### Options
+
+```
+  -h, --help   help for skills
+```
+
+### Options inherited from parent commands
+
+```
+      --access-token string   Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]
+      --context string        Context (deployment) to use
+      --debug                 Set logging level to DEBUG
+      --no-history            Do not store history
+  -o, --output string         Set format for displaying output [json, yaml]
+      --silent                Do not show any progress information
+      --timeout int           Max. number of seconds to wait for completion (default 30)
+```
+
+### SEE ALSO
+
+* [ivcap](ivcap.md)	 - A command line tool to interact with a IVCAP deployment
+* [ivcap skills list](ivcap_skills_list.md)	 - List available skills
+* [ivcap skills show](ivcap_skills_show.md)	 - Show a skill doc (prints exact embedded SKILL.md content)
+
