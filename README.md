@@ -135,7 +135,7 @@ or scan the QR Code to be taken to the login page
 Waiting for authorisation...
 ```
 
-Follow this [link](./doc/ivcap_context.md) for more details about the `context` command.
+Follow this [link](./docs/ivcap_context.md) for more details about the `context` command.
 
 ### Service <a name="service"></a>
 
@@ -175,7 +175,7 @@ To get more details about a specific service
   Parameters  None
 ```
 
-Follow this [link](./doc/ivcap_service.md) for more details about the `service` command.
+Follow this [link](./docs/ivcap_service.md) for more details about the `service` command.
 
 ### Jobs <a name="job"></a>
 
@@ -388,7 +388,7 @@ To download the content associated with the artifact.
 Successfully wrote 50855 bytes to /tmp/out.png
 ```
 
-Follow this [link](./doc/ivcap_artifact.md) for more details about the `artifact` command.
+Follow this [link](./docs/ivcap_artifact.md) for more details about the `artifact` command.
 
 ### Collections <a name="collection"></a>
 
@@ -427,7 +427,7 @@ To list all collections:
 % ivcap collection list
 ```
 
-Follow this [link](./doc/ivcap_collection.md) for more details about the `collection` command.
+Follow this [link](./docs/ivcap_collection.md) for more details about the `collection` command.
 
 ### DataFabric <a name="datafabric"></a>
 
@@ -467,7 +467,7 @@ To add a new aspect:
 % ivcap datafabric add --entity urn:ivcap:entity:abc123 --schema my-schema:1 -f aspect.json
 ```
 
-Follow this [link](./doc/ivcap_datafabric.md) for more details about the `datafabric` command.
+Follow this [link](./docs/ivcap_datafabric.md) for more details about the `datafabric` command.
 
 ### Nextflow <a name="nextflow"></a>
 
@@ -515,7 +515,7 @@ To view job results and reports:
 % ivcap nextflow job-view <job-id>
 ```
 
-Follow this [link](./doc/ivcap_nextflow.md) for more details about the `nextflow` command.
+Follow this [link](./docs/ivcap_nextflow.md) for more details about the `nextflow` command.
 
 ### Queues <a name="queue"></a>
 
@@ -563,7 +563,7 @@ To dequeue messages:
 % ivcap queue dequeue my-queue
 ```
 
-Follow this [link](./doc/ivcap_queue.md) for more details about the `queue` command.
+Follow this [link](./docs/ivcap_queue.md) for more details about the `queue` command.
 
 ### Secrets <a name="secret"></a>
 
@@ -608,7 +608,7 @@ To get a specific secret:
 % ivcap secret get my-api-key
 ```
 
-Follow this [link](./doc/ivcap_secret.md) for more details about the `secret` command.
+Follow this [link](./docs/ivcap_secret.md) for more details about the `secret` command.
 
 ### Packages <a name="package"></a>
 
@@ -658,7 +658,7 @@ registry.kube-system.svc.cluster.local/0f0e3f57-80f7-4899-9b69-459af2efd789/cv_p
 registry.kube-system.svc.cluster.local/0f0e3f57-80f7-4899-9b69-459af2efd789/python:3.13.0
 ```
 
-Follow this [link](./doc/ivcap_package.md) for more details about the `package` command.
+Follow this [link](./docs/ivcap_package.md) for more details about the `package` command.
 
 ## Agent / automation usage
 

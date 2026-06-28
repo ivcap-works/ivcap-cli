@@ -18,7 +18,7 @@ archives:
   - builds:
       - ivcap  # refers to the build id
     files:
-      - doc/*.1
+      - man/*.1
 brews:
   - name: ivcap
     homepage: "https://github.com/ivcap-works/ivcap-cli"
@@ -30,7 +30,7 @@ brews:
       email: max.ott@data61.csiro.au
     install: |
       bin.install "ivcap"
-      man1.install Dir["doc/*.1"]
+      man1.install Dir["man/*.1"]
 checksum:
   name_template: "checksums.txt"
 snapshot:

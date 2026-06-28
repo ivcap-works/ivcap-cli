@@ -1,0 +1,30 @@
+## ivcap service get
+
+Fetch details about a single service
+
+```
+ivcap service get [flags] service_id
+```
+
+### Options
+
+```
+  -h, --help   help for get
+```
+
+### Options inherited from parent commands
+
+```
+      --access-token string   Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]
+      --context string        Context (deployment) to use
+      --debug                 Set logging level to DEBUG
+      --no-history            Do not store history
+  -o, --output string         Set format for displaying output [json, yaml]
+      --silent                Do not show any progress information
+      --timeout int           Max. number of seconds to wait for completion (default 30)
+```
+
+### SEE ALSO
+
+* [ivcap service](ivcap_service.md)	 - Create and manage services
+

@@ -1,0 +1,80 @@
+site_name: IVCAP CLI
+site_url: https://ivcap-works.github.io/ivcap-cli/
+site_description: >-
+  Command-line tool for interacting with an IVCAP deployment —
+  manage artifacts, jobs, services, queues, secrets, and more.
+
+theme:
+  name: material
+  logo: assets/logo/logo_white_32x32.png
+  favicon: assets/favicon.ico
+  font:
+    text: Roboto
+    code: Roboto Mono
+  palette:
+  - scheme: default
+    primary: indigo
+    toggle:
+      icon: material/toggle-switch-off-outline
+      name: Switch to dark mode
+  - scheme: slate
+    toggle:
+      icon: material/toggle-switch
+      name: Switch to light mode
+  features:
+  - navigation.tabs
+  - navigation.tabs.sticky
+  - navigation.sections
+  - navigation.indexes
+  - navigation.top
+  - navigation.footer
+  - navigation.path
+  - search.suggest
+  - search.highlight
+  - content.code.copy
+  - content.code.annotate
+
+docs_dir: docs
+site_dir: site
+
+validation:
+  nav:
+    omitted_files: ignore
+
+plugins:
+- search
+
+markdown_extensions:
+- attr_list
+- md_in_html
+- tables
+- admonition
+- pymdownx.details
+- pymdownx.superfences
+- pymdownx.highlight:
+    anchor_linenums: true
+- pymdownx.inlinehilite
+- pymdownx.tabbed:
+    alternate_style: true
+- toc:
+    permalink: true
+
+nav:
+- Home: index.md
+- Getting Started: getting-started.md
+- Root Command: ivcap.md
+- Command Reference:
+  - artifact: ivcap_artifact.md
+  - collection: ivcap_collection.md
+  - context: ivcap_context.md
+  - datafabric: ivcap_datafabric.md
+  - job: ivcap_job.md
+  - nextflow: ivcap_nextflow.md
+  - package: ivcap_package.md
+  - queue: ivcap_queue.md
+  - secret: ivcap_secret.md
+  - service: ivcap_service.md
+- Agent Support:
+  - agent-context: ivcap_agent-context.md
+  - mcp: ivcap_mcp.md
+  - skills: ivcap_skills.md
