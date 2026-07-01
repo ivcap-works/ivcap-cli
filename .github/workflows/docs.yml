@@ -1,0 +1,75 @@
+# .github/workflows/docs.yml
+#
+# Builds the MkDocs Material site and deploys it to the gh-pages branch.
+#
+# Triggered by:
+#   - Push to main that touches docs/, cmd/, mkdocs.yml, or ivcap.go
+#     (cmd/ and ivcap.go changes may alter the auto-generated command reference)
+#   - Manual workflow_dispatch (force a rebuild at any time)
+#
+# The generated site is pushed to the orphan `gh-pages` branch.
+# Enable GitHub Pages in repo Settings → Pages → Source: Deploy from branch → gh-pages / root.
+
+name: Deploy Docs
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "mkdocs.yml"
+      - "cmd/**"
+      - "ivcap.go"
+  workflow_dispatch:
+
+# Allow one concurrent deployment; cancel in-progress runs on the same branch.
+concurrency:
+  group: docs-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write # needed to push the gh-pages branch
+
+jobs:
+  deploy:
+    name: Build & deploy MkDocs site
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history (used by mkdocs git-revision-date plugin if added later)
+
+      # ── Go setup (regenerates cobra command reference) ──────────────────────
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: .go-version
+          cache: true
+
+      - name: Regenerate command reference (cobra → docs/ + man/)
+        run: make build-docs
+
+      # ── Python / MkDocs setup ────────────────────────────────────────────────
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install MkDocs Material
+        run: pip install mkdocs-material
+
+      # ── Build & deploy ───────────────────────────────────────────────────────
+      - name: Get short commit SHA
+        id: sha
+        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy to GitHub Pages
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          mkdocs gh-deploy --force --clean --message "docs: deploy ${{ steps.sha.outputs.short }} [skip ci]"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
