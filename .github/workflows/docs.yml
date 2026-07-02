@@ -1,14 +1,14 @@
 # .github/workflows/docs.yml
 #
-# Builds the MkDocs Material site and deploys it to the gh-pages branch.
+# Builds the MkDocs Material site via the squidfunk/mkdocs-material Docker
+# image (same image used by `make docs-serve` / `make docs-build` locally)
+# and deploys the result to the gh-pages branch.
 #
 # Triggered by:
-#   - Push to main that touches docs/, cmd/, mkdocs.yml, or ivcap.go
-#     (cmd/ and ivcap.go changes may alter the auto-generated command reference)
-#   - Manual workflow_dispatch (force a rebuild at any time)
+#   - Push to main that touches docs/, cmd/, mkdocs.yml, ivcap.go, or this file
+#   - Manual workflow_dispatch
 #
-# The generated site is pushed to the orphan `gh-pages` branch.
-# Enable GitHub Pages in repo Settings → Pages → Source: Deploy from branch → gh-pages / root.
+# Enable GitHub Pages in repo Settings → Pages → Source: gh-pages branch / root.
 
 name: Deploy Docs
 
@@ -20,9 +20,10 @@ on:
       - "mkdocs.yml"
       - "cmd/**"
       - "ivcap.go"
+      - ".github/workflows/docs.yml"
   workflow_dispatch:
 
-# Allow one concurrent deployment; cancel in-progress runs on the same branch.
+# Cancel in-progress deploys on the same branch.
 concurrency:
   group: docs-deploy-${{ github.ref }}
   cancel-in-progress: true
@@ -39,9 +40,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # full history (used by mkdocs git-revision-date plugin if added later)
+          fetch-depth: 0
 
-      # ── Go setup (regenerates cobra command reference) ──────────────────────
+      # ── Go: regenerate cobra command reference ───────────────────────────────
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
@@ -51,25 +52,19 @@ jobs:
       - name: Regenerate command reference (cobra → docs/ + man/)
         run: make build-docs
 
-      # ── Python / MkDocs setup ────────────────────────────────────────────────
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-          cache: pip
-
-      - name: Install MkDocs Material
-        run: pip install mkdocs-material
-
-      # ── Build & deploy ───────────────────────────────────────────────────────
-      - name: Get short commit SHA
-        id: sha
-        run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
-
-      - name: Deploy to GitHub Pages
+      # ── Docker: build MkDocs site (squidfunk/mkdocs-material) ───────────────
+      - name: Build MkDocs site via Docker
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          mkdocs gh-deploy --force --clean --message "docs: deploy ${{ steps.sha.outputs.short }} [skip ci]"
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          docker run --rm \
+            -v "${{ github.workspace }}":/docs \
+            squidfunk/mkdocs-material build --clean
+
+      # ── Deploy built site/ to gh-pages branch ───────────────────────────────
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          commit_message: "docs: deploy ${{ github.sha }} [skip ci]"
+          user_name: "github-actions[bot]"
+          user_email: "github-actions[bot]@users.noreply.github.com"
