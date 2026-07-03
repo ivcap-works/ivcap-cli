@@ -328,7 +328,7 @@ var (
 				// Use local flags for behaviour.
 				watchFlag = nextflowRunWatchFlag
 				streamFlag = nextflowRunStreamFlag
-				return waitForResult(ctxt, jobCreate, serviceID)
+				return waitForResult(ctxt, jobCreate)
 			}
 			reply, err := res.AsObject()
 			if err != nil {

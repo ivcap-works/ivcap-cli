@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 
 	"crypto/md5" // #nosec G501
@@ -23,6 +24,7 @@ import (
 	"io"
 	"path/filepath"
 
+	"github.com/gabriel-vasile/mimetype"
 	api "github.com/ivcap-works/ivcap-core-api/http/artifact"
 
 	"net/http"
@@ -60,14 +62,14 @@ func init() {
 	addFlags(createArtifactCmd, []Flag{Name, Policy})
 	createArtifactCmd.Flags().StringVarP(&artifactCollection, "collection", "c", "", "Assigns artifact to a specific collection")
 	createArtifactCmd.Flags().StringVarP(&fileName, "file", "f", "", "Path to file containing artifact content")
-	createArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact")
+	createArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact (auto-detected from file header when omitted)")
 	createArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
 	createArtifactCmd.Flags().BoolVar(&force, "force", false, "Force creation of new artifact, even if already uploaded")
 
 	// UPLOAD
 	artifactCmd.AddCommand(uploadArtifactCmd)
 	uploadArtifactCmd.Flags().StringVarP(&fileName, "file", "f", "", "Path to file containing artifact content")
-	uploadArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact")
+	uploadArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact (auto-detected from file header when omitted)")
 	uploadArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
 
 	// // ADD METADATA
@@ -187,6 +189,18 @@ var (
 	createArtifactCmd = &cobra.Command{
 		Use:   "create [flags] -n name -f file|-",
 		Short: "Create a new artifact",
+		Long: `Create a new artifact by uploading file content to IVCAP.
+
+The MIME content-type is auto-detected from the file header when -t/--content-type
+is omitted.  Detection uses the 'mimetype' library (500+ formats) with the following
+extension-based overrides for types whose magic bytes are ambiguous:
+
+  .tar.gz / .tgz  →  application/x-compressed-tar
+  .nc / .nc4      →  application/netcdf
+
+When reading from stdin (-f -) the first 512 bytes are sniffed and then replayed
+into the upload stream so no data is lost.  For piped tar.gz streams where the
+extension is unavailable, pass -t application/x-compressed-tar explicitly.`,
 
 		Run: func(cmd *cobra.Command, args []string) {
 			uploadArtifact(fileName, force, artifactCollection)
@@ -572,6 +586,16 @@ func getReader(fileName string, proposedFormat string) (reader io.Reader, format
 	size = -1 // -1 indicates that we can't obtain size
 	if fileName == "-" {
 		file = os.Stdin
+		if proposedFormat == "" {
+			// stdin is not seekable, so read a small header for detection then
+			// stitch it back via io.MultiReader so the upload receives all bytes.
+			header := make([]byte, 512)
+			n, _ := file.Read(header)
+			mt := mimetype.Detect(header[:n])
+			format = mt.String()
+			reader = io.MultiReader(bytes.NewReader(header[:n]), file)
+			return
+		}
 	} else {
 		if file, err = os.Open(filepath.Clean(fileName)); err != nil {
 			cobra.CheckErr(fmt.Sprintf("while opening data file '%s' - %v", fileName, err))
@@ -592,20 +616,44 @@ func getReader(fileName string, proposedFormat string) (reader io.Reader, format
 	return
 }
 
+// getFileContentType detects the MIME type of a file using the mimetype library
+// (github.com/gabriel-vasile/mimetype), which recognises 500+ formats via
+// hierarchical magic-byte detection and greatly outperforms the stdlib's
+// http.DetectContentType for uncommon types.
+//
+// Known limitation: neither mimetype nor the stdlib can distinguish a gzip-compressed
+// tar archive (.tar.gz / .tgz) from a plain gzip file (.gz) because both present
+// identical gzip magic bytes and mimetype does not decompress to inspect the inner
+// content.  An extension-based override table is therefore applied after detection
+// to handle this and other research-specific types that lack unique magic bytes.
+//
+// Falls back to net/http.DetectContentType if the mimetype library fails.
 func getFileContentType(file *os.File) (contentType string, err error) {
-	buf := make([]byte, 512)
-	_, err = file.Read(buf)
-	if err != nil {
-		return
-	}
-	contentType = http.DetectContentType(buf)
-	if contentType == "application/octet-stream" {
-		// see if we can do better
-		n := file.Name()
-		if strings.HasSuffix(n, ".nc") {
-			contentType = "application/netcdf"
+	// mimetype.DetectFile opens its own file descriptor, leaving our handle at position 0.
+	if mt, mErr := mimetype.DetectFile(file.Name()); mErr == nil {
+		contentType = mt.String()
+	} else {
+		// Fallback: stdlib sniffing on the first 512 bytes.
+		buf := make([]byte, 512)
+		if _, err = file.Read(buf); err != nil {
+			return
 		}
+		contentType = http.DetectContentType(buf)
 	}
+
+	// Extension-based overrides.
+	// Add new research-specific types here as needed.
+	n := file.Name()
+	switch {
+	// gzip+tar: magic bytes are identical to a plain .gz, so rely on extension.
+	case strings.HasSuffix(n, ".tar.gz") || strings.HasSuffix(n, ".tgz"):
+		contentType = "application/x-compressed-tar"
+	// NetCDF classic (CDF magic) and NetCDF-4/HDF5 both often fall through as octet-stream.
+	case contentType == "application/octet-stream" && (strings.HasSuffix(n, ".nc") || strings.HasSuffix(n, ".nc4")):
+		contentType = "application/netcdf"
+	}
+
+	// Seek back so the caller can stream the full file content.
 	_, err = file.Seek(0, 0)
 	return
 }

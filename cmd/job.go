@@ -136,20 +136,24 @@ var (
 	}
 
 	eventsJobCmd = &cobra.Command{
-		Use:   "events [flags] service-id job-id",
+		Use:   "events [flags] job-id",
 		Short: "Stream events for a job",
 		Long: `Stream job-related events in real-time. Events are displayed as they occur.
+The service-id is resolved automatically from the job record in the datafabric.
 
 Examples:
-  ivcap job events urn:ivcap:service:123 urn:ivcap:job:456
-  ivcap job events --max-messages 10 service-id job-id
-  ivcap job events --last-event-id abc123 service-id job-id`,
-		Args: cobra.ExactArgs(2),
+  ivcap job events urn:ivcap:job:456
+  ivcap job events --max-messages 10 job-id
+  ivcap job events --last-event-id abc123 job-id`,
+		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			serviceID := GetHistory(args[0])
-			jobID := GetHistory(args[1])
+			jobID := GetHistory(args[0])
 			ctxt := context.Background()
 
+			serviceID, err := getServiceIDForJob(ctxt, jobID)
+			if err != nil {
+				return err
+			}
 			var lastID *string
 			if lastEventID != "" {
 				lastID = &lastEventID
@@ -192,7 +196,7 @@ provided through 'stdin' use '-' as the file name and also include the --format 
 				return err
 			}
 			if jobCreate != nil {
-				return waitForResult(ctxt, jobCreate, serviceID)
+				return waitForResult(ctxt, jobCreate)
 			}
 			reply, err := res.AsObject()
 			if err != nil {
@@ -210,9 +214,7 @@ provided through 'stdin' use '-' as the file name and also include the --format 
 func waitForResult(
 	ctxt context.Context,
 	jobCreate *sdk.JobCreateT,
-	serviceID string,
 ) error {
-	// jobCreate.ServiceID = serviceID
 	if streamFlag {
 		return streamJobResults(ctxt, jobCreate)
 	}
@@ -281,24 +283,33 @@ func displayJob(job *sdk.JobReadResponseBody, pyld a.Payload, jobResultAspect ma
 	return nil
 }
 
-func readJob(ctxt context.Context, jobID string) (*sdk.JobReadResponseBody, a.Payload, map[string]any, map[string]any, error) {
+// getServiceIDForJob fetches the service-id for a job from the datafabric.
+func getServiceIDForJob(ctxt context.Context, jobID string) (string, error) {
 	selector := sdk.AspectSelector{
 		Entity:         jobID,
 		SchemaPrefix:   JOB_SCHEMA,
 		IncludeContent: true,
 	}
-	var serviceId string
-	if list, _, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger); err == nil {
-		if len(list.Items) != 1 {
-			cobra.CheckErr("Cannot find job")
-		}
-		c := list.Items[0].Content.(map[string]any)
-		if s, ok := c["service-id"].(string); ok {
-			serviceId = s
-		} else {
-			cobra.CheckErr("Cannot find 'service-id' for this job")
-		}
-	} else {
+	list, _, err := sdk.ListAspect(ctxt, selector, CreateAdapter(true), logger)
+	if err != nil {
+		return "", err
+	}
+	if len(list.Items) != 1 {
+		return "", fmt.Errorf("cannot find job %q", jobID)
+	}
+	c, ok := list.Items[0].Content.(map[string]any)
+	if !ok {
+		return "", fmt.Errorf("unexpected content type for job %q", jobID)
+	}
+	if s, ok := c["service-id"].(string); ok {
+		return s, nil
+	}
+	return "", fmt.Errorf("cannot find 'service-id' for job %q", jobID)
+}
+
+func readJob(ctxt context.Context, jobID string) (*sdk.JobReadResponseBody, a.Payload, map[string]any, map[string]any, error) {
+	serviceId, err := getServiceIDForJob(ctxt, jobID)
+	if err != nil {
 		return nil, nil, nil, nil, err
 	}
 	req := &sdk.ReadServiceJobRequest{ServiceId: serviceId, JobId: jobID}
