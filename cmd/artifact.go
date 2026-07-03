@@ -18,6 +18,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"mime"
 
 	"crypto/md5" // #nosec G501
 	"fmt"
@@ -62,14 +63,14 @@ func init() {
 	addFlags(createArtifactCmd, []Flag{Name, Policy})
 	createArtifactCmd.Flags().StringVarP(&artifactCollection, "collection", "c", "", "Assigns artifact to a specific collection")
 	createArtifactCmd.Flags().StringVarP(&fileName, "file", "f", "", "Path to file containing artifact content")
-	createArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact (auto-detected from file header when omitted)")
+	createArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact; auto-detected when omitted. Accepts a full MIME type (e.g. application/x-compressed-tar) or a bare extension (e.g. tgz, nc, fasta)")
 	createArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
 	createArtifactCmd.Flags().BoolVar(&force, "force", false, "Force creation of new artifact, even if already uploaded")
 
 	// UPLOAD
 	artifactCmd.AddCommand(uploadArtifactCmd)
 	uploadArtifactCmd.Flags().StringVarP(&fileName, "file", "f", "", "Path to file containing artifact content")
-	uploadArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact (auto-detected from file header when omitted)")
+	uploadArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact; auto-detected when omitted. Accepts a full MIME type (e.g. application/x-compressed-tar) or a bare extension (e.g. tgz, nc, fasta)")
 	uploadArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
 
 	// // ADD METADATA
@@ -192,15 +193,24 @@ var (
 		Long: `Create a new artifact by uploading file content to IVCAP.
 
 The MIME content-type is auto-detected from the file header when -t/--content-type
-is omitted.  Detection uses the 'mimetype' library (500+ formats) with the following
-extension-based overrides for types whose magic bytes are ambiguous:
+is omitted.  Detection uses the 'mimetype' library (500+ formats) with extension-based
+overrides for ambiguous types (e.g. .tar.gz → application/x-compressed-tar).
 
-  .tar.gz / .tgz  →  application/x-compressed-tar
-  .nc / .nc4      →  application/netcdf
+When -t is provided it accepts either a full MIME type or a bare file extension:
 
-When reading from stdin (-f -) the first 512 bytes are sniffed and then replayed
-into the upload stream so no data is lost.  For piped tar.gz streams where the
-extension is unavailable, pass -t application/x-compressed-tar explicitly.`,
+  -t application/x-compressed-tar   full MIME type
+  -t tgz                            bare extension (same result)
+  -t .tar.gz                        extension with dot (same result)
+
+Supported extension shorthands include (but are not limited to):
+  Archives:     tar, tgz/tar.gz, gz, bz2, xz, zst
+  Earth/env:    nc/nc4, fits/fit/fts, hdf5/h5, zarr
+  Bioinformat.: fasta/fa/fna/faa, fastq/fq, bam, sam, vcf, bcf, bed, gff, gff3, gtf
+  Data science: parquet, arrow, mat, npy, npz
+
+When reading from stdin (-f -) the first 512 bytes are sniffed and replayed into the
+upload stream so no data is lost.  For piped tar.gz streams (where the extension is
+unavailable) pass -t tgz or -t application/x-compressed-tar explicitly.`,
 
 		Run: func(cmd *cobra.Command, args []string) {
 			uploadArtifact(fileName, force, artifactCollection)
@@ -576,11 +586,83 @@ func printArtifact(artifact *api.ReadResponseBody, meta *asapi.ListResponseBody,
 	fmt.Printf("\n%s\n\n", tw.Render())
 }
 
+// extensionMIMEOverrides maps bare file extensions (with leading dot, lower-case) to
+// canonical MIME types.  Entries here take priority over mime.TypeByExtension so that
+// research-specific and ambiguous types (e.g. gzip+tar vs plain gzip) are handled
+// correctly.  Add new types here as the user-base requires them.
+var extensionMIMEOverrides = map[string]string{
+	// archives
+	".tar.gz": "application/x-compressed-tar",
+	".tgz":    "application/x-compressed-tar",
+	".tar":    "application/x-tar",
+	".gz":     "application/gzip",
+	".bz2":    "application/x-bzip2",
+	".xz":     "application/x-xz",
+	".zst":    "application/zstd",
+	// Earth / environmental science
+	".nc":   "application/netcdf",
+	".nc4":  "application/netcdf",
+	".fits": "image/fits",
+	".fit":  "image/fits",
+	".fts":  "image/fits",
+	".hdf5": "application/x-hdf5",
+	".h5":   "application/x-hdf5",
+	".zarr": "application/x-zarr",
+	// bioinformatics
+	".fasta": "application/x-fasta",
+	".fa":    "application/x-fasta",
+	".fna":   "application/x-fasta", // nucleotide FASTA
+	".faa":   "application/x-fasta", // amino-acid FASTA
+	".fastq": "application/x-fastq",
+	".fq":    "application/x-fastq",
+	".bam":   "application/x-bam",
+	".sam":   "text/x-sam",
+	".vcf":   "text/x-vcf", // variant call format (NOT vCard)
+	".bcf":   "application/x-bcf",
+	".bed":   "text/x-bed",
+	".gff":   "text/x-gff",
+	".gff2":  "text/x-gtf", // GFF2 == GTF
+	".gff3":  "text/x-gff3",
+	".gtf":   "text/x-gtf",
+	// data science / tabular
+	".parquet": "application/vnd.apache.parquet",
+	".arrow":   "application/vnd.apache.arrow.file",
+	".mat":     "application/x-matlab-data",
+	".npy":     "application/x-numpy",
+	".npz":     "application/x-numpy-archive",
+}
+
+// normalizeContentType converts a bare file extension (e.g. "tgz", ".tar.gz", "fasta")
+// into its canonical MIME type.  If the input already contains a "/" it is returned
+// unchanged, so valid MIME type strings pass through without modification.
+//
+// Lookup order:
+//  1. extensionMIMEOverrides (research-specific and ambiguous types)
+//  2. mime.TypeByExtension  (system MIME database — common web/office types)
+//  3. input unchanged       (unknown extension; let the server decide)
+func normalizeContentType(s string) string {
+	if s == "" || strings.Contains(s, "/") {
+		return s
+	}
+	ext := strings.ToLower(strings.TrimSpace(s))
+	if !strings.HasPrefix(ext, ".") {
+		ext = "." + ext
+	}
+	if mt, ok := extensionMIMEOverrides[ext]; ok {
+		return mt
+	}
+	if mt := mime.TypeByExtension(ext); mt != "" {
+		// mime.TypeByExtension can append charset params; strip them for consistency.
+		return strings.SplitN(mt, ";", 2)[0]
+	}
+	return s // unknown — pass through
+}
+
 func getReader(fileName string, proposedFormat string) (reader io.Reader, format string, size int64) {
 	if fileName == "" {
 		cobra.CheckErr("Missing file name '-f'")
 	}
-	format = proposedFormat
+	format = normalizeContentType(proposedFormat)
 	var file *os.File
 	var err error
 	size = -1 // -1 indicates that we can't obtain size
