@@ -2,310 +2,310 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/getting-started/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_agent-context/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_artifact/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_artifact_create/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_artifact_download/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_artifact_get/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_artifact_list/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_artifact_tar/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_artifact_tar_clean/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_artifact_tar_download/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_artifact_tar_list/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_artifact_upload/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_collection/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_collection_add/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_collection_create/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_collection_get/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_collection_list/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_collection_remove/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_collection_retract/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_context/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_context_create/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_context_get/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_context_list/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_context_login/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_context_logout/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_context_set/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_datafabric/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_datafabric_add/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_datafabric_get/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_datafabric_query/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_datafabric_retract/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_datafabric_update/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_job/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_job_create/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_job_events/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_job_get/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_job_list/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_mcp/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_nextflow/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_nextflow_create/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_nextflow_events/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_nextflow_job-get/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_nextflow_job-result/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_nextflow_job-view/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_nextflow_list-jobs/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_nextflow_list-pipelines/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_nextflow_retract/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_nextflow_run/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_nextflow_update/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_package/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_package_list/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_package_pull/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_package_push/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_package_remove/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_queue/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_queue_create/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_queue_delete/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_queue_dequeue/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_queue_enqueue/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_queue_get/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_queue_list/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_secret/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_secret_get/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_secret_list/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_secret_set/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_service/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_service_create/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_service_get/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_service_list/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_service_search/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_service_update/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_skills/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_skills_list/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_skills_show/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
     <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/overview/</loc>
-         <lastmod>2026-07-02</lastmod>
+         <lastmod>2026-07-03</lastmod>
     </url>
 </urlset>
