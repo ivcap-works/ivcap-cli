@@ -10,7 +10,7 @@ ivcap artifact upload artifactID -f file|- [flags]
 
 ```
       --chunk-size int        Chunk size for splitting large files (default 10000000)
-  -t, --content-type string   Content type of artifact
+  -t, --content-type string   Content type of artifact; auto-detected when omitted. Accepts a full MIME type (e.g. application/x-compressed-tar) or a bare extension (e.g. tgz, nc, fasta)
   -f, --file string           Path to file containing artifact content
   -h, --help                  help for upload
 ```

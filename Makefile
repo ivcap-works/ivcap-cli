@@ -87,7 +87,7 @@ check: verify-tools test
 	@echo "==> golangci-lint"
 	$(call tool_bin,golangci-lint) run --tests=false ./...
 	@echo "==> gocritic"
-	$(call tool_bin,gocritic) check -checkTests=false ./...
+	$(call tool_bin,gocritic) check -checkTests=false -enable unusedparams ./...
 	@echo "==> staticcheck"
 	$(call tool_bin,staticcheck) -tests=false ./...
 	@echo "==> gosec"
@@ -120,11 +120,18 @@ check: verify-tools test
 	exit $$code
 
 release: addlicense check build-docs
-  # git tag -a v0.4.0 -m "..."
-	# export GITHUB_TOKEN=$(cat .github-release-token)
-	# or eval $(cat .github-release-token)
-	# brew install goreleaser
-	goreleaser release --clean
+	@# Resolve GITHUB_TOKEN: env var takes priority, then .github-release-token file.
+	@# Usage: git tag -a v0.4.0 -m "..." && make release
+	@if [ -z "$$GITHUB_TOKEN" ] && [ -f .github-release-token ]; then \
+		export GITHUB_TOKEN=$$(cat .github-release-token); \
+	fi; \
+	if [ -z "$$GITHUB_TOKEN" ]; then \
+		echo "Error: GITHUB_TOKEN is not set and .github-release-token file not found."; \
+		echo "  Either: export GITHUB_TOKEN=<token>"; \
+		echo "  Or:     echo <token> > .github-release-token"; \
+		exit 1; \
+	fi; \
+	GITHUB_TOKEN=$$GITHUB_TOKEN goreleaser release --clean
 
 addlicense:
 	# go install github.com/google/addlicense@latest
