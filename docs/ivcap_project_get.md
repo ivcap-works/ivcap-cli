@@ -1,16 +1,15 @@
-## ivcap context get
+## ivcap project get
 
-Display the current context
+Fetch details about a single project
 
 ```
-ivcap context get [all|name|account-id|url|access-token] [flags]
+ivcap project get [flags] project_id
 ```
 
 ### Options
 
 ```
-  -h, --help            help for get
-      --refresh-token   if set, refresh access token if expired
+  -h, --help   help for get
 ```
 
 ### Options inherited from parent commands
@@ -27,5 +26,5 @@ ivcap context get [all|name|account-id|url|access-token] [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage and set access to various IVCAP deployments
+* [ivcap project](ivcap_project.md)	 - Manage projects and select the current one
 

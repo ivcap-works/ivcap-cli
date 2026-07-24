@@ -1,4 +1,4 @@
-// Copyright 2023 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
+// Copyright 2026 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -34,6 +34,19 @@ import (
 
 var refreshTokenParam string
 
+const (
+	// IVCAP_CLI_CLIENT_ID is the public OAuth2 client id registered for the CLI
+	// in ivcap-id's Hydra (compiled in; discovery's non-standard
+	// ivcap_cli_client_id field is intentionally ignored).
+	IVCAP_CLI_CLIENT_ID = "ivcap-cli"
+	// OIDC_DISCOVERY_PATH is proxied by the platform gateway to ivcap-id and
+	// returns absolute token/device/jwks endpoints.
+	OIDC_DISCOVERY_PATH = "/.well-known/openid-configuration"
+
+	authModeOIDC   = "oidc"
+	authModeLegacy = "legacy"
+)
+
 func init() {
 	contextCmd.AddCommand(loginCmd)
 	var flags = loginCmd.Flags()
@@ -55,6 +68,10 @@ var logoutCmd = &cobra.Command{
 		ctxt.AccessToken = ""
 		ctxt.AccessTokenExpiry = time.Time{}
 		ctxt.RefreshToken = ""
+		ctxt.IDToken = ""
+		ctxt.AuthMode = ""
+		ctxt.CurrentProject = ""
+		ctxt.AccountID = ""
 		SetContext(ctxt, true)
 		return
 	},
@@ -91,6 +108,16 @@ type AuthProvider struct {
 	grantType string
 }
 
+// OIDCDiscovery is the subset of the OIDC discovery document the CLI needs.
+// The endpoints are absolute URLs (rewritten by ivcap-id to point at itself).
+type OIDCDiscovery struct {
+	Issuer                      string `json:"issuer"`
+	TokenEndpoint               string `json:"token_endpoint"`
+	DeviceAuthorizationEndpoint string `json:"device_authorization_endpoint"`
+	JwksURI                     string `json:"jwks_uri"`
+	// ivcap_cli_client_id is intentionally NOT read; the client id is compiled in.
+}
+
 type DeviceCode struct {
 	DeviceCode              string `json:"device_code"`
 	UserCode                string `json:"user_code"`
@@ -106,8 +133,6 @@ type CustomIdClaims struct {
 	Email         string   `json:"email,omitempty"`
 	EmailVerified bool     `json:"email_verified,omitempty"`
 	Avatar        string   `json:"picture,omitempty"`
-	AccountID     string   `json:"acc"`
-	ProviderID    string   `json:"ivcap/claims/provider,omitempty"`
 	GroupIDs      []string `json:"ivcap/claims/groupIds,omitempty"`
 	jwt.RegisteredClaims
 }
@@ -150,8 +175,17 @@ func getAccessToken(refreshIfExpired bool) (accessToken string) {
 			cobra.CheckErr("Could not login - invalid credentials. Please use the login command to refresh your credentials")
 		}
 
-		// Access token has expired, we have to refresh it
-		authProvider := getLoginInformation(ctxt)
+		// Access token has expired, we have to refresh it. Resolve endpoints the
+		// same way we did at login: OIDC discovery for the new flow, else authinfo.
+		var authProvider *AuthProvider
+		if ctxt.AuthMode == authModeOIDC {
+			if d, err := fetchOIDCDiscovery(ctxt); err == nil {
+				authProvider = authProviderFromDiscovery(d)
+			}
+		}
+		if authProvider == nil {
+			authProvider = getLoginInformation(ctxt)
+		}
 		authProvider.grantType = "refresh_token"
 
 		if (authProvider.TokenURL != "") && (authProvider.ClientID != "") {
@@ -186,7 +220,7 @@ func IsAuthorised() bool {
 	return getAccessToken(false) != ""
 }
 
-func getTokenResponse(authProvider *AuthProvider, params url.Values, ctxt *Context, allowStatusForbidden bool) (tokenResponse deviceTokenResponse) {
+func getTokenResponse(authProvider *AuthProvider, params url.Values, ctxt *Context, allowOAuthError bool) (tokenResponse deviceTokenResponse) {
 	adapter := CreateAdapter(false)
 	params.Set("grant_type", authProvider.grantType)
 	params.Set("client_id", authProvider.ClientID)
@@ -199,13 +233,15 @@ func getTokenResponse(authProvider *AuthProvider, params url.Values, ctxt *Conte
 	var err error
 	pyld, err = (*adapter).PostForm(ctx, authProvider.TokenURL, params, nil, logger)
 	if err != nil {
+		// Per RFC 8628/6749 the token endpoint signals OAuth errors (e.g.
+		// "authorization_pending", "slow_down", "invalid_grant") with a 400
+		// Bad Request and a JSON error body. Auth0 used 403 for some of these.
+		// When the caller expects such errors, extract the body so the
+		// error-string handling below can act on it; otherwise abort.
 		var apiErr *adpt.ApiError
-		if errors.As(err, &apiErr) && allowStatusForbidden {
-			if apiErr.StatusCode == http.StatusForbidden {
-				pyld = apiErr.Payload
-			} else {
-				cobra.CheckErr(fmt.Sprintf("Cannot obtain OAuth Token, please try `ivcap context login`. Error detail: - %s", err))
-			}
+		if errors.As(err, &apiErr) && allowOAuthError &&
+			(apiErr.StatusCode == http.StatusBadRequest || apiErr.StatusCode == http.StatusForbidden) {
+			pyld = apiErr.Payload
 		} else {
 			cobra.CheckErr(fmt.Sprintf("Cannot obtain OAuth Token, please try `ivcap context login`. Error detail: - %s", err))
 			return // never reached
@@ -227,6 +263,55 @@ func getTokenResponse(authProvider *AuthProvider, params url.Values, ctxt *Conte
 		cobra.CheckErr("Could not login - expired credentials. Please use the login command to refresh your credentials")
 	}
 	return
+}
+
+// fetchOIDCDiscovery retrieves the OIDC discovery document from the context's
+// base URL (proxied by the gateway to ivcap-id). It returns an error (rather than
+// aborting) so callers can fall back to the deprecated authinfo.yaml flow.
+func fetchOIDCDiscovery(ctxt *Context) (*OIDCDiscovery, error) {
+	adpt := CreateAdapter(false)
+
+	ctx, cancel := NewTimeoutContext()
+	defer cancel()
+
+	pyld, err := (*adpt).Get(ctx, OIDC_DISCOVERY_PATH, logger)
+	if err != nil {
+		return nil, err
+	}
+	var d OIDCDiscovery
+	if err := pyld.AsType(&d); err != nil {
+		return nil, fmt.Errorf("cannot parse OIDC discovery document: %w", err)
+	}
+	if d.TokenEndpoint == "" || d.DeviceAuthorizationEndpoint == "" {
+		return nil, fmt.Errorf("OIDC discovery document missing token/device endpoints")
+	}
+	return &d, nil
+}
+
+// authProviderFromDiscovery builds an AuthProvider from an OIDC discovery
+// document, using the compiled-in client id. It deliberately does NOT route
+// through verifyProviderInfo (which requires an Auth0-style audience/login URL).
+func authProviderFromDiscovery(d *OIDCDiscovery) *AuthProvider {
+	return &AuthProvider{
+		CodeURL:  d.DeviceAuthorizationEndpoint,
+		TokenURL: d.TokenEndpoint,
+		JwksURL:  d.JwksURI,
+		ClientID: IVCAP_CLI_CLIENT_ID,
+		Audience: "", // OIDC device flow takes no audience
+	}
+}
+
+// resolveAuthProvider selects the auth mechanism: the new OIDC discovery flow if
+// available, otherwise the deprecated authinfo.yaml flow. It records the issuer
+// on the context and returns the mode ("oidc" | "legacy").
+func resolveAuthProvider(ctxt *Context) (authProvider *AuthProvider, mode string) {
+	if d, err := fetchOIDCDiscovery(ctxt); err == nil {
+		ctxt.IssuerURL = d.Issuer
+		return authProviderFromDiscovery(d), authModeOIDC
+	} else {
+		logger.Info("OIDC discovery unavailable, falling back to deprecated authinfo.yaml", log.String("error", err.Error()))
+	}
+	return getLoginInformation(ctxt), authModeLegacy
 }
 
 func getLoginInformation(ctxt *Context) (authProvider *AuthProvider) {
@@ -293,7 +378,10 @@ func requestDeviceCode(authProvider *AuthProvider) (code *DeviceCode) {
 	params := url.Values{
 		"client_id": {authProvider.ClientID},
 		"scope":     {authProvider.scopes},
-		"audience":  {authProvider.Audience},
+	}
+	// audience is an Auth0-only parameter; the OIDC device flow rejects/ignores it.
+	if authProvider.Audience != "" {
+		params.Set("audience", authProvider.Audience)
 	}
 	pyld, err := (*adpt).PostForm(ctx, authProvider.CodeURL, params, nil, logger)
 	if err != nil {
@@ -383,22 +471,25 @@ func ParseIDToken(tokenResponse *deviceTokenResponse, ctxt *Context, jwksURL str
 		return
 	}
 	if claims, ok := idToken.Claims.(*CustomIdClaims); ok && idToken.Valid {
-		// Save the data from the ID token into the config/context
-		ctxt.AccountName = claims.Name
-		ctxt.Email = claims.Email
-		ctxt.AccountNickName = claims.Nickname
-		ctxt.AccountID = fmt.Sprintf("urn:%s:account:%s", URN_PREFIX, claims.AccountID)
-		providerID := claims.ProviderID
-		if providerID == "" {
-			providerID = claims.AccountID
+		// Save the user's own identity info for local display only. Under the new
+		// auth flow the id_token carries no account/provider claims (the account is
+		// derived from the selected project), so only set fields actually present.
+		if claims.Name != "" {
+			ctxt.AccountName = claims.Name
 		}
-		ctxt.ProviderID = fmt.Sprintf("urn:%s:provider:%s", URN_PREFIX, providerID)
+		if claims.Email != "" {
+			ctxt.Email = claims.Email
+		}
+		if claims.Nickname != "" {
+			ctxt.AccountNickName = claims.Nickname
+		}
 	}
 }
 
 func login(_ *cobra.Command, args []string) {
 	ctxt := GetActiveContext() // will always return ctxt or have already failed
-	authProvider := getLoginInformation(ctxt)
+	authProvider, mode := resolveAuthProvider(ctxt)
+	ctxt.AuthMode = mode
 
 	// offline_access is required for the refresh tokens to be sent through
 	authProvider.scopes = "openid profile email offline_access"
@@ -432,6 +523,9 @@ func login(_ *cobra.Command, args []string) {
 	ParseIDToken(tokenResponse, ctxt, authProvider.JwksURL)
 
 	ctxt.AccessToken = tokenResponse.AccessToken
+	// Retain the raw id_token so `whoami` can display the user's own claims without
+	// re-login (the opaque access token carries none).
+	ctxt.IDToken = tokenResponse.IDToken
 	// Add a 10 second buffer to expiry to account for differences in clock time between client
 	// server and message transport time (oauth2 library does the same thing)
 	ctxt.AccessTokenExpiry = time.Now().Add(time.Second * time.Duration(tokenResponse.ExpiresIn-10))
@@ -439,6 +533,13 @@ func login(_ *cobra.Command, args []string) {
 	SetContext(ctxt, true)
 
 	fmt.Printf("Success: You are authorised.\n")
+
+	// Onboarding: help interactive users land on a current project (OIDC flow).
+	if ctxt.AuthMode == authModeOIDC && ctxt.CurrentProject == "" {
+		if err := selectProjectInteractive(ctxt); err != nil {
+			logger.Debug("project onboarding skipped", log.String("reason", err.Error()))
+		}
+	}
 }
 
 func loginByRefreshToken(ctxt *Context, authProvider *AuthProvider, requestTokenParam string) {

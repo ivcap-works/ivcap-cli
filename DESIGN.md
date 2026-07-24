@@ -71,6 +71,50 @@ Tokens are sourced in priority order:
 
 For automation/agents, prefer headless auth via env var or `--access-token`.
 
+#### Login flow: OIDC device-code (new) with authinfo fallback (deprecated)
+
+`ivcap context login` resolves how to authenticate via `resolveAuthProvider` (`cmd/login.go`):
+
+1. **OIDC discovery (preferred).** It fetches `GET {contextURL}/.well-known/openid-configuration`
+   (proxied by the platform gateway to the `ivcap-id` service) and reads the absolute
+   `token_endpoint`, `device_authorization_endpoint` and `jwks_uri`. The OAuth2 **device-code**
+   grant then runs against those endpoints using the compiled-in public client id `ivcap-cli`
+   (constant `IVCAP_CLI_CLIENT_ID`; the non-standard `ivcap_cli_client_id` discovery field is
+   ignored). The context records `auth-mode: oidc`.
+2. **authinfo fallback (deprecated).** If discovery is unavailable, it falls back to the legacy
+   `GET /1/authinfo.yaml` + Auth0 device-code flow (`auth-mode: legacy`).
+
+#### Opaque tokens and the `Ivcap-Project` header
+
+Under the new flow `ivcap-id` issues **opaque** tokens (`ivcap_at_…` access, `ivcap_rt_…` refresh),
+not self-describing JWTs. The CLI stores them as-is and never performs a token exchange itself. To
+scope a request to a project it sends the selected project as an `Ivcap-Project` header
+(constant `PROJECT_HEADER`), and a **server-side resolver** exchanges the opaque token + project for
+a project-scoped JWT. The header is attached by `CreateAdapterWithTimeout` (and the MCP adapter) on
+authenticated requests whenever the active context has a `current-project` set (via `ivcap project use`).
+
+The login-time `id_token` is still a JWT; it is verified against `jwks_uri` only to display the
+user's own identity (email/name) locally. It carries no account/provider claims — the account shown by
+`ivcap whoami` is derived from the selected project.
+
+> **Behaviour change.** `ivcap context get access-token` / `IVCAP_ACCESS_TOKEN` now yield an
+> **opaque** reference that only works via the server-side resolver plus a project header — it is not a
+> standalone bearer JWT. Headless/CI callers receive **no** `Ivcap-Project` header unless they first run
+> `ivcap project use <id>` (the post-login project picker is interactive-only), so scoped requests must
+> set the project explicitly.
+
+#### New auth-service commands
+
+- `ivcap whoami` — show the authenticated identity and accessible accounts/projects.
+- `ivcap project list|get|create|use|leave|delete` — `use` selects the current project (and drives the
+  `Ivcap-Project` header); with no argument it launches an interactive picker.
+- `ivcap account list|get|create` and `ivcap invitation list|accept|decline|create` — backed by
+  `ivcap-accounts`.
+
+Their request/response models live in `pkg/accountsapi` and are **generated** from the ivcap-accounts
+OpenAPI3 spec (`make sync-specs` refreshes the vendored spec, `make gen` regenerates the models; a CI
+`make check-gen` fails on drift).
+
 ### Output formats
 
 `--output json|yaml` is the primary mechanism for stable, machine-readable output.

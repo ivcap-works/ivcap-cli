@@ -1,16 +1,20 @@
-## ivcap context get
+## ivcap invitation capabilities
 
-Display the current context
+List the capabilities that can be granted via an invitation or grant
+
+### Synopsis
+
+List the grantable capabilities per target kind (project, account), as defined by the platform authorization model.
 
 ```
-ivcap context get [all|name|account-id|url|access-token] [flags]
+ivcap invitation capabilities [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help            help for get
-      --refresh-token   if set, refresh access token if expired
+  -h, --help          help for capabilities
+      --kind string   Limit to a single kind: project | account
 ```
 
 ### Options inherited from parent commands
@@ -27,5 +31,5 @@ ivcap context get [all|name|account-id|url|access-token] [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage and set access to various IVCAP deployments
+* [ivcap invitation](ivcap_invitation.md)	 - Manage project and account invitations
 

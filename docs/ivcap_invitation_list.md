@@ -1,16 +1,15 @@
-## ivcap context get
+## ivcap invitation list
 
-Display the current context
+List invitations addressed to you
 
 ```
-ivcap context get [all|name|account-id|url|access-token] [flags]
+ivcap invitation list [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help            help for get
-      --refresh-token   if set, refresh access token if expired
+  -h, --help   help for list
 ```
 
 ### Options inherited from parent commands
@@ -27,5 +26,5 @@ ivcap context get [all|name|account-id|url|access-token] [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage and set access to various IVCAP deployments
+* [ivcap invitation](ivcap_invitation.md)	 - Manage project and account invitations
 

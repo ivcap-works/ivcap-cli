@@ -1,0 +1,3485 @@
+openapi: 3.0.3
+info:
+    title: IVCAP Accounts Service
+    description: Account, project and invitation lifecycle management for IVCAP. Sole writer of org structure; orchestrates ivcap-id (identities/emails/invites) and ivcap-authz (membership/permission tuples), keeping both pure.
+    version: 1.0.0
+servers:
+    - url: http://localhost:8005
+      description: Accounts management service — HTTP
+paths:
+    /accounts:
+        get:
+            tags:
+                - accounts
+            summary: list-accounts accounts
+            description: List accounts the caller belongs to
+            operationId: accounts#list-accounts
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListAccountsResult'
+                            example:
+                                accounts:
+                                    - id: Provident pariatur consequatur.
+                                      kind: Soluta quam id consequatur ut.
+                                      name: Odio quis amet est eos perspiciatis cupiditate.
+                                    - id: Provident pariatur consequatur.
+                                      kind: Soluta quam id consequatur ut.
+                                      name: Odio quis amet est eos perspiciatis cupiditate.
+                                    - id: Provident pariatur consequatur.
+                                      kind: Soluta quam id consequatur ut.
+                                      name: Odio quis amet est eos perspiciatis cupiditate.
+                                    - id: Provident pariatur consequatur.
+                                      kind: Soluta quam id consequatur ut.
+                                      name: Odio quis amet est eos perspiciatis cupiditate.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Totam distinctio qui qui suscipit qui.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Modi reprehenderit.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Iusto consequatur qui voluptatem.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Alias laudantium enim.
+                                message: Quidem id similique veritatis ducimus quia.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Rerum deserunt autem ad et amet.
+            security:
+                - jwt_header_Authorization: []
+        post:
+            tags:
+                - accounts
+            summary: create-account accounts
+            description: Create a new org account; the caller becomes its first admin
+            operationId: accounts#create-account
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateAccountPayload2'
+                        example:
+                            name: Facilis dolore iste amet eveniet fugiat.
+            responses:
+                "201":
+                    description: Created response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Account'
+                            example:
+                                id: Ut non sed quam sint voluptatem.
+                                kind: Nesciunt similique est.
+                                name: Vel odio magni.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Placeat eligendi.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Rerum quidem nemo dolorum placeat expedita ut.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Sint voluptas.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Est et ut nam.
+                                message: Neque et odio dignissimos.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Quod doloremque perferendis veniam adipisci.
+            security:
+                - jwt_header_Authorization: []
+    /accounts/{account_id}/invitations:
+        get:
+            tags:
+                - accounts
+            summary: list-account-invitations accounts
+            description: List an account's invitations (gated on can_manage_members)
+            operationId: accounts#list-account-invitations
+            parameters:
+                - name: account_id
+                  in: path
+                  description: Account URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Account URN
+                    example: Cumque quidem debitis.
+                  example: Voluptates nesciunt.
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListInvitationsResult'
+                            example:
+                                invitations:
+                                    - account_id: Et dolorem.
+                                      capabilities:
+                                        - Voluptatem modi omnis deleniti.
+                                        - Voluptates quis et et excepturi rerum.
+                                        - Debitis occaecati hic.
+                                        - Consequatur ullam libero quia velit.
+                                      email: Quasi non.
+                                      expires_at: Corrupti accusamus ipsa laborum aut et veritatis.
+                                      id: Voluptatibus explicabo delectus a ab.
+                                      kind: Ut commodi optio saepe.
+                                      project_id: Qui ut.
+                                      status: Eum incidunt dolorum.
+                                    - account_id: Et dolorem.
+                                      capabilities:
+                                        - Voluptatem modi omnis deleniti.
+                                        - Voluptates quis et et excepturi rerum.
+                                        - Debitis occaecati hic.
+                                        - Consequatur ullam libero quia velit.
+                                      email: Quasi non.
+                                      expires_at: Corrupti accusamus ipsa laborum aut et veritatis.
+                                      id: Voluptatibus explicabo delectus a ab.
+                                      kind: Ut commodi optio saepe.
+                                      project_id: Qui ut.
+                                      status: Eum incidunt dolorum.
+                                    - account_id: Et dolorem.
+                                      capabilities:
+                                        - Voluptatem modi omnis deleniti.
+                                        - Voluptates quis et et excepturi rerum.
+                                        - Debitis occaecati hic.
+                                        - Consequatur ullam libero quia velit.
+                                      email: Quasi non.
+                                      expires_at: Corrupti accusamus ipsa laborum aut et veritatis.
+                                      id: Voluptatibus explicabo delectus a ab.
+                                      kind: Ut commodi optio saepe.
+                                      project_id: Qui ut.
+                                      status: Eum incidunt dolorum.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Illum dignissimos.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Sed consectetur in.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Nihil et eveniet est laudantium incidunt.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Debitis nostrum sit.
+                                message: Accusantium et ipsum qui et qui.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Aut vel et.
+            security:
+                - jwt_header_Authorization: []
+        post:
+            tags:
+                - accounts
+            summary: create-account-invitation accounts
+            description: Invite an email to an account (gated on can_manage_members). On accept the invitee joins the account roster and receives the selected account capabilities.
+            operationId: accounts#create-account-invitation
+            parameters:
+                - name: account_id
+                  in: path
+                  description: Account URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Account URN
+                    example: Laborum delectus unde.
+                  example: Distinctio adipisci.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateAccountInvitationPayload2'
+                        example:
+                            capabilities:
+                                - Reiciendis cumque.
+                                - Est et enim.
+                            email: Necessitatibus eius et adipisci ut neque.
+            responses:
+                "201":
+                    description: Created response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Invitation'
+                            example:
+                                account_id: Aperiam accusantium nam molestias.
+                                capabilities:
+                                    - Odit expedita quibusdam ad.
+                                    - Facilis animi qui quia voluptate.
+                                email: Qui aut fugiat minima.
+                                expires_at: Tempora necessitatibus voluptatem.
+                                id: Quae aliquam quia fugiat.
+                                kind: Enim doloribus illo ad.
+                                project_id: Odio qui illo et consequatur dolores.
+                                status: Eveniet et.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Eum inventore assumenda blanditiis et omnis.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Praesentium dolor amet rerum repudiandae nemo.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Ullam reiciendis laudantium.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Quo ex nobis velit totam iste.
+                                message: Nihil aspernatur.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Ut et qui dignissimos.
+            security:
+                - jwt_header_Authorization: []
+    /accounts/{id}:
+        get:
+            tags:
+                - accounts
+            summary: get-account accounts
+            description: Get a single account
+            operationId: accounts#get-account
+            parameters:
+                - name: id
+                  in: path
+                  description: Account URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Account URN
+                    example: Ipsa hic temporibus.
+                  example: Cum est animi tempora dicta.
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Account'
+                            example:
+                                id: Maiores maiores corporis culpa dolorem at id.
+                                kind: Repellendus aut.
+                                name: Est autem.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Laboriosam reprehenderit.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Aspernatur qui adipisci sed.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Illo maxime et.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Est et dolores qui repudiandae.
+                                message: Harum adipisci similique.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Et expedita nisi aliquid nesciunt atque tenetur.
+            security:
+                - jwt_header_Authorization: []
+    /accounts/{id}/grants:
+        post:
+            tags:
+                - accounts
+            summary: add-account-grant accounts
+            description: Grant account-admin capabilities to a user
+            operationId: accounts#add-account-grant
+            parameters:
+                - name: id
+                  in: path
+                  description: Account URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Account URN
+                    example: Laborum vel laboriosam occaecati id temporibus.
+                  example: Quibusdam odit voluptas sed et facilis occaecati.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AddAccountGrantPayload2'
+                        example:
+                            capabilities:
+                                - Perferendis qui.
+                                - Asperiores veniam itaque et non quasi.
+                            user_id: Id unde.
+            responses:
+                "204":
+                    description: No Content response.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Modi quia et non libero qui accusantium.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Enim aspernatur maiores veritatis.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Beatae est ad nam officiis.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Fugiat provident.
+                                message: Omnis quia doloribus.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Voluptas placeat quia.
+            security:
+                - jwt_header_Authorization: []
+    /accounts/{id}/grants/{user_id}:
+        delete:
+            tags:
+                - accounts
+            summary: remove-account-grant accounts
+            description: Revoke an account-admin capability from a user
+            operationId: accounts#remove-account-grant
+            parameters:
+                - name: capability
+                  in: query
+                  description: Account capability to revoke
+                  allowEmptyValue: true
+                  required: true
+                  schema:
+                    type: string
+                    description: Account capability to revoke
+                    example: Maiores sed rerum et consectetur.
+                  example: Porro velit dicta.
+                - name: id
+                  in: path
+                  description: Account URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Account URN
+                    example: Magni vel consectetur perferendis sit quisquam temporibus.
+                  example: Quia eum distinctio qui.
+                - name: user_id
+                  in: path
+                  description: User URN
+                  required: true
+                  schema:
+                    type: string
+                    description: User URN
+                    example: Consequatur ut voluptate.
+                  example: Qui et.
+            responses:
+                "204":
+                    description: No Content response.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Enim voluptate natus eius.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Ab voluptates et.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Earum deleniti.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Incidunt mollitia.
+                                message: Velit molestias ratione voluptatem.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Adipisci repellendus aut illo pariatur.
+            security:
+                - jwt_header_Authorization: []
+    /accounts/{id}/members:
+        get:
+            tags:
+                - accounts
+            summary: list-account-members accounts
+            description: List an account's members with their display profiles (gated on member)
+            operationId: accounts#list-account-members
+            parameters:
+                - name: id
+                  in: path
+                  description: Account URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Account URN
+                    example: Et accusantium quo.
+                  example: Delectus quo iste.
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListMembersResult'
+                            example:
+                                members:
+                                    - capabilities:
+                                        - Nobis dicta explicabo nihil.
+                                        - Et eum rerum voluptatem non voluptatem qui.
+                                        - Totam at ut.
+                                        - Nesciunt quas ipsa velit quo quibusdam.
+                                      display_name: Animi aspernatur laborum velit similique in.
+                                      email: Quibusdam delectus doloremque.
+                                      kind: Ipsam accusamus sunt pariatur.
+                                      user_id: Ipsam rerum voluptas quas.
+                                    - capabilities:
+                                        - Nobis dicta explicabo nihil.
+                                        - Et eum rerum voluptatem non voluptatem qui.
+                                        - Totam at ut.
+                                        - Nesciunt quas ipsa velit quo quibusdam.
+                                      display_name: Animi aspernatur laborum velit similique in.
+                                      email: Quibusdam delectus doloremque.
+                                      kind: Ipsam accusamus sunt pariatur.
+                                      user_id: Ipsam rerum voluptas quas.
+                                    - capabilities:
+                                        - Nobis dicta explicabo nihil.
+                                        - Et eum rerum voluptatem non voluptatem qui.
+                                        - Totam at ut.
+                                        - Nesciunt quas ipsa velit quo quibusdam.
+                                      display_name: Animi aspernatur laborum velit similique in.
+                                      email: Quibusdam delectus doloremque.
+                                      kind: Ipsam accusamus sunt pariatur.
+                                      user_id: Ipsam rerum voluptas quas.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Tenetur est ad rem sit facere enim.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Eius voluptatem id.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Repellendus tempora iste quo corporis molestiae labore.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Quasi accusamus repellat.
+                                message: Voluptatem reprehenderit.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Doloribus rem officia ullam error.
+            security:
+                - jwt_header_Authorization: []
+    /accounts/{id}/members/{user_id}:
+        delete:
+            tags:
+                - accounts
+            summary: remove-account-member accounts
+            description: Remove a user from an org account (revokes all their account grants). Members join only via invitation — there is no direct add-member endpoint.
+            operationId: accounts#remove-account-member
+            parameters:
+                - name: id
+                  in: path
+                  description: Account URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Account URN
+                    example: In odio dolor nihil neque nihil quaerat.
+                  example: Quia laborum distinctio harum rerum.
+                - name: user_id
+                  in: path
+                  description: User URN to remove
+                  required: true
+                  schema:
+                    type: string
+                    description: User URN to remove
+                    example: Et doloremque ipsum.
+                  example: Ea quasi sunt iste omnis.
+            responses:
+                "204":
+                    description: No Content response.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Doloremque sed vel qui tenetur qui.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Minima neque similique sed aut harum veritatis.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Sit repellat perspiciatis molestiae sint.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Cumque atque esse voluptatem ipsam quam.
+                                message: Tenetur maxime ad molestiae.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Aspernatur consequuntur temporibus nobis optio quos.
+            security:
+                - jwt_header_Authorization: []
+    /accounts/{id}/projects:
+        get:
+            tags:
+                - accounts
+            summary: list-account-projects accounts
+            description: List projects belonging to an account (gated on account membership)
+            operationId: accounts#list-account-projects
+            parameters:
+                - name: id
+                  in: path
+                  description: Account URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Account URN
+                    example: Libero et atque sit quasi.
+                  example: Dolorum sint voluptatem explicabo necessitatibus.
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListProjectsResult'
+                            example:
+                                projects:
+                                    - account_id: Aut aliquid at veritatis dolores consequuntur.
+                                      id: Aut voluptatum.
+                                      kind: Voluptatibus ut rerum voluptatem id.
+                                      name: Est dolorem architecto tempora.
+                                      owner_user_id: Quaerat dicta architecto adipisci sed.
+                                      parent_id: Velit laudantium ipsa tempora tenetur qui omnis.
+                                    - account_id: Aut aliquid at veritatis dolores consequuntur.
+                                      id: Aut voluptatum.
+                                      kind: Voluptatibus ut rerum voluptatem id.
+                                      name: Est dolorem architecto tempora.
+                                      owner_user_id: Quaerat dicta architecto adipisci sed.
+                                      parent_id: Velit laudantium ipsa tempora tenetur qui omnis.
+                                    - account_id: Aut aliquid at veritatis dolores consequuntur.
+                                      id: Aut voluptatum.
+                                      kind: Voluptatibus ut rerum voluptatem id.
+                                      name: Est dolorem architecto tempora.
+                                      owner_user_id: Quaerat dicta architecto adipisci sed.
+                                      parent_id: Velit laudantium ipsa tempora tenetur qui omnis.
+                                    - account_id: Aut aliquid at veritatis dolores consequuntur.
+                                      id: Aut voluptatum.
+                                      kind: Voluptatibus ut rerum voluptatem id.
+                                      name: Est dolorem architecto tempora.
+                                      owner_user_id: Quaerat dicta architecto adipisci sed.
+                                      parent_id: Velit laudantium ipsa tempora tenetur qui omnis.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Quo dolor.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Exercitationem quo amet et dicta.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Aut natus nemo voluptatem possimus tempora sequi.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Qui voluptatibus.
+                                message: Soluta fuga facilis dolore dolorem.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Quaerat quo ut et id et.
+            security:
+                - jwt_header_Authorization: []
+    /capabilities:
+        get:
+            tags:
+                - accounts
+            summary: list-capabilities accounts
+            description: List the grantable capability vocabulary per object kind (project, account). Public, non-sensitive reference data used by clients like ivcap-cli to validate and present grants/invitations. No authentication required.
+            operationId: accounts#list-capabilities
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CapabilitiesResult'
+                            example:
+                                account:
+                                    - description: Tenetur et quae tenetur consequatur.
+                                      name: Eum veniam quas.
+                                    - description: Tenetur et quae tenetur consequatur.
+                                      name: Eum veniam quas.
+                                project:
+                                    - description: Tenetur et quae tenetur consequatur.
+                                      name: Eum veniam quas.
+                                    - description: Tenetur et quae tenetur consequatur.
+                                      name: Eum veniam quas.
+                                    - description: Tenetur et quae tenetur consequatur.
+                                      name: Eum veniam quas.
+    /healthz:
+        get:
+            tags:
+                - accounts
+            summary: healthz accounts
+            operationId: accounts#healthz
+            responses:
+                "200":
+                    description: OK response.
+    /internal/onboarding/ensure:
+        post:
+            tags:
+                - accounts
+            summary: ensure-onboarding accounts
+            description: Idempotently ensure a user's personal account + personal project, and bind any pending invitations for a verified email. M2M-only.
+            operationId: accounts#ensure-onboarding
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/EnsureOnboardingPayload2'
+                        example:
+                            account_id: Quis dolor consequatur perspiciatis sunt.
+                            email: Quo consequatur quia quod assumenda.
+                            email_verified: true
+                            name: Minus et exercitationem neque autem amet.
+                            user_id: Quasi voluptatem totam.
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/EnsureOnboardingResult'
+                            example:
+                                account_id: Eos expedita ipsa voluptas alias.
+                                bound_invitations: 8802983547603652262
+                                personal_project_id: Et rerum aut reprehenderit.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Ut perferendis.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Minus vero ipsam aliquid eveniet deleniti nisi.
+            security:
+                - onboarding_header_Authorization: []
+    /internal/principals/revoke:
+        post:
+            tags:
+                - accounts
+            summary: revoke-principal accounts
+            description: 'Offboard a deleted principal: delete its grants/memberships + tuples. M2M-only.'
+            operationId: accounts#revoke-principal
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/RevokePrincipalPayload2'
+                        example:
+                            id: Beatae a.
+                            kind: Suscipit vitae perferendis assumenda deserunt sed quae.
+            responses:
+                "204":
+                    description: No Content response.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Perferendis ducimus et facilis velit.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Id debitis et nihil blanditiis dolore.
+            security:
+                - onboarding_header_Authorization: []
+    /internal/resync:
+        post:
+            tags:
+                - accounts
+            summary: resync accounts
+            description: Recompute and re-apply the FGA tuples for an object from Postgres. M2M-only.
+            operationId: accounts#resync
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ResyncPayload2'
+                        example:
+                            id: Mollitia ab.
+                            kind: Commodi labore architecto.
+            responses:
+                "204":
+                    description: No Content response.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Corrupti aliquam praesentium.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Ad qui omnis.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Ullam doloribus quo fugiat eaque aspernatur facere.
+                                message: Animi qui nesciunt et laudantium.
+            security:
+                - onboarding_header_Authorization: []
+    /invitations/{id}:
+        delete:
+            tags:
+                - accounts
+            summary: revoke-invitation accounts
+            description: Revoke a pending invitation
+            operationId: accounts#revoke-invitation
+            parameters:
+                - name: id
+                  in: path
+                  description: Invitation URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Invitation URN
+                    example: Voluptas odit.
+                  example: Perferendis voluptas iure dignissimos.
+            responses:
+                "204":
+                    description: No Content response.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Iure nesciunt id eum.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Facere minus dolorum occaecati quia nemo enim.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Esse voluptas distinctio rerum laborum officia magnam.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Placeat voluptatem.
+                                message: Inventore soluta voluptas et porro.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Non consectetur sed qui sapiente beatae quia.
+            security:
+                - jwt_header_Authorization: []
+    /invitations/{id}/accept:
+        post:
+            tags:
+                - accounts
+            summary: accept-invitation accounts
+            description: Accept a pending invitation bound to the caller; writes grants
+            operationId: accounts#accept-invitation
+            parameters:
+                - name: id
+                  in: path
+                  description: Invitation URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Invitation URN
+                    example: Explicabo qui ut.
+                  example: Modi odit deserunt voluptas error.
+            responses:
+                "204":
+                    description: No Content response.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Iure ipsam ut ut molestiae reprehenderit.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Eligendi et non distinctio.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Quod ipsa.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Ab ut earum.
+                                message: Omnis excepturi.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Occaecati aut.
+            security:
+                - jwt_header_Authorization: []
+    /invitations/{id}/decline:
+        post:
+            tags:
+                - accounts
+            summary: decline-invitation accounts
+            description: Decline a pending invitation bound to the caller
+            operationId: accounts#decline-invitation
+            parameters:
+                - name: id
+                  in: path
+                  description: Invitation URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Invitation URN
+                    example: Eos rerum ducimus et pariatur ea.
+                  example: Veritatis ducimus id quo quis enim.
+            responses:
+                "204":
+                    description: No Content response.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Qui nihil qui accusamus iure.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Dolores dolorum libero velit cumque labore vitae.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Qui quisquam ab quis placeat.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Commodi quis distinctio.
+                                message: Labore velit alias porro.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Qui beatae sapiente magnam doloribus.
+            security:
+                - jwt_header_Authorization: []
+    /invitations/mine:
+        get:
+            tags:
+                - accounts
+            summary: list-my-invitations accounts
+            description: List pending invitations bound to the caller
+            operationId: accounts#list-my-invitations
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListInvitationsResult'
+                            example:
+                                invitations:
+                                    - account_id: Et dolorem.
+                                      capabilities:
+                                        - Voluptatem modi omnis deleniti.
+                                        - Voluptates quis et et excepturi rerum.
+                                        - Debitis occaecati hic.
+                                        - Consequatur ullam libero quia velit.
+                                      email: Quasi non.
+                                      expires_at: Corrupti accusamus ipsa laborum aut et veritatis.
+                                      id: Voluptatibus explicabo delectus a ab.
+                                      kind: Ut commodi optio saepe.
+                                      project_id: Qui ut.
+                                      status: Eum incidunt dolorum.
+                                    - account_id: Et dolorem.
+                                      capabilities:
+                                        - Voluptatem modi omnis deleniti.
+                                        - Voluptates quis et et excepturi rerum.
+                                        - Debitis occaecati hic.
+                                        - Consequatur ullam libero quia velit.
+                                      email: Quasi non.
+                                      expires_at: Corrupti accusamus ipsa laborum aut et veritatis.
+                                      id: Voluptatibus explicabo delectus a ab.
+                                      kind: Ut commodi optio saepe.
+                                      project_id: Qui ut.
+                                      status: Eum incidunt dolorum.
+                                    - account_id: Et dolorem.
+                                      capabilities:
+                                        - Voluptatem modi omnis deleniti.
+                                        - Voluptates quis et et excepturi rerum.
+                                        - Debitis occaecati hic.
+                                        - Consequatur ullam libero quia velit.
+                                      email: Quasi non.
+                                      expires_at: Corrupti accusamus ipsa laborum aut et veritatis.
+                                      id: Voluptatibus explicabo delectus a ab.
+                                      kind: Ut commodi optio saepe.
+                                      project_id: Qui ut.
+                                      status: Eum incidunt dolorum.
+                                    - account_id: Et dolorem.
+                                      capabilities:
+                                        - Voluptatem modi omnis deleniti.
+                                        - Voluptates quis et et excepturi rerum.
+                                        - Debitis occaecati hic.
+                                        - Consequatur ullam libero quia velit.
+                                      email: Quasi non.
+                                      expires_at: Corrupti accusamus ipsa laborum aut et veritatis.
+                                      id: Voluptatibus explicabo delectus a ab.
+                                      kind: Ut commodi optio saepe.
+                                      project_id: Qui ut.
+                                      status: Eum incidunt dolorum.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Ut ut assumenda delectus.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Quo ex similique iure atque quia.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Nihil quae.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Eum et sit.
+                                message: Nulla repellendus consequatur.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Accusantium aut autem eligendi cupiditate ut incidunt.
+            security:
+                - jwt_header_Authorization: []
+    /projects:
+        get:
+            tags:
+                - accounts
+            summary: list-my-projects accounts
+            description: List projects the caller is a member of
+            operationId: accounts#list-my-projects
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListProjectsResult'
+                            example:
+                                projects:
+                                    - account_id: Aut aliquid at veritatis dolores consequuntur.
+                                      id: Aut voluptatum.
+                                      kind: Voluptatibus ut rerum voluptatem id.
+                                      name: Est dolorem architecto tempora.
+                                      owner_user_id: Quaerat dicta architecto adipisci sed.
+                                      parent_id: Velit laudantium ipsa tempora tenetur qui omnis.
+                                    - account_id: Aut aliquid at veritatis dolores consequuntur.
+                                      id: Aut voluptatum.
+                                      kind: Voluptatibus ut rerum voluptatem id.
+                                      name: Est dolorem architecto tempora.
+                                      owner_user_id: Quaerat dicta architecto adipisci sed.
+                                      parent_id: Velit laudantium ipsa tempora tenetur qui omnis.
+                                    - account_id: Aut aliquid at veritatis dolores consequuntur.
+                                      id: Aut voluptatum.
+                                      kind: Voluptatibus ut rerum voluptatem id.
+                                      name: Est dolorem architecto tempora.
+                                      owner_user_id: Quaerat dicta architecto adipisci sed.
+                                      parent_id: Velit laudantium ipsa tempora tenetur qui omnis.
+                                    - account_id: Aut aliquid at veritatis dolores consequuntur.
+                                      id: Aut voluptatum.
+                                      kind: Voluptatibus ut rerum voluptatem id.
+                                      name: Est dolorem architecto tempora.
+                                      owner_user_id: Quaerat dicta architecto adipisci sed.
+                                      parent_id: Velit laudantium ipsa tempora tenetur qui omnis.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Et repellat et.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Aut aut.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Dolorem reprehenderit sint.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Nobis omnis consequatur corrupti aspernatur.
+                                message: Perspiciatis eum possimus.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Et odio enim consequatur tenetur magnam.
+            security:
+                - jwt_header_Authorization: []
+        post:
+            tags:
+                - accounts
+            summary: create-project accounts
+            description: Create a project under an account (gated on can_create_project). With a parent_id and no account_id the project inherits the parent's account; account_id overrides it and is gated on can_create_project too.
+            operationId: accounts#create-project
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateProjectPayload2'
+                        example:
+                            account_id: Esse et quam qui eius.
+                            name: Quod ea ullam.
+                            parent_id: Et placeat ut in adipisci.
+            responses:
+                "201":
+                    description: Created response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Project'
+                            example:
+                                account_id: Nemo quas est.
+                                id: Voluptas ea iusto.
+                                kind: Sunt quidem laboriosam.
+                                name: Cumque velit aut minima.
+                                owner_user_id: Consequatur fugit quibusdam deserunt corrupti.
+                                parent_id: Adipisci consequatur odio dolores ea non.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Odit non accusamus voluptatem non.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Quibusdam illo optio qui ducimus saepe at.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Sunt dolores impedit illum distinctio corporis sequi.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Est quo.
+                                message: Nam sint quisquam adipisci eos.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Quaerat similique aliquam enim facere.
+            security:
+                - jwt_header_Authorization: []
+    /projects/{id}:
+        delete:
+            tags:
+                - accounts
+            summary: delete-project accounts
+            description: Soft-delete a project and remove its FGA tuples
+            operationId: accounts#delete-project
+            parameters:
+                - name: id
+                  in: path
+                  description: Project URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Project URN
+                    example: Fugiat cupiditate magnam mollitia iste.
+                  example: Velit nihil.
+            responses:
+                "204":
+                    description: No Content response.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Molestiae quis.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Deleniti doloremque earum itaque vel.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Consequatur voluptas quasi ex nemo explicabo exercitationem.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Facere totam sed maxime praesentium doloremque.
+                                message: Alias reiciendis.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Deleniti ducimus delectus nisi similique.
+            security:
+                - jwt_header_Authorization: []
+        get:
+            tags:
+                - accounts
+            summary: get-project accounts
+            description: Get a single project
+            operationId: accounts#get-project
+            parameters:
+                - name: id
+                  in: path
+                  description: Project URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Project URN
+                    example: Ea sed quaerat id.
+                  example: Dolore et aut.
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Project'
+                            example:
+                                account_id: Accusamus et saepe commodi maxime.
+                                id: Est non.
+                                kind: Ab dolore et dignissimos accusantium aliquam.
+                                name: Neque autem molestiae.
+                                owner_user_id: Quaerat optio natus sit facere non.
+                                parent_id: Ea exercitationem distinctio sapiente consequatur in.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Sapiente nam tempore.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Dignissimos debitis voluptatem officia voluptates.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Ducimus ut sint quod ratione ex.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Laborum est quas non aliquam iste repellendus.
+                                message: Quisquam beatae accusamus fugiat voluptatibus rerum.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Minima libero tenetur aut numquam voluptatem.
+            security:
+                - jwt_header_Authorization: []
+        patch:
+            tags:
+                - accounts
+            summary: update-project accounts
+            description: Update a project's display name
+            operationId: accounts#update-project
+            parameters:
+                - name: id
+                  in: path
+                  description: Project URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Project URN
+                    example: Voluptatem neque sint dolores quisquam dolorem consequatur.
+                  example: Sit voluptatibus quis est.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/UpdateProjectPayload2'
+                        example:
+                            name: Veniam dignissimos culpa qui.
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Project'
+                            example:
+                                account_id: Repellendus tenetur reiciendis adipisci recusandae facere debitis.
+                                id: Libero perspiciatis qui odit.
+                                kind: Dolores nemo aliquid voluptatum aperiam pariatur et.
+                                name: Excepturi iste.
+                                owner_user_id: Hic aliquam similique id sed velit.
+                                parent_id: Cumque quia sunt eos impedit possimus ut.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Porro enim enim.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Qui perferendis qui.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Suscipit sit incidunt aut ad cum.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Reprehenderit provident modi ab quis aut.
+                                message: Recusandae molestias quisquam.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Quasi quo ab cumque saepe.
+            security:
+                - jwt_header_Authorization: []
+    /projects/{id}/leave:
+        post:
+            tags:
+                - accounts
+            summary: leave-project accounts
+            description: Voluntarily leave a project (strips all caller's grants, subject to orphan guard)
+            operationId: accounts#leave-project
+            parameters:
+                - name: id
+                  in: path
+                  description: Project URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Project URN
+                    example: Cumque qui vitae molestias.
+                  example: Vero rem ab velit.
+            responses:
+                "204":
+                    description: No Content response.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Molestiae ut nisi.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Fugit laboriosam.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Sit nihil natus molestiae atque.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Debitis aliquid quo exercitationem ut impedit aspernatur.
+                                message: Omnis ut consequatur nulla.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Animi qui ea itaque debitis ullam voluptatem.
+            security:
+                - jwt_header_Authorization: []
+    /projects/{id}/members:
+        get:
+            tags:
+                - accounts
+            summary: list-project-members accounts
+            description: List a project's members with their display profiles (gated on can_read)
+            operationId: accounts#list-project-members
+            parameters:
+                - name: id
+                  in: path
+                  description: Project URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Project URN
+                    example: Minus eos voluptate rerum qui.
+                  example: Vitae hic est reiciendis eos sunt reprehenderit.
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListMembersResult'
+                            example:
+                                members:
+                                    - capabilities:
+                                        - Nobis dicta explicabo nihil.
+                                        - Et eum rerum voluptatem non voluptatem qui.
+                                        - Totam at ut.
+                                        - Nesciunt quas ipsa velit quo quibusdam.
+                                      display_name: Animi aspernatur laborum velit similique in.
+                                      email: Quibusdam delectus doloremque.
+                                      kind: Ipsam accusamus sunt pariatur.
+                                      user_id: Ipsam rerum voluptas quas.
+                                    - capabilities:
+                                        - Nobis dicta explicabo nihil.
+                                        - Et eum rerum voluptatem non voluptatem qui.
+                                        - Totam at ut.
+                                        - Nesciunt quas ipsa velit quo quibusdam.
+                                      display_name: Animi aspernatur laborum velit similique in.
+                                      email: Quibusdam delectus doloremque.
+                                      kind: Ipsam accusamus sunt pariatur.
+                                      user_id: Ipsam rerum voluptas quas.
+                                    - capabilities:
+                                        - Nobis dicta explicabo nihil.
+                                        - Et eum rerum voluptatem non voluptatem qui.
+                                        - Totam at ut.
+                                        - Nesciunt quas ipsa velit quo quibusdam.
+                                      display_name: Animi aspernatur laborum velit similique in.
+                                      email: Quibusdam delectus doloremque.
+                                      kind: Ipsam accusamus sunt pariatur.
+                                      user_id: Ipsam rerum voluptas quas.
+                                    - capabilities:
+                                        - Nobis dicta explicabo nihil.
+                                        - Et eum rerum voluptatem non voluptatem qui.
+                                        - Totam at ut.
+                                        - Nesciunt quas ipsa velit quo quibusdam.
+                                      display_name: Animi aspernatur laborum velit similique in.
+                                      email: Quibusdam delectus doloremque.
+                                      kind: Ipsam accusamus sunt pariatur.
+                                      user_id: Ipsam rerum voluptas quas.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Aut velit est neque autem.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Aliquam impedit placeat eveniet pariatur aut.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Voluptas quos aspernatur debitis eum maiores.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Laudantium qui vero nobis accusamus.
+                                message: Est non sit sunt sequi.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Qui consequatur recusandae sapiente facere ea fugit.
+            security:
+                - jwt_header_Authorization: []
+    /projects/{project_id}/grants:
+        post:
+            tags:
+                - accounts
+            summary: add-project-grant accounts
+            description: Grant project capabilities to a user or service principal
+            operationId: accounts#add-project-grant
+            parameters:
+                - name: project_id
+                  in: path
+                  description: Project URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Project URN
+                    example: Et nihil molestiae maiores nostrum ullam.
+                  example: Voluptatibus vel.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AddProjectGrantPayload2'
+                        example:
+                            capabilities:
+                                - Sunt nihil aut sit qui ullam.
+                                - Minima aut molestiae repellat voluptate et.
+                                - Quis saepe beatae ipsum itaque.
+                                - Voluptas incidunt mollitia eum.
+                            principal_id: Omnis tenetur.
+                            principal_kind: Quo voluptatem adipisci.
+            responses:
+                "204":
+                    description: No Content response.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Eos delectus sunt mollitia et.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Doloribus ea neque dicta.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Incidunt at officia nesciunt vel.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Nisi dolorum.
+                                message: Laudantium commodi aspernatur ad.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Est sint.
+            security:
+                - jwt_header_Authorization: []
+    /projects/{project_id}/grants/{principal_id}:
+        delete:
+            tags:
+                - accounts
+            summary: remove-project-grant accounts
+            description: Revoke a project capability from a principal
+            operationId: accounts#remove-project-grant
+            parameters:
+                - name: principal_kind
+                  in: query
+                  description: user | service
+                  allowEmptyValue: true
+                  required: true
+                  schema:
+                    type: string
+                    description: user | service
+                    example: Pariatur aliquam dolorum possimus.
+                  example: Delectus provident.
+                - name: capability
+                  in: query
+                  description: Project capability to revoke
+                  allowEmptyValue: true
+                  required: true
+                  schema:
+                    type: string
+                    description: Project capability to revoke
+                    example: Sint optio.
+                  example: Alias reiciendis earum et et ut recusandae.
+                - name: project_id
+                  in: path
+                  description: Project URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Project URN
+                    example: Aperiam quis ut et maxime omnis.
+                  example: Neque consequuntur voluptas impedit cupiditate perspiciatis.
+                - name: principal_id
+                  in: path
+                  description: Principal URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Principal URN
+                    example: Dolor laudantium autem quod omnis.
+                  example: Hic quaerat.
+            responses:
+                "204":
+                    description: No Content response.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Qui odio numquam vitae.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Eos ipsa labore.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Fuga ut sint.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Aut quos sit.
+                                message: Nobis quo consectetur aliquam quia error est.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Quas quia enim rem.
+            security:
+                - jwt_header_Authorization: []
+    /projects/{project_id}/invitations:
+        get:
+            tags:
+                - accounts
+            summary: list-project-invitations accounts
+            description: List a project's invitations
+            operationId: accounts#list-project-invitations
+            parameters:
+                - name: project_id
+                  in: path
+                  description: Project URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Project URN
+                    example: Sit odio voluptas sit.
+                  example: Numquam quo ducimus.
+            responses:
+                "200":
+                    description: OK response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListInvitationsResult'
+                            example:
+                                invitations:
+                                    - account_id: Et dolorem.
+                                      capabilities:
+                                        - Voluptatem modi omnis deleniti.
+                                        - Voluptates quis et et excepturi rerum.
+                                        - Debitis occaecati hic.
+                                        - Consequatur ullam libero quia velit.
+                                      email: Quasi non.
+                                      expires_at: Corrupti accusamus ipsa laborum aut et veritatis.
+                                      id: Voluptatibus explicabo delectus a ab.
+                                      kind: Ut commodi optio saepe.
+                                      project_id: Qui ut.
+                                      status: Eum incidunt dolorum.
+                                    - account_id: Et dolorem.
+                                      capabilities:
+                                        - Voluptatem modi omnis deleniti.
+                                        - Voluptates quis et et excepturi rerum.
+                                        - Debitis occaecati hic.
+                                        - Consequatur ullam libero quia velit.
+                                      email: Quasi non.
+                                      expires_at: Corrupti accusamus ipsa laborum aut et veritatis.
+                                      id: Voluptatibus explicabo delectus a ab.
+                                      kind: Ut commodi optio saepe.
+                                      project_id: Qui ut.
+                                      status: Eum incidunt dolorum.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Consequuntur et qui corporis reprehenderit.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Repudiandae eos aut.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Ea recusandae et.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Magnam doloremque nisi tenetur natus et eum.
+                                message: Soluta provident exercitationem numquam quasi et.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Facere et cupiditate ad odio excepturi.
+            security:
+                - jwt_header_Authorization: []
+        post:
+            tags:
+                - accounts
+            summary: create-invitation accounts
+            description: Invite an email to a project (gated on can_add_user)
+            operationId: accounts#create-invitation
+            parameters:
+                - name: project_id
+                  in: path
+                  description: Project URN
+                  required: true
+                  schema:
+                    type: string
+                    description: Project URN
+                    example: Quia ut.
+                  example: Expedita fugiat amet ea reiciendis neque.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CreateInvitationPayload2'
+                        example:
+                            capabilities:
+                                - Eveniet veritatis magni dolorem et voluptatem rerum.
+                                - Cum voluptatum et alias.
+                            email: Aut similique quam eaque.
+            responses:
+                "201":
+                    description: Created response.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Invitation'
+                            example:
+                                account_id: Quia blanditiis voluptatem temporibus commodi voluptatem quae.
+                                capabilities:
+                                    - Ipsum ducimus.
+                                    - Ex et.
+                                    - Libero minus vel ea perspiciatis.
+                                email: Debitis accusamus voluptatibus sed.
+                                expires_at: Dolorem nihil voluptatem numquam.
+                                id: Quaerat eius minus eveniet.
+                                kind: Iste maiores qui dicta.
+                                project_id: Autem hic molestiae porro.
+                                status: Consequatur unde.
+                "400":
+                    description: 'bad-request: Bad Request response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/BadRequestT'
+                            example:
+                                message: Tenetur itaque voluptas non.
+                "401":
+                    description: 'not-authorized: Unauthorized response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/UnauthorizedT'
+                            example:
+                                message: Molestiae neque aliquid ipsam occaecati adipisci.
+                "403":
+                    description: 'forbidden: Forbidden response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ForbiddenT'
+                            example:
+                                message: Enim pariatur dicta consequatur fugit at tempore.
+                "404":
+                    description: 'not-found: Not Found response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/NotFoundT'
+                            example:
+                                id: Voluptatum magni corrupti facilis vel.
+                                message: Illum quam qui perspiciatis.
+                "409":
+                    description: 'conflict: Conflict response.'
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConflictT'
+                            example:
+                                message: Facilis architecto molestias repellat natus.
+            security:
+                - jwt_header_Authorization: []
+components:
+    schemas:
+        Account:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Account URN
+                    example: Quod quod soluta aliquid excepturi minima.
+                kind:
+                    type: string
+                    description: personal | org
+                    example: Dolor repudiandae.
+                name:
+                    type: string
+                    description: Display name
+                    example: Odio non ducimus laboriosam.
+            example:
+                id: Omnis et maxime est rerum distinctio.
+                kind: Voluptatem qui eum itaque rerum et.
+                name: Quibusdam eum magni.
+            required:
+                - id
+                - kind
+                - name
+        AddAccountGrantPayload:
+            type: object
+            properties:
+                capabilities:
+                    type: array
+                    items:
+                        type: string
+                        example: Magni id aliquid qui.
+                    description: 'Account capabilities: read, create_project, manage_members'
+                    example:
+                        - Possimus doloribus.
+                        - Fugiat ipsa officiis.
+                        - Exercitationem non velit sapiente.
+                id:
+                    type: string
+                    description: Account URN
+                    example: Et rerum sit reprehenderit temporibus magni iusto.
+                token:
+                    type: string
+                    description: Identity-scoped JWT
+                    example: Odit molestiae enim eligendi.
+                user_id:
+                    type: string
+                    description: User URN to grant capabilities to
+                    example: Mollitia rerum eaque.
+            example:
+                capabilities:
+                    - Deserunt soluta nihil eveniet.
+                    - Rem voluptatem.
+                id: Omnis alias.
+                token: Fuga aut voluptatem.
+                user_id: Quis eum exercitationem ea.
+            required:
+                - id
+                - user_id
+                - capabilities
+        AddAccountGrantPayload2:
+            type: object
+            properties:
+                capabilities:
+                    type: array
+                    items:
+                        type: string
+                        example: Nostrum vel vel esse.
+                    description: 'Account capabilities: read, create_project, manage_members'
+                    example:
+                        - Vitae adipisci molestiae.
+                        - Ipsum repellat.
+                        - Provident et non similique quaerat.
+                user_id:
+                    type: string
+                    description: User URN to grant capabilities to
+                    example: Quis pariatur illo laborum minus atque.
+            example:
+                capabilities:
+                    - Ullam adipisci sed repellat adipisci aut qui.
+                    - Occaecati eum expedita soluta accusamus.
+                    - Porro voluptatum iusto impedit enim.
+                user_id: Laboriosam consequatur et vel voluptatibus nesciunt praesentium.
+            required:
+                - user_id
+                - capabilities
+        AddProjectGrantPayload:
+            type: object
+            properties:
+                capabilities:
+                    type: array
+                    items:
+                        type: string
+                        example: Ullam ea sed.
+                    description: 'Project capabilities: read, write, delete, add_user, remove_user'
+                    example:
+                        - Rerum quia commodi delectus ut recusandae.
+                        - Quas quis impedit inventore nemo et officiis.
+                principal_id:
+                    type: string
+                    description: 'Principal URN (for service: the m2m_clients.id, i.e. the session pseudonym)'
+                    example: Nesciunt aliquam autem ratione deserunt aut est.
+                principal_kind:
+                    type: string
+                    description: user | service
+                    example: Sit aliquid sint.
+                project_id:
+                    type: string
+                    description: Project URN
+                    example: Iste molestiae dolorem consequatur.
+                token:
+                    type: string
+                    description: JWT
+                    example: Et nostrum aliquid quas.
+            example:
+                capabilities:
+                    - Aperiam voluptates asperiores ratione amet.
+                    - Blanditiis cupiditate nemo in et quia laborum.
+                principal_id: Animi enim sit quibusdam et numquam qui.
+                principal_kind: Ducimus nam molestiae dignissimos recusandae deleniti.
+                project_id: In sit sunt.
+                token: In voluptate quo et architecto qui.
+            required:
+                - project_id
+                - principal_kind
+                - principal_id
+                - capabilities
+        AddProjectGrantPayload2:
+            type: object
+            properties:
+                capabilities:
+                    type: array
+                    items:
+                        type: string
+                        example: Sunt inventore id voluptatibus sint tempore et.
+                    description: 'Project capabilities: read, write, delete, add_user, remove_user'
+                    example:
+                        - Libero deleniti saepe earum asperiores expedita.
+                        - Provident eaque consequatur sed ut.
+                principal_id:
+                    type: string
+                    description: 'Principal URN (for service: the m2m_clients.id, i.e. the session pseudonym)'
+                    example: Quia aut eum.
+                principal_kind:
+                    type: string
+                    description: user | service
+                    example: Eum non est corrupti sit delectus.
+            example:
+                capabilities:
+                    - Rem vero repellendus at officia nisi.
+                    - Voluptate est dolore.
+                    - Temporibus quas.
+                    - Quaerat dolore dolore quam.
+                principal_id: Ut occaecati iure maiores.
+                principal_kind: Atque nisi est soluta sequi sint.
+            required:
+                - principal_kind
+                - principal_id
+                - capabilities
+        BadRequestT:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: Error message
+                    example: Aut id inventore temporibus similique.
+            example:
+                message: Molestiae blanditiis nulla hic sint et.
+            required:
+                - message
+        CapabilitiesResult:
+            type: object
+            properties:
+                account:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Capability'
+                    description: Capabilities grantable on an account
+                    example:
+                        - description: Eum repellendus aut.
+                          name: Est omnis autem architecto sint voluptatem.
+                        - description: Eum repellendus aut.
+                          name: Est omnis autem architecto sint voluptatem.
+                        - description: Eum repellendus aut.
+                          name: Est omnis autem architecto sint voluptatem.
+                project:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Capability'
+                    description: Capabilities grantable on a project
+                    example:
+                        - description: Eum repellendus aut.
+                          name: Est omnis autem architecto sint voluptatem.
+                        - description: Eum repellendus aut.
+                          name: Est omnis autem architecto sint voluptatem.
+                        - description: Eum repellendus aut.
+                          name: Est omnis autem architecto sint voluptatem.
+            example:
+                account:
+                    - description: Eum repellendus aut.
+                      name: Est omnis autem architecto sint voluptatem.
+                    - description: Eum repellendus aut.
+                      name: Est omnis autem architecto sint voluptatem.
+                project:
+                    - description: Eum repellendus aut.
+                      name: Est omnis autem architecto sint voluptatem.
+                    - description: Eum repellendus aut.
+                      name: Est omnis autem architecto sint voluptatem.
+                    - description: Eum repellendus aut.
+                      name: Est omnis autem architecto sint voluptatem.
+            required:
+                - project
+                - account
+        Capability:
+            type: object
+            properties:
+                description:
+                    type: string
+                    description: Human-readable description of what the capability allows
+                    example: Non nihil voluptas.
+                name:
+                    type: string
+                    description: Capability name as used in grants and invitations
+                    example: Voluptatem porro rerum occaecati.
+            example:
+                description: Ipsam libero consequatur mollitia et assumenda.
+                name: Soluta quam minus sint tenetur.
+            required:
+                - name
+        ConflictT:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: Error message
+                    example: Dignissimos et vero velit laboriosam aut.
+            example:
+                message: Neque laboriosam ut aut sint.
+        CreateAccountInvitationPayload:
+            type: object
+            properties:
+                account_id:
+                    type: string
+                    description: Account URN
+                    example: Dolor ex.
+                capabilities:
+                    type: array
+                    items:
+                        type: string
+                        example: Dolorem autem id asperiores beatae.
+                    description: Elevated account capabilities to grant on accept (create_project, manage_members); omit for a read-only member
+                    example:
+                        - Debitis tempora.
+                        - Sed est aperiam nemo perspiciatis.
+                email:
+                    type: string
+                    description: Invitee email address
+                    example: Veritatis quis excepturi eligendi exercitationem.
+                token:
+                    type: string
+                    description: JWT
+                    example: Assumenda doloribus alias sequi veritatis vero.
+            example:
+                account_id: Quos eos deserunt officia.
+                capabilities:
+                    - Voluptate placeat vel.
+                    - Totam nulla reiciendis porro.
+                    - Quo aliquid et.
+                    - Sit est.
+                email: Ipsum omnis delectus amet sed sit possimus.
+                token: A id reprehenderit quasi unde et porro.
+            required:
+                - account_id
+                - email
+        CreateAccountInvitationPayload2:
+            type: object
+            properties:
+                capabilities:
+                    type: array
+                    items:
+                        type: string
+                        example: Rem eligendi quis facilis.
+                    description: Elevated account capabilities to grant on accept (create_project, manage_members); omit for a read-only member
+                    example:
+                        - Ducimus id illum.
+                        - Tempora non modi molestiae ipsam maiores minus.
+                        - Illo dolore maxime ut voluptas amet dolore.
+                        - Illum delectus quos minus.
+                email:
+                    type: string
+                    description: Invitee email address
+                    example: Cum facilis temporibus.
+            example:
+                capabilities:
+                    - Molestiae nihil incidunt autem quo.
+                    - Error ea.
+                    - Aut quia explicabo fugit voluptatem voluptatem.
+                    - Sed voluptas ea assumenda.
+                email: Quae iure doloribus et ut.
+            required:
+                - email
+        CreateAccountPayload:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: Display name for the new org account
+                    example: Vitae et minima nobis quam iste dolores.
+                token:
+                    type: string
+                    description: Identity-scoped JWT
+                    example: Consequatur aut ut quas voluptatem.
+            example:
+                name: Voluptas ut sint enim.
+                token: Ut velit natus quae.
+            required:
+                - name
+        CreateAccountPayload2:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: Display name for the new org account
+                    example: Accusantium animi fugit reprehenderit repudiandae.
+            example:
+                name: Odio molestiae consequatur consequatur.
+            required:
+                - name
+        CreateInvitationPayload:
+            type: object
+            properties:
+                capabilities:
+                    type: array
+                    items:
+                        type: string
+                        example: Tenetur nobis vero velit.
+                    description: Project capabilities to grant on accept
+                    example:
+                        - Quo exercitationem.
+                        - Doloribus numquam expedita dolor maiores nisi consequatur.
+                email:
+                    type: string
+                    description: Invitee email address
+                    example: Ut voluptatem.
+                project_id:
+                    type: string
+                    description: Project URN
+                    example: At nesciunt.
+                token:
+                    type: string
+                    description: JWT
+                    example: Molestias aut.
+            example:
+                capabilities:
+                    - Beatae ipsa.
+                    - Iste perspiciatis eaque corporis.
+                    - Delectus soluta quibusdam consequatur.
+                    - Rem voluptates aut ea.
+                email: Praesentium et minus dolorum numquam quod.
+                project_id: Quia velit nihil natus mollitia occaecati magnam.
+                token: Beatae illo inventore.
+            required:
+                - project_id
+                - email
+                - capabilities
+        CreateInvitationPayload2:
+            type: object
+            properties:
+                capabilities:
+                    type: array
+                    items:
+                        type: string
+                        example: Sunt id maiores voluptas hic corrupti quas.
+                    description: Project capabilities to grant on accept
+                    example:
+                        - Natus quae exercitationem esse delectus qui id.
+                        - Minus nisi cum provident impedit enim.
+                        - Placeat natus harum ducimus.
+                email:
+                    type: string
+                    description: Invitee email address
+                    example: Nam aliquam eius.
+            example:
+                capabilities:
+                    - Reprehenderit similique occaecati architecto dolores omnis.
+                    - Ut hic quos quae libero nesciunt.
+                email: Sint rerum.
+            required:
+                - email
+                - capabilities
+        CreateProjectPayload:
+            type: object
+            properties:
+                account_id:
+                    type: string
+                    description: Owning account URN. Optional when parent_id is given (defaults to the parent's account); required otherwise. When supplied it overrides the inherited account, and the caller must have can_create_project on it.
+                    example: Quia reiciendis optio.
+                name:
+                    type: string
+                    description: Display name for the new project
+                    example: Eveniet aut possimus laborum harum soluta.
+                parent_id:
+                    type: string
+                    description: Optional parent project URN. The new project inherits this parent's account unless account_id overrides it.
+                    example: Nobis et quis architecto dolor mollitia.
+                token:
+                    type: string
+                    description: Identity-scoped JWT
+                    example: Odio voluptatum ab sequi.
+            example:
+                account_id: Est voluptate asperiores facere debitis et.
+                name: Ratione qui pariatur.
+                parent_id: Illo nisi repudiandae qui tenetur.
+                token: Dolores illo harum nulla.
+            required:
+                - name
+        CreateProjectPayload2:
+            type: object
+            properties:
+                account_id:
+                    type: string
+                    description: Owning account URN. Optional when parent_id is given (defaults to the parent's account); required otherwise. When supplied it overrides the inherited account, and the caller must have can_create_project on it.
+                    example: Odit vero placeat.
+                name:
+                    type: string
+                    description: Display name for the new project
+                    example: Optio possimus inventore provident sit eius.
+                parent_id:
+                    type: string
+                    description: Optional parent project URN. The new project inherits this parent's account unless account_id overrides it.
+                    example: Quaerat blanditiis saepe est est.
+            example:
+                account_id: Nobis assumenda voluptatem qui dolores ad.
+                name: Pariatur vitae accusantium.
+                parent_id: Voluptatem voluptas incidunt.
+            required:
+                - name
+        DeleteProjectPayload:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Project URN
+                    example: Autem maxime aliquam.
+                token:
+                    type: string
+                    description: JWT
+                    example: Sapiente doloremque omnis.
+            example:
+                id: Maxime laudantium placeat illum.
+                token: Laudantium totam ab repellat tempore possimus.
+            required:
+                - id
+        EnsureOnboardingPayload:
+            type: object
+            properties:
+                account_id:
+                    type: string
+                    description: Personal account URN (adopted from ivcap-id)
+                    example: Ut sunt voluptatem cum alias quia.
+                email:
+                    type: string
+                    description: Verified email, or empty if unverified/absent
+                    example: Consequatur quod.
+                email_verified:
+                    type: boolean
+                    description: Whether the upstream IdP asserts email_verified
+                    example: true
+                key:
+                    type: string
+                    description: Onboarding shared secret
+                    example: Doloremque reiciendis.
+                name:
+                    type: string
+                    description: Display name from identity provider traits
+                    example: Incidunt sequi sapiente corrupti consequatur eveniet.
+                user_id:
+                    type: string
+                    description: User URN
+                    example: Cupiditate qui eveniet hic laudantium.
+            example:
+                account_id: Eos sapiente.
+                email: Aut quaerat veniam et et.
+                email_verified: false
+                key: Officiis quia minus pariatur quasi.
+                name: Vel iure quis.
+                user_id: Incidunt mollitia.
+            required:
+                - user_id
+                - account_id
+        EnsureOnboardingPayload2:
+            type: object
+            properties:
+                account_id:
+                    type: string
+                    description: Personal account URN (adopted from ivcap-id)
+                    example: Aliquid alias.
+                email:
+                    type: string
+                    description: Verified email, or empty if unverified/absent
+                    example: Optio non temporibus incidunt voluptate exercitationem.
+                email_verified:
+                    type: boolean
+                    description: Whether the upstream IdP asserts email_verified
+                    example: false
+                name:
+                    type: string
+                    description: Display name from identity provider traits
+                    example: Aspernatur impedit eum aut repellendus.
+                user_id:
+                    type: string
+                    description: User URN
+                    example: Occaecati quas consectetur sint.
+            example:
+                account_id: Dolorem et sint.
+                email: Aperiam in magni recusandae quos sunt corrupti.
+                email_verified: false
+                name: Quis sint suscipit veritatis.
+                user_id: Modi tempora aut et doloremque et at.
+            required:
+                - user_id
+                - account_id
+        EnsureOnboardingResult:
+            type: object
+            properties:
+                account_id:
+                    type: string
+                    description: Personal account URN
+                    example: Repellat facilis omnis.
+                bound_invitations:
+                    type: integer
+                    description: Number of pending invitations bound to this user
+                    example: 629346251898986172
+                    format: int64
+                personal_project_id:
+                    type: string
+                    description: Personal project URN
+                    example: Voluptas adipisci occaecati assumenda aspernatur.
+            example:
+                account_id: Aspernatur qui ut ut aut eius.
+                bound_invitations: 1284287141971447529
+                personal_project_id: Rerum ut qui ut temporibus assumenda.
+            required:
+                - account_id
+                - personal_project_id
+                - bound_invitations
+        ForbiddenT:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: Error message
+                    example: Harum aut cum repellat autem ea debitis.
+            example:
+                message: Ipsum numquam veniam praesentium.
+        GetAccountPayload:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Account URN
+                    example: Et est rem provident dolor qui.
+                token:
+                    type: string
+                    description: Identity-scoped JWT
+                    example: Et est omnis odit.
+            example:
+                id: Voluptatem est minus eum quia velit impedit.
+                token: Autem tenetur ullam tempore modi.
+            required:
+                - id
+        GetProjectPayload:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Project URN
+                    example: Nihil enim.
+                token:
+                    type: string
+                    description: Identity-scoped or project-scoped JWT
+                    example: Eveniet quia.
+            example:
+                id: Possimus soluta.
+                token: Sapiente quo.
+            required:
+                - id
+        Invitation:
+            type: object
+            properties:
+                account_id:
+                    type: string
+                    description: Account URN (set for account invitations)
+                    example: Vel sit et officiis.
+                capabilities:
+                    type: array
+                    items:
+                        type: string
+                        example: Similique facere et.
+                    description: Capabilities the invite grants (project or account caps per kind)
+                    example:
+                        - Debitis omnis officiis dolorem aut.
+                        - Eos ut.
+                        - Eius quis et.
+                email:
+                    type: string
+                    description: Invitee email (only on the inviter's create response / project listing)
+                    example: Odio fuga ea fuga quis.
+                expires_at:
+                    type: string
+                    description: RFC3339 expiry
+                    example: Quo ut.
+                id:
+                    type: string
+                    description: Invitation URN
+                    example: Est quis rerum cum vero.
+                kind:
+                    type: string
+                    description: 'Invitation target kind: project | account'
+                    example: Velit sapiente.
+                project_id:
+                    type: string
+                    description: Project URN (set for project invitations)
+                    example: Error beatae.
+                status:
+                    type: string
+                    description: pending | accepted | declined | revoked
+                    example: Fugiat molestiae.
+            example:
+                account_id: Ex a quas a officiis.
+                capabilities:
+                    - Pariatur debitis.
+                    - Assumenda eos voluptatem.
+                    - Officia rem.
+                email: Enim perspiciatis cumque velit sequi atque et.
+                expires_at: Aliquam quis aut.
+                id: Quas facilis.
+                kind: Iste cupiditate ullam eveniet debitis ratione beatae.
+                project_id: Et ullam consequatur quis neque aut.
+                status: Esse aspernatur.
+            required:
+                - id
+                - capabilities
+                - kind
+                - status
+                - expires_at
+        InvitationIDPayload:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Invitation URN
+                    example: Nemo nesciunt est eaque.
+                token:
+                    type: string
+                    description: Identity-scoped JWT of the invitee
+                    example: Aut amet quidem sed quia voluptatem.
+            example:
+                id: Aut recusandae perferendis eos.
+                token: Modi dolores eveniet recusandae.
+            required:
+                - id
+        LeaveProjectPayload:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Project URN
+                    example: Omnis laudantium rerum animi eum.
+                token:
+                    type: string
+                    description: JWT
+                    example: Nostrum nam fuga temporibus temporibus qui enim.
+            example:
+                id: Quia nihil molestias reiciendis fuga fugit.
+                token: Commodi vitae et.
+            required:
+                - id
+        ListAccountInvitationsPayload:
+            type: object
+            properties:
+                account_id:
+                    type: string
+                    description: Account URN
+                    example: Omnis eum reiciendis.
+                token:
+                    type: string
+                    description: JWT
+                    example: Sit corporis minus ut excepturi.
+            example:
+                account_id: Ullam amet aut.
+                token: Facilis quia sit consequatur aliquam ipsam.
+            required:
+                - account_id
+        ListAccountMembersPayload:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Account URN
+                    example: Voluptatem consequatur.
+                token:
+                    type: string
+                    description: Identity-scoped JWT
+                    example: Ipsum dolor atque.
+            example:
+                id: Hic provident eaque mollitia vel velit.
+                token: Qui aliquam veniam ut voluptas.
+            required:
+                - id
+        ListAccountProjectsPayload:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Account URN
+                    example: Vero minima nihil vero.
+                token:
+                    type: string
+                    description: Identity-scoped JWT
+                    example: Aut doloribus maiores perferendis enim.
+            example:
+                id: Aut quidem iure ipsa.
+                token: Quo accusantium mollitia.
+            required:
+                - id
+        ListAccountsResult:
+            type: object
+            properties:
+                accounts:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Account'
+                    example:
+                        - id: Et accusantium voluptatibus est ut.
+                          kind: In aliquid vel assumenda praesentium ut.
+                          name: Rerum eaque aspernatur sit quisquam.
+                        - id: Et accusantium voluptatibus est ut.
+                          kind: In aliquid vel assumenda praesentium ut.
+                          name: Rerum eaque aspernatur sit quisquam.
+                        - id: Et accusantium voluptatibus est ut.
+                          kind: In aliquid vel assumenda praesentium ut.
+                          name: Rerum eaque aspernatur sit quisquam.
+                        - id: Et accusantium voluptatibus est ut.
+                          kind: In aliquid vel assumenda praesentium ut.
+                          name: Rerum eaque aspernatur sit quisquam.
+            example:
+                accounts:
+                    - id: Et accusantium voluptatibus est ut.
+                      kind: In aliquid vel assumenda praesentium ut.
+                      name: Rerum eaque aspernatur sit quisquam.
+                    - id: Et accusantium voluptatibus est ut.
+                      kind: In aliquid vel assumenda praesentium ut.
+                      name: Rerum eaque aspernatur sit quisquam.
+            required:
+                - accounts
+        ListInvitationsResult:
+            type: object
+            properties:
+                invitations:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Invitation'
+                    example:
+                        - account_id: Quia ratione dolores.
+                          capabilities:
+                            - Nihil quaerat est.
+                            - Sunt alias.
+                          email: Neque aut excepturi corrupti.
+                          expires_at: Consectetur harum.
+                          id: Perspiciatis voluptas.
+                          kind: Quisquam reprehenderit quos soluta laboriosam.
+                          project_id: Necessitatibus est dignissimos delectus numquam.
+                          status: Expedita quia culpa iure placeat.
+                        - account_id: Quia ratione dolores.
+                          capabilities:
+                            - Nihil quaerat est.
+                            - Sunt alias.
+                          email: Neque aut excepturi corrupti.
+                          expires_at: Consectetur harum.
+                          id: Perspiciatis voluptas.
+                          kind: Quisquam reprehenderit quos soluta laboriosam.
+                          project_id: Necessitatibus est dignissimos delectus numquam.
+                          status: Expedita quia culpa iure placeat.
+                        - account_id: Quia ratione dolores.
+                          capabilities:
+                            - Nihil quaerat est.
+                            - Sunt alias.
+                          email: Neque aut excepturi corrupti.
+                          expires_at: Consectetur harum.
+                          id: Perspiciatis voluptas.
+                          kind: Quisquam reprehenderit quos soluta laboriosam.
+                          project_id: Necessitatibus est dignissimos delectus numquam.
+                          status: Expedita quia culpa iure placeat.
+                        - account_id: Quia ratione dolores.
+                          capabilities:
+                            - Nihil quaerat est.
+                            - Sunt alias.
+                          email: Neque aut excepturi corrupti.
+                          expires_at: Consectetur harum.
+                          id: Perspiciatis voluptas.
+                          kind: Quisquam reprehenderit quos soluta laboriosam.
+                          project_id: Necessitatibus est dignissimos delectus numquam.
+                          status: Expedita quia culpa iure placeat.
+            example:
+                invitations:
+                    - account_id: Quia ratione dolores.
+                      capabilities:
+                        - Nihil quaerat est.
+                        - Sunt alias.
+                      email: Neque aut excepturi corrupti.
+                      expires_at: Consectetur harum.
+                      id: Perspiciatis voluptas.
+                      kind: Quisquam reprehenderit quos soluta laboriosam.
+                      project_id: Necessitatibus est dignissimos delectus numquam.
+                      status: Expedita quia culpa iure placeat.
+                    - account_id: Quia ratione dolores.
+                      capabilities:
+                        - Nihil quaerat est.
+                        - Sunt alias.
+                      email: Neque aut excepturi corrupti.
+                      expires_at: Consectetur harum.
+                      id: Perspiciatis voluptas.
+                      kind: Quisquam reprehenderit quos soluta laboriosam.
+                      project_id: Necessitatibus est dignissimos delectus numquam.
+                      status: Expedita quia culpa iure placeat.
+                    - account_id: Quia ratione dolores.
+                      capabilities:
+                        - Nihil quaerat est.
+                        - Sunt alias.
+                      email: Neque aut excepturi corrupti.
+                      expires_at: Consectetur harum.
+                      id: Perspiciatis voluptas.
+                      kind: Quisquam reprehenderit quos soluta laboriosam.
+                      project_id: Necessitatibus est dignissimos delectus numquam.
+                      status: Expedita quia culpa iure placeat.
+            required:
+                - invitations
+        ListMembersResult:
+            type: object
+            properties:
+                members:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/MemberProfile'
+                    example:
+                        - capabilities:
+                            - Voluptatum reiciendis omnis illum.
+                            - Odio quia veritatis sed ex recusandae.
+                          display_name: At soluta explicabo quae.
+                          email: Totam aut quis.
+                          kind: Consequatur esse possimus.
+                          user_id: Voluptatum rerum.
+                        - capabilities:
+                            - Voluptatum reiciendis omnis illum.
+                            - Odio quia veritatis sed ex recusandae.
+                          display_name: At soluta explicabo quae.
+                          email: Totam aut quis.
+                          kind: Consequatur esse possimus.
+                          user_id: Voluptatum rerum.
+            example:
+                members:
+                    - capabilities:
+                        - Voluptatum reiciendis omnis illum.
+                        - Odio quia veritatis sed ex recusandae.
+                      display_name: At soluta explicabo quae.
+                      email: Totam aut quis.
+                      kind: Consequatur esse possimus.
+                      user_id: Voluptatum rerum.
+                    - capabilities:
+                        - Voluptatum reiciendis omnis illum.
+                        - Odio quia veritatis sed ex recusandae.
+                      display_name: At soluta explicabo quae.
+                      email: Totam aut quis.
+                      kind: Consequatur esse possimus.
+                      user_id: Voluptatum rerum.
+            required:
+                - members
+        ListMyInvitationsPayload:
+            type: object
+            properties:
+                token:
+                    type: string
+                    description: Identity-scoped JWT of the invitee
+                    example: Iste ullam debitis porro.
+            example:
+                token: Sit illum perspiciatis laboriosam voluptatum sed.
+        ListProjectInvitationsPayload:
+            type: object
+            properties:
+                project_id:
+                    type: string
+                    description: Project URN
+                    example: Et ut.
+                token:
+                    type: string
+                    description: JWT
+                    example: Architecto molestiae vero.
+            example:
+                project_id: Quidem atque voluptatum ex velit dolor aspernatur.
+                token: Quae autem dolores voluptatem id quos consequatur.
+            required:
+                - project_id
+        ListProjectMembersPayload:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Project URN
+                    example: Enim omnis officia ratione voluptatem.
+                token:
+                    type: string
+                    description: JWT
+                    example: Ut autem enim consequatur fugit.
+            example:
+                id: Ut nostrum perspiciatis voluptatem laborum ipsa labore.
+                token: Dolorum qui.
+            required:
+                - id
+        ListProjectsResult:
+            type: object
+            properties:
+                projects:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Project'
+                    example:
+                        - account_id: Assumenda aperiam.
+                          id: Aut magnam.
+                          kind: Est molestiae est perferendis.
+                          name: Quasi qui sit et deleniti.
+                          owner_user_id: Est expedita suscipit eos quas.
+                          parent_id: Rerum similique ut.
+                        - account_id: Assumenda aperiam.
+                          id: Aut magnam.
+                          kind: Est molestiae est perferendis.
+                          name: Quasi qui sit et deleniti.
+                          owner_user_id: Est expedita suscipit eos quas.
+                          parent_id: Rerum similique ut.
+                        - account_id: Assumenda aperiam.
+                          id: Aut magnam.
+                          kind: Est molestiae est perferendis.
+                          name: Quasi qui sit et deleniti.
+                          owner_user_id: Est expedita suscipit eos quas.
+                          parent_id: Rerum similique ut.
+            example:
+                projects:
+                    - account_id: Assumenda aperiam.
+                      id: Aut magnam.
+                      kind: Est molestiae est perferendis.
+                      name: Quasi qui sit et deleniti.
+                      owner_user_id: Est expedita suscipit eos quas.
+                      parent_id: Rerum similique ut.
+                    - account_id: Assumenda aperiam.
+                      id: Aut magnam.
+                      kind: Est molestiae est perferendis.
+                      name: Quasi qui sit et deleniti.
+                      owner_user_id: Est expedita suscipit eos quas.
+                      parent_id: Rerum similique ut.
+                    - account_id: Assumenda aperiam.
+                      id: Aut magnam.
+                      kind: Est molestiae est perferendis.
+                      name: Quasi qui sit et deleniti.
+                      owner_user_id: Est expedita suscipit eos quas.
+                      parent_id: Rerum similique ut.
+            required:
+                - projects
+        MemberProfile:
+            type: object
+            properties:
+                capabilities:
+                    type: array
+                    items:
+                        type: string
+                        example: Molestias sequi expedita facere eos et.
+                    description: Granted capabilities on the object (project or account grants)
+                    example:
+                        - Perferendis pariatur perferendis.
+                        - Modi debitis.
+                        - Aut accusantium velit ab eius.
+                display_name:
+                    type: string
+                    description: Display name (empty if not available)
+                    example: Nemo voluptatibus repellat.
+                email:
+                    type: string
+                    description: Email (empty if not available or service principal)
+                    example: Est accusamus necessitatibus.
+                kind:
+                    type: string
+                    description: user | service
+                    example: Nostrum facilis commodi.
+                user_id:
+                    type: string
+                    description: Principal URN
+                    example: Velit itaque.
+            example:
+                capabilities:
+                    - Voluptatem quo.
+                    - Qui veniam et iusto dicta minima aperiam.
+                    - Pariatur sed debitis inventore iure rerum quas.
+                    - Et quia laudantium et rerum.
+                display_name: Et accusantium non commodi.
+                email: Ut saepe.
+                kind: Eos vitae dolores maxime rerum.
+                user_id: Cupiditate ut deleniti quae voluptatem facere illo.
+            required:
+                - user_id
+                - kind
+                - display_name
+                - email
+                - capabilities
+        NotFoundT:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Resource identifier
+                    example: Exercitationem voluptatem voluptate officiis et nihil omnis.
+                message:
+                    type: string
+                    description: Error message
+                    example: Omnis est.
+            example:
+                id: Reprehenderit nostrum alias dicta occaecati quia.
+                message: Unde accusamus fugit voluptas vero animi cum.
+        Project:
+            type: object
+            properties:
+                account_id:
+                    type: string
+                    description: Owning account URN
+                    example: Rem laboriosam at possimus.
+                id:
+                    type: string
+                    description: Project URN
+                    example: Enim accusantium qui dolorem placeat cumque.
+                kind:
+                    type: string
+                    description: personal | org
+                    example: Qui cum magnam illo.
+                name:
+                    type: string
+                    description: Display name
+                    example: Qui repellat aut sit numquam officiis.
+                owner_user_id:
+                    type: string
+                    description: Owner user URN (record of provenance)
+                    example: Et dignissimos.
+                parent_id:
+                    type: string
+                    description: Parent project URN, if any
+                    example: Fuga nihil sed deserunt consequuntur.
+            example:
+                account_id: Sed dolorem minus porro qui.
+                id: Maiores eveniet unde.
+                kind: In nemo laudantium iusto laborum aperiam.
+                name: Quod et non est.
+                owner_user_id: Quibusdam corrupti eveniet commodi nihil.
+                parent_id: Illum sit nihil et.
+            required:
+                - id
+                - account_id
+                - name
+                - owner_user_id
+                - kind
+        RemoveAccountGrantPayload:
+            type: object
+            properties:
+                capability:
+                    type: string
+                    description: Account capability to revoke
+                    example: Quia harum sit.
+                id:
+                    type: string
+                    description: Account URN
+                    example: Fugiat nam omnis.
+                token:
+                    type: string
+                    description: Identity-scoped JWT
+                    example: Deserunt qui corporis.
+                user_id:
+                    type: string
+                    description: User URN
+                    example: Praesentium rem ea.
+            example:
+                capability: Officiis facere omnis magni.
+                id: Repudiandae cumque voluptas.
+                token: Consequatur id hic.
+                user_id: Est unde.
+            required:
+                - id
+                - user_id
+                - capability
+        RemoveAccountMemberPayload:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Account URN
+                    example: Doloremque eveniet.
+                token:
+                    type: string
+                    description: Identity-scoped JWT
+                    example: Consequuntur eum et ab vitae.
+                user_id:
+                    type: string
+                    description: User URN to remove
+                    example: Molestiae aut ipsum iste quo.
+            example:
+                id: Dolorem esse.
+                token: Voluptatem aut totam illum eum odit.
+                user_id: Eligendi eius illum.
+            required:
+                - id
+                - user_id
+        RemoveProjectGrantPayload:
+            type: object
+            properties:
+                capability:
+                    type: string
+                    description: Project capability to revoke
+                    example: Assumenda quo voluptatem rem.
+                principal_id:
+                    type: string
+                    description: Principal URN
+                    example: Veniam et et laudantium unde officiis.
+                principal_kind:
+                    type: string
+                    description: user | service
+                    example: Praesentium a sed ipsum.
+                project_id:
+                    type: string
+                    description: Project URN
+                    example: Eligendi assumenda ea quia et voluptatum architecto.
+                token:
+                    type: string
+                    description: JWT
+                    example: Maxime et qui sit.
+            example:
+                capability: Repudiandae sed alias et repellat architecto.
+                principal_id: Nemo earum.
+                principal_kind: Nostrum est sed dolores ullam sit.
+                project_id: Voluptatem quia rerum accusantium.
+                token: Debitis sunt in ex.
+            required:
+                - project_id
+                - principal_kind
+                - principal_id
+                - capability
+        ResyncPayload:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Object URN to resync FGA tuples for
+                    example: Sed aut qui sit quo est omnis.
+                key:
+                    type: string
+                    description: Onboarding shared secret
+                    example: Tenetur itaque nihil et voluptas.
+                kind:
+                    type: string
+                    description: project | account
+                    example: Mollitia aliquid est aut dolor voluptas.
+            example:
+                id: Esse ab optio magnam voluptas quia.
+                key: Numquam aliquam.
+                kind: Et est aliquam porro excepturi tempora.
+            required:
+                - kind
+                - id
+        ResyncPayload2:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Object URN to resync FGA tuples for
+                    example: Tempore praesentium totam quaerat ea ea odit.
+                kind:
+                    type: string
+                    description: project | account
+                    example: Sed repellendus provident possimus corporis.
+            example:
+                id: Enim voluptatem.
+                kind: Et itaque quo cupiditate corrupti.
+            required:
+                - kind
+                - id
+        RevokeInvitationPayload:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Invitation URN
+                    example: Rerum et numquam temporibus molestiae ut.
+                token:
+                    type: string
+                    description: JWT
+                    example: Cum porro.
+            example:
+                id: Error sapiente error ullam sint.
+                token: Et velit.
+            required:
+                - id
+        RevokePrincipalPayload:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Principal URN being offboarded
+                    example: Velit dolores voluptatibus quo.
+                key:
+                    type: string
+                    description: Onboarding shared secret
+                    example: Magnam et id corporis pariatur.
+                kind:
+                    type: string
+                    description: user | service
+                    example: Rerum in.
+            example:
+                id: Deserunt harum deserunt.
+                key: Ea commodi.
+                kind: Dolores quisquam eos.
+            required:
+                - kind
+                - id
+        RevokePrincipalPayload2:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Principal URN being offboarded
+                    example: Laudantium aut repudiandae qui facilis aut.
+                kind:
+                    type: string
+                    description: user | service
+                    example: Labore deserunt.
+            example:
+                id: Nam aut.
+                kind: Earum et ab temporibus autem.
+            required:
+                - kind
+                - id
+        UnauthorizedT:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: Error message
+                    example: Debitis officia beatae cum consequatur.
+            example:
+                message: Dolor provident repellendus consequuntur quibusdam.
+        UpdateProjectPayload:
+            type: object
+            properties:
+                id:
+                    type: string
+                    description: Project URN
+                    example: Unde sit aut non quas possimus.
+                name:
+                    type: string
+                    description: New display name
+                    example: Dolorem nam nihil eos repellendus maxime.
+                token:
+                    type: string
+                    description: JWT
+                    example: Quis qui ut sed dolor.
+            example:
+                id: Debitis sint distinctio quas aut vel id.
+                name: Quaerat repudiandae pariatur consequatur modi aut.
+                token: Nam aliquam corrupti suscipit nobis.
+            required:
+                - id
+                - name
+        UpdateProjectPayload2:
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: New display name
+                    example: Itaque illo architecto velit.
+            example:
+                name: Vel veniam in tenetur libero beatae.
+            required:
+                - name
+    securitySchemes:
+        jwt_header_Authorization:
+            type: http
+            description: ivcap-id-issued JWT carrying the uid/acc pseudonyms
+            scheme: bearer
+            bearerFormat: JWT
+        onboarding_header_Authorization:
+            type: apiKey
+            description: Shared secret restricting /internal endpoints to ivcap-id
+            name: Authorization
+            in: header
+tags:
+    - name: accounts
+      description: Account, project and invitation lifecycle management

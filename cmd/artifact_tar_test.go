@@ -1,4 +1,4 @@
-// Copyright 2023 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
+// Copyright 2026 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -291,15 +291,14 @@ func createTestTar(t *testing.T, compress bool) []byte {
 
 	buf := new(bytes.Buffer)
 	var tw *tar.Writer
+	var gw *gzip.Writer
 
 	if compress {
-		gw := gzip.NewWriter(buf)
-		defer gw.Close()
+		gw = gzip.NewWriter(buf)
 		tw = tar.NewWriter(gw)
 	} else {
 		tw = tar.NewWriter(buf)
 	}
-	defer tw.Close()
 
 	// Add test files
 	files := []struct {
@@ -324,8 +323,15 @@ func createTestTar(t *testing.T, compress bool) []byte {
 		}
 	}
 
+	// Close writers in order (tar first, then gzip) so the archive footers are
+	// flushed before we read the buffer.
+	if err := tw.Close(); err != nil {
+		t.Fatalf("failed to close tar writer: %v", err)
+	}
 	if compress {
-		tw.Close()
+		if err := gw.Close(); err != nil {
+			t.Fatalf("failed to close gzip writer: %v", err)
+		}
 	}
 
 	return buf.Bytes()

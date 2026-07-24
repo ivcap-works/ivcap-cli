@@ -1,16 +1,22 @@
-## ivcap context get
+## ivcap account list
 
-Display the current context
+List accounts you can access
 
 ```
-ivcap context get [all|name|account-id|url|access-token] [flags]
+ivcap account list [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help            help for get
-      --refresh-token   if set, refresh access token if expired
+      --at-time string    query state at this time in the past
+      --filter string     filter list (e.g. "name~=Fred")
+  -h, --help              help for list
+  -l, --limit int         max number of records to be returned (default 10)
+      --order-by string   feature to order list by (e.g. "created-at,status")
+      --order-desc        if set, order in descending order
+  -p, --page string       page cursor
+      --search string     search list
 ```
 
 ### Options inherited from parent commands
@@ -27,5 +33,5 @@ ivcap context get [all|name|account-id|url|access-token] [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage and set access to various IVCAP deployments
+* [ivcap account](ivcap_account.md)	 - Manage accounts you belong to
 

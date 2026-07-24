@@ -1,4 +1,4 @@
-// Copyright 2023 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
+// Copyright 2026 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -45,6 +45,10 @@ const (
 	URN_PREFIX = "ivcap"
 )
 
+// PROJECT_HEADER carries the caller's selected project to the server-side
+// resolver under the opaque-token flow (the CLI never mints project-scoped JWTs).
+const PROJECT_HEADER = "Ivcap-Project"
+
 const RELEASE_CHECK_URL = "https://github.com/ivcap-works/ivcap-cli/releases/latest"
 
 // Max characters to limit name to
@@ -76,9 +80,18 @@ type Context struct {
 	ApiVersion int    `yaml:"api-version"`
 	Name       string `yaml:"name"`
 	URL        string `yaml:"url"`
-	AccountID  string `yaml:"account-id"`
-	ProviderID string `yaml:"provider-id"`
-	Host       string `yaml:"host"` // set Host header if necessary
+	// AccountID holds the account of the currently selected project (set by
+	// `project use`); under the new auth flow it is no longer sourced from a token.
+	AccountID string `yaml:"account-id"`
+	Host      string `yaml:"host"` // set Host header if necessary
+
+	// Auth mode / OIDC (opaque-token "Model B" flow)
+	AuthMode  string `yaml:"auth-mode,omitempty"`  // "oidc" | "legacy"
+	IssuerURL string `yaml:"issuer-url,omitempty"` // OIDC issuer recorded at login
+	IDToken   string `yaml:"id-token,omitempty"`   // raw id_token JWT for local claim display
+
+	// CurrentProject is forwarded to the server-side resolver via PROJECT_HEADER.
+	CurrentProject string `yaml:"current-project,omitempty"`
 
 	// User Information
 	AccountName     string `yaml:"account-name"`
@@ -448,8 +461,19 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int, opts ...adpt.Op
 
 	url := ctxt.URL
 	var headers *map[string]string
-	if ctxt.Host != "" {
-		headers = &(map[string]string{"Host": ctxt.Host})
+	if ctxt.Host != "" || (requiresAuth && ctxt.CurrentProject != "") {
+		h := map[string]string{}
+		if ctxt.Host != "" {
+			h["Host"] = ctxt.Host
+		}
+		// Under the opaque-token ("Model B") flow the CLI never mints a
+		// project-scoped JWT itself; it forwards the selected project via this
+		// header so the server-side resolver can scope the request. Only sent on
+		// authenticated calls (discovery/token calls use CreateAdapter(false)).
+		if requiresAuth && ctxt.CurrentProject != "" {
+			h[PROJECT_HEADER] = ctxt.CurrentProject
+		}
+		headers = &h
 	}
 	logger.Debug("Adapter config", log.String("url", url))
 
