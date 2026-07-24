@@ -1,15 +1,16 @@
-## ivcap invitation list
+## ivcap account remove-member
 
-List invitations addressed to you
+Remove a user from an account entirely (revokes all their grants)
 
 ```
-ivcap invitation list [flags]
+ivcap account remove-member account_id --user <urn> [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+  -h, --help          help for remove-member
+      --user string   User URN to remove from the account
 ```
 
 ### Options inherited from parent commands
@@ -26,5 +27,5 @@ ivcap invitation list [flags]
 
 ### SEE ALSO
 
-* [ivcap invitation](ivcap_invitation.md)	 - Respond to invitations addressed to you
+* [ivcap account](ivcap_account.md)	 - Manage accounts you belong to
 

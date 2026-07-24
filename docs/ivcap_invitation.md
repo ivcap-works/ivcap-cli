@@ -1,18 +1,14 @@
 ## ivcap invitation
 
-Manage project and account invitations
+Respond to invitations addressed to you
 
 ### Synopsis
 
-Manage invitations to projects and accounts.
+Manage invitations addressed to you: 'list' the ones awaiting your response, then
+'accept' or 'decline' them. 'revoke' cancels an invitation you issued.
 
-An invitation grants an email address a set of capabilities on a target when they
-accept it. The target is either a PROJECT (`--project`) or an ACCOUNT
-(`--account`); the valid capabilities differ by target kind. List them with:
-
-    ivcap invitation capabilities
-
-Invitees manage invitations addressed to them with 'list', 'accept' and 'decline'.
+To invite someone into a project or account, use 'ivcap project invite' or
+'ivcap account invite'.
 
 ### Options
 
@@ -36,8 +32,7 @@ Invitees manage invitations addressed to them with 'list', 'accept' and 'decline
 
 * [ivcap](ivcap.md)	 - A command line tool to interact with a IVCAP deployment
 * [ivcap invitation accept](ivcap_invitation_accept.md)	 - Accept an invitation addressed to you
-* [ivcap invitation capabilities](ivcap_invitation_capabilities.md)	 - List the capabilities that can be granted via an invitation or grant
-* [ivcap invitation create](ivcap_invitation_create.md)	 - Invite a user to a project or an account
 * [ivcap invitation decline](ivcap_invitation_decline.md)	 - Decline an invitation addressed to you
 * [ivcap invitation list](ivcap_invitation_list.md)	 - List invitations addressed to you
+* [ivcap invitation revoke](ivcap_invitation_revoke.md)	 - Cancel a pending invitation you issued
 

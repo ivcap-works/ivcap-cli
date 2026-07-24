@@ -1,15 +1,17 @@
-## ivcap invitation list
+## ivcap project remove-member
 
-List invitations addressed to you
+Remove a principal from a project entirely (revokes all their capabilities)
 
 ```
-ivcap invitation list [flags]
+ivcap project remove-member project_id (--user <urn> | --service <urn>) [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+  -h, --help             help for remove-member
+      --service string   Service principal URN to target
+      --user string      User URN to target
 ```
 
 ### Options inherited from parent commands
@@ -26,5 +28,5 @@ ivcap invitation list [flags]
 
 ### SEE ALSO
 
-* [ivcap invitation](ivcap_invitation.md)	 - Respond to invitations addressed to you
+* [ivcap project](ivcap_project.md)	 - Manage projects and select the current one
 

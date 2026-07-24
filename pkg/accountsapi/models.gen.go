@@ -487,6 +487,21 @@ type RemoveProjectGrantPayload struct {
 	Token *string `json:"token,omitempty"`
 }
 
+// RemoveProjectMemberPayload defines model for RemoveProjectMemberPayload.
+type RemoveProjectMemberPayload struct {
+	// PrincipalId Principal URN
+	PrincipalId string `json:"principal_id"`
+
+	// PrincipalKind user | service
+	PrincipalKind string `json:"principal_kind"`
+
+	// ProjectId Project URN
+	ProjectId string `json:"project_id"`
+
+	// Token JWT
+	Token *string `json:"token,omitempty"`
+}
+
 // ResyncPayload defines model for ResyncPayload.
 type ResyncPayload struct {
 	// Id Object URN to resync FGA tuples for
@@ -575,6 +590,12 @@ type AccountsRemoveProjectGrantParams struct {
 
 	// Capability Project capability to revoke
 	Capability string `form:"capability" json:"capability"`
+}
+
+// AccountsRemoveProjectMemberParams defines parameters for AccountsRemoveProjectMember.
+type AccountsRemoveProjectMemberParams struct {
+	// PrincipalKind user | service
+	PrincipalKind string `form:"principal_kind" json:"principal_kind"`
 }
 
 // AccountsCreateAccountJSONRequestBody defines body for AccountsCreateAccount for application/json ContentType.

@@ -1,15 +1,15 @@
-## ivcap invitation list
+## ivcap account invitations
 
-List invitations addressed to you
+List the pending invitations on an account
 
 ```
-ivcap invitation list [flags]
+ivcap account invitations account_id [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+  -h, --help   help for invitations
 ```
 
 ### Options inherited from parent commands
@@ -26,5 +26,5 @@ ivcap invitation list [flags]
 
 ### SEE ALSO
 
-* [ivcap invitation](ivcap_invitation.md)	 - Respond to invitations addressed to you
+* [ivcap account](ivcap_account.md)	 - Manage accounts you belong to
 
