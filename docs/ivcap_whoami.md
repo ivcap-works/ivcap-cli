@@ -1,16 +1,15 @@
-## ivcap context get
+## ivcap whoami
 
-Display the current context
+Show the currently authenticated identity and accessible accounts/projects
 
 ```
-ivcap context get [all|name|account-id|url|access-token] [flags]
+ivcap whoami [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help            help for get
-      --refresh-token   if set, refresh access token if expired
+  -h, --help   help for whoami
 ```
 
 ### Options inherited from parent commands
@@ -27,5 +26,5 @@ ivcap context get [all|name|account-id|url|access-token] [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage and set access to various IVCAP deployments
+* [ivcap](ivcap.md)	 - A command line tool to interact with a IVCAP deployment
 

@@ -1,0 +1,11 @@
+# oapi-codegen config for the ivcap-accounts data models.
+# Source of truth: ivcap-accounts Goa design -> gen/http/openapi3.yaml (vendored
+# here as openapi3.yaml, refreshed via `make sync-specs`). Regenerate with `make gen`.
+package: accountsapi
+output: models.gen.go
+generate:
+  models: true
+output-options:
+  # Keep every component schema even though no operations reference them
+  # (models-only generation would otherwise prune "unused" types).
+  skip-prune: true

@@ -14,6 +14,18 @@ It is frequently invoked by **AI/LLM agents** (via shell or via MCP). Agents are
 - Prefer headless auth via environment variables:
   - `IVCAP_ACCESS_TOKEN` (or `--access-token`)
 - Avoid flows that require a browser redirect unless a human explicitly confirms they are present.
+- **Tokens are opaque now.** On deployments using the new `ivcap-id` auth service, the access token is
+  an opaque reference (`ivcap_at_…`), not a JWT. It only authorises requests via the server-side
+  resolver together with a project header — do not try to decode or verify it locally.
+- **Set the project explicitly when headless.** Project scoping is sent via the `Ivcap-Project` header,
+  populated from the context's current project. The post-login project picker is interactive-only, so a
+  headless/CI caller must run `ivcap project use <project-urn>` (or operate against a context that
+  already has one) before project-scoped commands will be correctly scoped.
+
+### Identity and project/account commands
+- `ivcap whoami --output json` — identity + accessible accounts/projects.
+- `ivcap project list|use <id>`, `ivcap account list`, `ivcap invitation list` — all support `--output json`.
+- Prefer explicit project/account/invitation URNs from JSON output over the interactive picker.
 
 ### Confirm before mutations
 Before running any command that **creates/updates/deletes** resources (services, secrets, queues, uploads, etc.):

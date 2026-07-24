@@ -1,16 +1,11 @@
-## ivcap context get
+## ivcap account
 
-Display the current context
-
-```
-ivcap context get [all|name|account-id|url|access-token] [flags]
-```
+Manage accounts you belong to
 
 ### Options
 
 ```
-  -h, --help            help for get
-      --refresh-token   if set, refresh access token if expired
+  -h, --help   help for account
 ```
 
 ### Options inherited from parent commands
@@ -27,5 +22,8 @@ ivcap context get [all|name|account-id|url|access-token] [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage and set access to various IVCAP deployments
+* [ivcap](ivcap.md)	 - A command line tool to interact with a IVCAP deployment
+* [ivcap account create](ivcap_account_create.md)	 - Create a new organisation account
+* [ivcap account get](ivcap_account_get.md)	 - Fetch details about a single account
+* [ivcap account list](ivcap_account_list.md)	 - List accounts you can access
 

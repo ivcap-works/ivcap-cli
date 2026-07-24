@@ -32,6 +32,48 @@ build-dangerously:
 install-dangerously: build-dangerously
 	go install -ldflags ${LD_FLAGS} ivcap.go
 
+# ── Code generation: ivcap-accounts data models from its OpenAPI3 spec ──────────
+# Source of truth *in this repo* is the vendored, committed spec at
+# pkg/accountsapi/openapi3.yaml (itself emitted from the ivcap-accounts Goa
+# design). We generate models-only Go types from it so they can't drift from the
+# spec. Because the spec is vendored, `make gen` and `make check-gen` are fully
+# self-contained — contributors and public CI never need the (private) ivcap-iam
+# monorepo. Only `make sync-specs` reaches for the upstream spec, and that is a
+# maintainer-only step: the CLI is public but the auth monorepo is private, so
+# there is deliberately no default source that a public checkout could fetch.
+OAPI_CODEGEN_VERSION := v2.4.1
+
+# Where `sync-specs` pulls the upstream spec from. Defaults to a sibling
+# ivcap-accounts checkout — the setup a maintainer with private-repo access has
+# when refreshing the vendored copy. It may also be an http(s) URL, e.g. a spec
+# published as a release artifact:
+#   make sync-specs ACCOUNTS_SPEC_SRC=https://.../openapi3.yaml
+ACCOUNTS_SPEC_SRC ?= ../ivcap-accounts/gen/http/openapi3.yaml
+
+# Refresh the vendored OpenAPI3 spec (maintainer-only; requires access to the
+# upstream spec). ACCOUNTS_SPEC_SRC may be a local file path (copied) or an
+# http(s) URL (fetched with curl).
+sync-specs:
+	@case "$(ACCOUNTS_SPEC_SRC)" in \
+		http://*|https://*) \
+			echo "Fetching $(ACCOUNTS_SPEC_SRC)"; \
+			curl -fsSL "$(ACCOUNTS_SPEC_SRC)" -o pkg/accountsapi/openapi3.yaml ;; \
+		*) \
+			test -f "$(ACCOUNTS_SPEC_SRC)" || { echo "spec not found: $(ACCOUNTS_SPEC_SRC) (set ACCOUNTS_SPEC_SRC to a sibling checkout or a published spec URL)"; exit 1; }; \
+			cp "$(ACCOUNTS_SPEC_SRC)" pkg/accountsapi/openapi3.yaml ;; \
+	esac
+	@echo "Synced pkg/accountsapi/openapi3.yaml from $(ACCOUNTS_SPEC_SRC)"
+
+# Regenerate model types from the vendored spec.
+gen:
+	cd pkg/accountsapi && go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@$(OAPI_CODEGEN_VERSION) -config cfg.yaml openapi3.yaml
+	@echo "Generated pkg/accountsapi/models.gen.go"
+
+# Fail if the committed models are stale vs the vendored spec (CI drift guard).
+check-gen: gen
+	@git diff --exit-code -- pkg/accountsapi/models.gen.go \
+		|| { echo "pkg/accountsapi/models.gen.go is stale; run 'make gen' and commit"; exit 1; }
+
 build-docs:
 	@mkdir -p docs man
 	go -C docs build -ldflags ${LD_FLAGS} create-docs.go

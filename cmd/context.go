@@ -1,4 +1,4 @@
-// Copyright 2023 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
+// Copyright 2026 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -136,7 +136,7 @@ var useContextCmd = &cobra.Command{
 }
 
 var getContextCmd = &cobra.Command{
-	Use:     "get [all|name|account-id|provider-id|url|access-token]",
+	Use:     "get [all|name|account-id|url|access-token]",
 	Short:   "Display the current context",
 	Aliases: []string{"current", "show"},
 	Run: func(_ *cobra.Command, args []string) {
@@ -160,8 +160,6 @@ var getContextCmd = &cobra.Command{
 			}
 		case "account-id":
 			fmt.Println(context.AccountID)
-		case "provider-id":
-			fmt.Println(context.ProviderID)
 		case "url":
 			fmt.Println(context.URL)
 		case "all":
@@ -170,8 +168,8 @@ var getContextCmd = &cobra.Command{
 			t.AppendRow(table.Row{"Name", context.Name})
 			t.AppendRow(table.Row{"URL", context.URL})
 			t.AppendRow(table.Row{"Account ID", context.AccountID})
-			if context.ProviderID != "" {
-				t.AppendRow(table.Row{"Provider ID", context.ProviderID})
+			if context.CurrentProject != "" {
+				t.AppendRow(table.Row{"Current Project", context.CurrentProject})
 			}
 			isAuth := "no"
 			if IsAuthorised() {

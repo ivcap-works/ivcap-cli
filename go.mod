@@ -8,6 +8,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/docker/docker v28.5.2+incompatible
 	github.com/dustin/go-humanize v1.0.1
+	github.com/gabriel-vasile/mimetype v1.4.13
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/google/go-containerregistry v0.20.6
 	github.com/google/uuid v1.6.0
@@ -22,6 +23,7 @@ require (
 	github.com/spf13/cobra v1.10.1
 	go.uber.org/zap v1.27.0
 	golang.org/x/oauth2 v0.36.0
+	golang.org/x/term v0.41.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -39,7 +41,6 @@ require (
 	github.com/docker/go-connections v0.6.0 // indirect
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
-	github.com/gabriel-vasile/mimetype v1.4.13 // indirect
 	github.com/go-chi/chi/v5 v5.2.5 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
@@ -72,7 +73,6 @@ require (
 	goa.design/goa/v3 v3.22.5 // indirect
 	golang.org/x/net v0.52.0 // indirect
 	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/term v0.41.0 // indirect
 	golang.org/x/text v0.35.0 // indirect
 	gopkg.in/cenkalti/backoff.v1 v1.1.0 // indirect
 )

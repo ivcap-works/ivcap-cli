@@ -1,16 +1,17 @@
-## ivcap context get
+## ivcap project create
 
-Display the current context
+Create a new project
 
 ```
-ivcap context get [all|name|account-id|url|access-token] [flags]
+ivcap project create --name <name> [--account-id <urn>] [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help            help for get
-      --refresh-token   if set, refresh access token if expired
+      --account-id string   Owning account URN
+  -h, --help                help for create
+  -n, --name string         Display name for the new project
 ```
 
 ### Options inherited from parent commands
@@ -27,5 +28,5 @@ ivcap context get [all|name|account-id|url|access-token] [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage and set access to various IVCAP deployments
+* [ivcap project](ivcap_project.md)	 - Manage projects and select the current one
 
