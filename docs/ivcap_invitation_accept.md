@@ -26,5 +26,5 @@ ivcap invitation accept invitation_id [flags]
 
 ### SEE ALSO
 
-* [ivcap invitation](ivcap_invitation.md)	 - Manage project and account invitations
+* [ivcap invitation](ivcap_invitation.md)	 - Respond to invitations addressed to you
 

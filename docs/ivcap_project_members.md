@@ -1,15 +1,15 @@
-## ivcap invitation list
+## ivcap project members
 
-List invitations addressed to you
+List a project's members and their capabilities
 
 ```
-ivcap invitation list [flags]
+ivcap project members project_id [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+  -h, --help   help for members
 ```
 
 ### Options inherited from parent commands
@@ -26,5 +26,5 @@ ivcap invitation list [flags]
 
 ### SEE ALSO
 
-* [ivcap invitation](ivcap_invitation.md)	 - Respond to invitations addressed to you
+* [ivcap project](ivcap_project.md)	 - Manage projects and select the current one
 

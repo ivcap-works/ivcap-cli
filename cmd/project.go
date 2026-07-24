@@ -52,6 +52,60 @@ func init() {
 	projectCmd.AddCommand(useProjectCmd)
 	projectCmd.AddCommand(leaveProjectCmd)
 	projectCmd.AddCommand(deleteProjectCmd)
+
+	projectCmd.AddCommand(membersProjectCmd)
+
+	projectCmd.AddCommand(grantProjectCmd)
+	addPrincipalFlags(grantProjectCmd)
+	grantProjectCmd.Flags().StringSliceVarP(&projCapabilities, "capability", "c", nil,
+		"Capability to grant (repeatable). Run 'ivcap capabilities --kind project' to list valid values")
+
+	projectCmd.AddCommand(revokeProjectCapabilityCmd)
+	addPrincipalFlags(revokeProjectCapabilityCmd)
+	revokeProjectCapabilityCmd.Flags().StringSliceVarP(&projCapabilities, "capability", "c", nil,
+		"Capability to revoke (repeatable)")
+
+	projectCmd.AddCommand(removeProjectMemberCmd)
+	addPrincipalFlags(removeProjectMemberCmd)
+
+	projectCmd.AddCommand(inviteProjectCmd)
+	inviteProjectCmd.Flags().StringVarP(&projInviteEmail, "email", "e", "", "Invitee email address")
+	inviteProjectCmd.Flags().StringSliceVarP(&projCapabilities, "capability", "c", nil,
+		"Capability to grant on accept (repeatable). Run 'ivcap capabilities --kind project' to list valid values")
+
+	projectCmd.AddCommand(invitationsProjectCmd)
+}
+
+// principal selection flags shared across the project grant/revoke/remove-member
+// subcommands (only one subcommand runs per invocation, so sharing the backing
+// vars is safe).
+var (
+	projPrincipalUser    string
+	projPrincipalService string
+	projCapabilities     []string
+	projInviteEmail      string
+)
+
+// addPrincipalFlags registers the mutually-exclusive --user/--service flags.
+func addPrincipalFlags(cmd *cobra.Command) {
+	cmd.Flags().StringVar(&projPrincipalUser, "user", "", "User URN to target")
+	cmd.Flags().StringVar(&projPrincipalService, "service", "", "Service principal URN to target")
+}
+
+// principalFromFlags resolves the (kind, id) principal from the mutually-exclusive
+// --user/--service flags, requiring exactly one. The id is resolved through
+// GetHistory so @N shortcuts work.
+func principalFromFlags() (kind, id string, err error) {
+	switch {
+	case projPrincipalUser != "" && projPrincipalService != "":
+		return "", "", fmt.Errorf("provide only one of --user or --service")
+	case projPrincipalUser != "":
+		return "user", GetHistory(projPrincipalUser), nil
+	case projPrincipalService != "":
+		return "service", GetHistory(projPrincipalService), nil
+	default:
+		return "", "", fmt.Errorf("provide exactly one of --user or --service")
+	}
 }
 
 var (
@@ -182,7 +236,184 @@ var (
 			return nil
 		},
 	}
+
+	membersProjectCmd = &cobra.Command{
+		Use:   "members project_id",
+		Short: "List a project's members and their capabilities",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id := GetHistory(args[0])
+			res, err := sdk.ListProjectMembersRaw(context.Background(), id, CreateAdapter(true), logger)
+			if err != nil {
+				return err
+			}
+			switch outputFormat {
+			case "json":
+				return a.ReplyPrinter(res, false)
+			case "yaml":
+				return a.ReplyPrinter(res, true)
+			default:
+				var list accountsapi.ListMembersResult
+				if err = res.AsType(&list); err != nil {
+					return err
+				}
+				printMemberTable(list.Members)
+			}
+			return nil
+		},
+	}
+
+	grantProjectCmd = &cobra.Command{
+		Use:   "grant project_id (--user <urn> | --service <urn>) --capability <cap> ...",
+		Short: "Grant project capabilities to a user or service principal",
+		Long: `Grant one or more project capabilities to an existing member (user or service
+principal). List the grantable capabilities with 'ivcap capabilities --kind project'.`,
+		Args: cobra.ExactArgs(1),
+		RunE: runProjectGrant,
+	}
+
+	revokeProjectCapabilityCmd = &cobra.Command{
+		Use:     "revoke-capability project_id (--user <urn> | --service <urn>) --capability <cap> ...",
+		Aliases: []string{"revoke-cap"},
+		Short:   "Revoke one or more capabilities from a project principal",
+		Long: `Revoke individual project capabilities from a principal, leaving their remaining
+capabilities intact. To remove a principal from the project entirely, use
+'ivcap project remove-member'.`,
+		Args: cobra.ExactArgs(1),
+		RunE: runProjectRevokeCapability,
+	}
+
+	removeProjectMemberCmd = &cobra.Command{
+		Use:   "remove-member project_id (--user <urn> | --service <urn>)",
+		Short: "Remove a principal from a project entirely (revokes all their capabilities)",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			projectID := GetHistory(args[0])
+			kind, principalID, err := principalFromFlags()
+			if err != nil {
+				return err
+			}
+			if _, err := sdk.RemoveProjectMemberRaw(context.Background(), projectID, principalID, kind, CreateAdapter(true), logger); err != nil {
+				return err
+			}
+			if !silent {
+				fmt.Printf("Removed %s from project %s\n", principalID, projectID)
+			}
+			return nil
+		},
+	}
+
+	inviteProjectCmd = &cobra.Command{
+		Use:   "invite project_id --email <email> [--capability <cap> ...]",
+		Short: "Invite a user to a project",
+		Long: `Invite a user (by email) to a project, granting the given capabilities when they
+accept. If no capabilities are given and you are on an interactive terminal, you
+will be prompted to choose from the valid set.`,
+		Args: cobra.ExactArgs(1),
+		RunE: runProjectInvite,
+	}
+
+	invitationsProjectCmd = &cobra.Command{
+		Use:   "invitations project_id",
+		Short: "List the pending invitations on a project",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			id := GetHistory(args[0])
+			res, err := sdk.ListProjectInvitationsRaw(context.Background(), id, CreateAdapter(true), logger)
+			if err != nil {
+				return err
+			}
+			switch outputFormat {
+			case "json":
+				return a.ReplyPrinter(res, false)
+			case "yaml":
+				return a.ReplyPrinter(res, true)
+			default:
+				var list accountsapi.ListInvitationsResult
+				if err = res.AsType(&list); err != nil {
+					return err
+				}
+				printInvitationTable(list.Invitations)
+			}
+			return nil
+		},
+	}
 )
+
+func runProjectGrant(cmd *cobra.Command, args []string) error {
+	projectID := GetHistory(args[0])
+	kind, principalID, err := principalFromFlags()
+	if err != nil {
+		return err
+	}
+	caps, err := resolveCapabilities("project", projCapabilities)
+	if err != nil {
+		return err
+	}
+	if len(caps) == 0 {
+		return fmt.Errorf("provide at least one --capability to grant")
+	}
+	req := &accountsapi.AddProjectGrantPayload2{
+		PrincipalKind: kind,
+		PrincipalId:   principalID,
+		Capabilities:  caps,
+	}
+	if _, err := sdk.GrantProjectRaw(context.Background(), projectID, req, CreateAdapter(true), logger); err != nil {
+		return err
+	}
+	if !silent {
+		fmt.Printf("Granted [%s] to %s on project %s\n", strings.Join(caps, ", "), principalID, projectID)
+	}
+	return nil
+}
+
+func runProjectRevokeCapability(cmd *cobra.Command, args []string) error {
+	projectID := GetHistory(args[0])
+	kind, principalID, err := principalFromFlags()
+	if err != nil {
+		return err
+	}
+	if len(projCapabilities) == 0 {
+		return fmt.Errorf("provide at least one --capability to revoke")
+	}
+	// Validate the requested capabilities against the project vocabulary before
+	// issuing any request (never prompts: capabilities were supplied).
+	if _, err := resolveCapabilities("project", projCapabilities); err != nil {
+		return err
+	}
+	adpt := CreateAdapter(true)
+	var failed []string
+	for _, c := range projCapabilities {
+		if _, err := sdk.RemoveProjectGrantRaw(context.Background(), projectID, principalID, kind, c, adpt, logger); err != nil {
+			failed = append(failed, fmt.Sprintf("%s (%v)", c, err))
+			continue
+		}
+		if !silent {
+			fmt.Printf("Revoked %s from %s on project %s\n", c, principalID, projectID)
+		}
+	}
+	if len(failed) > 0 {
+		return fmt.Errorf("failed to revoke: %s", strings.Join(failed, "; "))
+	}
+	return nil
+}
+
+func runProjectInvite(cmd *cobra.Command, args []string) error {
+	projectID := GetHistory(args[0])
+	if projInviteEmail == "" {
+		return fmt.Errorf("please provide the invitee's --email")
+	}
+	caps, err := resolveCapabilities("project", projCapabilities)
+	if err != nil {
+		return err
+	}
+	req := &accountsapi.CreateInvitationPayload2{Email: projInviteEmail, Capabilities: caps}
+	res, err := sdk.CreateProjectInvitationRaw(context.Background(), projectID, req, CreateAdapter(true), logger)
+	if err != nil {
+		return err
+	}
+	return a.ReplyPrinter(res, outputFormat == "yaml")
+}
 
 // setCurrentProject persists the selected project (and its account) to the active
 // context so subsequent authenticated requests carry the Ivcap-Project header.
@@ -235,6 +466,31 @@ func selectProjectInteractive(ctxt *Context) error {
 		return fmt.Errorf("invalid selection %q", line)
 	}
 	return setCurrentProject(ctxt, &projects[n-1])
+}
+
+// printMemberTable renders a project's or account's members. Shared by the
+// 'project members' and 'account members' commands.
+func printMemberTable(members []accountsapi.MemberProfile) {
+	t := table.NewWriter()
+	t.SetOutputMirror(os.Stdout)
+	t.AppendHeader(table.Row{"ID", "Kind", "Name", "Email", "Capabilities"})
+	rows := make([]table.Row, len(members))
+	for i, m := range members {
+		id := m.UserId
+		rows[i] = table.Row{
+			MakeHistory(&id),
+			m.Kind,
+			truncString(m.DisplayName),
+			m.Email,
+			strings.Join(m.Capabilities, ", "),
+		}
+	}
+	t.AppendRows(rows)
+	t.SetColumnConfigs([]table.ColumnConfig{
+		{Number: 5, WidthMax: 40, WidthMaxEnforcer: text.WrapSoft},
+	})
+	t.Style().Options.SeparateRows = true
+	t.Render()
 }
 
 func printProjectTable(projects []accountsapi.Project) {

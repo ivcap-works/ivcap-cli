@@ -1,15 +1,22 @@
-## ivcap invitation list
+## ivcap account grant
 
-List invitations addressed to you
+Grant account capabilities to a user
+
+### Synopsis
+
+Grant one or more account-admin capabilities to an existing member. List the
+grantable capabilities with 'ivcap capabilities --kind account'.
 
 ```
-ivcap invitation list [flags]
+ivcap account grant account_id --user <urn> --capability <cap> ... [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+  -c, --capability strings   Capability to grant (repeatable). Run 'ivcap capabilities --kind account' to list valid values
+  -h, --help                 help for grant
+      --user string          User URN to grant capabilities to
 ```
 
 ### Options inherited from parent commands
@@ -26,5 +33,5 @@ ivcap invitation list [flags]
 
 ### SEE ALSO
 
-* [ivcap invitation](ivcap_invitation.md)	 - Respond to invitations addressed to you
+* [ivcap account](ivcap_account.md)	 - Manage accounts you belong to
 

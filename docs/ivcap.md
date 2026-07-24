@@ -29,10 +29,11 @@ ivcap [flags]
 * [ivcap account](ivcap_account.md)	 - Manage accounts you belong to
 * [ivcap agent-context](ivcap_agent-context.md)	 - Print embedded agent context guidance (markdown)
 * [ivcap artifact](ivcap_artifact.md)	 - Create and manage artifacts
+* [ivcap capabilities](ivcap_capabilities.md)	 - List the capabilities grantable on projects and accounts
 * [ivcap collection](ivcap_collection.md)	 - Create and manage collections
 * [ivcap context](ivcap_context.md)	 - Manage and set access to various IVCAP deployments
 * [ivcap datafabric](ivcap_datafabric.md)	 - Query the datafabric and create and manage aspects within
-* [ivcap invitation](ivcap_invitation.md)	 - Manage project and account invitations
+* [ivcap invitation](ivcap_invitation.md)	 - Respond to invitations addressed to you
 * [ivcap job](ivcap_job.md)	 - Create and manage jobs
 * [ivcap mcp](ivcap_mcp.md)	 - Start an MCP server for accessing all tools on an IVCAP platform
 * [ivcap nextflow](ivcap_nextflow.md)	 - Commands for working with Nextflow-based services

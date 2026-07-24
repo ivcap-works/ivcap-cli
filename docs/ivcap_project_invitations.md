@@ -1,20 +1,15 @@
-## ivcap invitation capabilities
+## ivcap project invitations
 
-List the capabilities that can be granted via an invitation or grant
-
-### Synopsis
-
-List the grantable capabilities per target kind (project, account), as defined by the platform authorization model.
+List the pending invitations on a project
 
 ```
-ivcap invitation capabilities [flags]
+ivcap project invitations project_id [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help          help for capabilities
-      --kind string   Limit to a single kind: project | account
+  -h, --help   help for invitations
 ```
 
 ### Options inherited from parent commands
@@ -31,5 +26,5 @@ ivcap invitation capabilities [flags]
 
 ### SEE ALSO
 
-* [ivcap invitation](ivcap_invitation.md)	 - Manage project and account invitations
+* [ivcap project](ivcap_project.md)	 - Manage projects and select the current one
 

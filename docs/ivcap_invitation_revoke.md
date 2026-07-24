@@ -1,15 +1,21 @@
-## ivcap invitation list
+## ivcap invitation revoke
 
-List invitations addressed to you
+Cancel a pending invitation you issued
+
+### Synopsis
+
+Cancel a pending invitation you issued to a project or account. List the
+outstanding invitations on a target with 'ivcap project invitations <project>' or
+'ivcap account invitations <account>' to find the id.
 
 ```
-ivcap invitation list [flags]
+ivcap invitation revoke invitation_id [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+  -h, --help   help for revoke
 ```
 
 ### Options inherited from parent commands

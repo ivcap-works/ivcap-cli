@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	neturl "net/url"
 
 	log "go.uber.org/zap"
 
@@ -77,6 +78,26 @@ func ReadAccountRaw(ctxt context.Context, id string, adpt *adapter.Adapter, logg
 
 func CreateAccountRaw(ctxt context.Context, name string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	return postJSON(ctxt, accountPath(nil), accountsapi.CreateAccountPayload2{Name: name}, adpt, logger)
+}
+
+func ListAccountMembersRaw(ctxt context.Context, accountID string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	return (*adpt).Get(ctxt, accountPath(&accountID)+"/members", logger)
+}
+
+// GrantAccountRaw grants account-admin capabilities to a user (batch add).
+func GrantAccountRaw(ctxt context.Context, accountID string, req *accountsapi.AddAccountGrantPayload2, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	return postJSON(ctxt, accountPath(&accountID)+"/grants", req, adpt, logger)
+}
+
+// RemoveAccountGrantRaw revokes a single account capability from a user.
+func RemoveAccountGrantRaw(ctxt context.Context, accountID, userID, capability string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	q := neturl.Values{"capability": {capability}}
+	return (*adpt).Delete(ctxt, accountPath(&accountID)+"/grants/"+userID+"?"+q.Encode(), logger)
+}
+
+// RemoveAccountMemberRaw removes a user from an account entirely (revoking all their grants).
+func RemoveAccountMemberRaw(ctxt context.Context, accountID, userID string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	return (*adpt).Delete(ctxt, accountPath(&accountID)+"/members/"+userID, logger)
 }
 
 /**** PROJECTS ****/
@@ -141,6 +162,24 @@ func GrantProjectRaw(ctxt context.Context, id string, req *accountsapi.AddProjec
 	return postJSON(ctxt, projectPath(&id)+"/grants", req, adpt, logger)
 }
 
+// RemoveProjectGrantRaw revokes a single project capability from a principal
+// (user or service). Removal is per-capability; call once per capability.
+func RemoveProjectGrantRaw(ctxt context.Context, projectID, principalID, principalKind, capability string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	q := neturl.Values{"principal_kind": {principalKind}, "capability": {capability}}
+	return (*adpt).Delete(ctxt, projectPath(&projectID)+"/grants/"+principalID+"?"+q.Encode(), logger)
+}
+
+// RemoveProjectMemberRaw removes a principal from a project entirely, atomically
+// revoking all of their project capabilities in one server-side transaction.
+func RemoveProjectMemberRaw(ctxt context.Context, projectID, principalID, principalKind string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	q := neturl.Values{"principal_kind": {principalKind}}
+	return (*adpt).Delete(ctxt, projectPath(&projectID)+"/members/"+principalID+"?"+q.Encode(), logger)
+}
+
+func ListProjectMembersRaw(ctxt context.Context, projectID string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	return (*adpt).Get(ctxt, projectPath(&projectID)+"/members", logger)
+}
+
 /**** INVITATIONS ****/
 
 func ListMyInvitationsRaw(ctxt context.Context, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
@@ -175,6 +214,21 @@ func CreateProjectInvitationRaw(ctxt context.Context, projectID string, req *acc
 func CreateAccountInvitationRaw(ctxt context.Context, accountID string, req *accountsapi.CreateAccountInvitationPayload2, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	id := accountID
 	return postJSON(ctxt, accountPath(&id)+"/invitations", req, adpt, logger)
+}
+
+// ListProjectInvitationsRaw lists the pending invitations on a project (admin view).
+func ListProjectInvitationsRaw(ctxt context.Context, projectID string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	return (*adpt).Get(ctxt, projectPath(&projectID)+"/invitations", logger)
+}
+
+// ListAccountInvitationsRaw lists the pending invitations on an account (admin view).
+func ListAccountInvitationsRaw(ctxt context.Context, accountID string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	return (*adpt).Get(ctxt, accountPath(&accountID)+"/invitations", logger)
+}
+
+// RevokeInvitationRaw cancels a pending invitation the caller issued.
+func RevokeInvitationRaw(ctxt context.Context, id string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	return (*adpt).Delete(ctxt, "/invitations/"+id, logger)
 }
 
 /**** CAPABILITIES ****/
