@@ -120,7 +120,7 @@ var (
 		Short: "List projects you can access",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			req := createListRequest()
-			res, err := sdk.ListProjectsRaw(context.Background(), req, CreateAdapter(true), logger)
+			res, err := sdk.ListProjectsRaw(context.Background(), req, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -147,7 +147,7 @@ var (
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
-			res, err := sdk.ReadProjectRaw(context.Background(), id, CreateAdapter(true), logger)
+			res, err := sdk.ReadProjectRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -176,7 +176,7 @@ var (
 			if projectAccountID != "" {
 				req.AccountId = &projectAccountID
 			}
-			res, err := sdk.CreateProjectRaw(context.Background(), req, CreateAdapter(true), logger)
+			res, err := sdk.CreateProjectRaw(context.Background(), req, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -194,7 +194,7 @@ var (
 				return selectProjectInteractive(ctxt)
 			}
 			id := GetHistory(args[0])
-			p, err := sdk.ReadProject(context.Background(), id, CreateAdapter(true), logger)
+			p, err := sdk.ReadProject(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return fmt.Errorf("cannot select project %s: %w", id, err)
 			}
@@ -208,7 +208,7 @@ var (
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
-			_, err := sdk.LeaveProjectRaw(context.Background(), id, CreateAdapter(true), logger)
+			_, err := sdk.LeaveProjectRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -226,7 +226,7 @@ var (
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
-			_, err := sdk.DeleteProjectRaw(context.Background(), id, CreateAdapter(true), logger)
+			_, err := sdk.DeleteProjectRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -243,7 +243,7 @@ var (
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
-			res, err := sdk.ListProjectMembersRaw(context.Background(), id, CreateAdapter(true), logger)
+			res, err := sdk.ListProjectMembersRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -293,7 +293,7 @@ capabilities intact. To remove a principal from the project entirely, use
 			if err != nil {
 				return err
 			}
-			if _, err := sdk.RemoveProjectMemberRaw(context.Background(), projectID, principalID, kind, CreateAdapter(true), logger); err != nil {
+			if _, err := sdk.RemoveProjectMemberRaw(context.Background(), projectID, principalID, kind, GetIdentityAdapter(true), logger); err != nil {
 				return err
 			}
 			if !silent {
@@ -319,7 +319,7 @@ will be prompted to choose from the valid set.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
-			res, err := sdk.ListProjectInvitationsRaw(context.Background(), id, CreateAdapter(true), logger)
+			res, err := sdk.ListProjectInvitationsRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -358,7 +358,7 @@ func runProjectGrant(cmd *cobra.Command, args []string) error {
 		PrincipalId:   principalID,
 		Capabilities:  caps,
 	}
-	if _, err := sdk.GrantProjectRaw(context.Background(), projectID, req, CreateAdapter(true), logger); err != nil {
+	if _, err := sdk.GrantProjectRaw(context.Background(), projectID, req, GetIdentityAdapter(true), logger); err != nil {
 		return err
 	}
 	if !silent {
@@ -381,7 +381,7 @@ func runProjectRevokeCapability(cmd *cobra.Command, args []string) error {
 	if _, err := resolveCapabilities("project", projCapabilities); err != nil {
 		return err
 	}
-	adpt := CreateAdapter(true)
+	adpt := GetIdentityAdapter(true)
 	var failed []string
 	for _, c := range projCapabilities {
 		if _, err := sdk.RemoveProjectGrantRaw(context.Background(), projectID, principalID, kind, c, adpt, logger); err != nil {
@@ -408,7 +408,7 @@ func runProjectInvite(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	req := &accountsapi.CreateInvitationPayload2{Email: projInviteEmail, Capabilities: caps}
-	res, err := sdk.CreateProjectInvitationRaw(context.Background(), projectID, req, CreateAdapter(true), logger)
+	res, err := sdk.CreateProjectInvitationRaw(context.Background(), projectID, req, GetIdentityAdapter(true), logger)
 	if err != nil {
 		return err
 	}
@@ -440,7 +440,7 @@ func selectProjectInteractive(ctxt *Context) error {
 		return fmt.Errorf("not an interactive terminal; select a project with 'ivcap project use <id>'")
 	}
 
-	res, err := sdk.ListProjects(context.Background(), &sdk.ListRequest{Limit: 100}, CreateAdapter(true), logger)
+	res, err := sdk.ListProjects(context.Background(), &sdk.ListRequest{Limit: 100}, GetIdentityAdapter(true), logger)
 	if err != nil {
 		return err
 	}
