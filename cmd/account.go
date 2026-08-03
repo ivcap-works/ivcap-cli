@@ -90,7 +90,7 @@ var (
 		Short: "List accounts you can access",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			req := createListRequest()
-			res, err := sdk.ListAccountsRaw(context.Background(), req, CreateAdapter(true), logger)
+			res, err := sdk.ListAccountsRaw(context.Background(), req, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -117,7 +117,7 @@ var (
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
-			res, err := sdk.ReadAccountRaw(context.Background(), id, CreateAdapter(true), logger)
+			res, err := sdk.ReadAccountRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -142,7 +142,7 @@ var (
 			if accountName == "" {
 				return fmt.Errorf("please provide a name via --name")
 			}
-			res, err := sdk.CreateAccountRaw(context.Background(), accountName, CreateAdapter(true), logger)
+			res, err := sdk.CreateAccountRaw(context.Background(), accountName, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -156,7 +156,7 @@ var (
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
-			res, err := sdk.ListAccountMembersRaw(context.Background(), id, CreateAdapter(true), logger)
+			res, err := sdk.ListAccountMembersRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -206,7 +206,7 @@ capabilities intact. To remove a member from the account entirely, use
 			if err != nil {
 				return err
 			}
-			if _, err := sdk.RemoveAccountMemberRaw(context.Background(), accountID, userID, CreateAdapter(true), logger); err != nil {
+			if _, err := sdk.RemoveAccountMemberRaw(context.Background(), accountID, userID, GetIdentityAdapter(true), logger); err != nil {
 				return err
 			}
 			if !silent {
@@ -232,7 +232,7 @@ you are on an interactive terminal, you will be prompted to choose.`,
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
-			res, err := sdk.ListAccountInvitationsRaw(context.Background(), id, CreateAdapter(true), logger)
+			res, err := sdk.ListAccountInvitationsRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -267,7 +267,7 @@ func runAccountGrant(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("provide at least one --capability to grant")
 	}
 	req := &accountsapi.AddAccountGrantPayload2{UserId: userID, Capabilities: caps}
-	if _, err := sdk.GrantAccountRaw(context.Background(), accountID, req, CreateAdapter(true), logger); err != nil {
+	if _, err := sdk.GrantAccountRaw(context.Background(), accountID, req, GetIdentityAdapter(true), logger); err != nil {
 		return err
 	}
 	if !silent {
@@ -288,7 +288,7 @@ func runAccountRevokeCapability(cmd *cobra.Command, args []string) error {
 	if _, err := resolveCapabilities("account", acctCapabilities); err != nil {
 		return err
 	}
-	adpt := CreateAdapter(true)
+	adpt := GetIdentityAdapter(true)
 	var failed []string
 	for _, c := range acctCapabilities {
 		if _, err := sdk.RemoveAccountGrantRaw(context.Background(), accountID, userID, c, adpt, logger); err != nil {
@@ -318,7 +318,7 @@ func runAccountInvite(cmd *cobra.Command, args []string) error {
 	if len(caps) > 0 {
 		req.Capabilities = &caps
 	}
-	res, err := sdk.CreateAccountInvitationRaw(context.Background(), accountID, req, CreateAdapter(true), logger)
+	res, err := sdk.CreateAccountInvitationRaw(context.Background(), accountID, req, GetIdentityAdapter(true), logger)
 	if err != nil {
 		return err
 	}

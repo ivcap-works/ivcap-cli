@@ -75,12 +75,12 @@ var whoamiCmd = &cobra.Command{
 
 		// Enrich with live memberships. Best-effort: if the accounts service is
 		// unreachable (e.g. resolver not yet deployed) still show local identity.
-		if accs, err := sdk.ListAccounts(context.Background(), &sdk.ListRequest{Limit: 100}, CreateAdapter(true), logger); err == nil {
+		if accs, err := sdk.ListAccounts(context.Background(), &sdk.ListRequest{Limit: 100}, GetIdentityAdapter(true), logger); err == nil {
 			out.Accounts = accs.Accounts
 		} else {
 			logger.Warn("whoami: could not list accounts", log.Error(err))
 		}
-		if projs, err := sdk.ListProjects(context.Background(), &sdk.ListRequest{Limit: 100}, CreateAdapter(true), logger); err == nil {
+		if projs, err := sdk.ListProjects(context.Background(), &sdk.ListRequest{Limit: 100}, GetIdentityAdapter(true), logger); err == nil {
 			out.Projects = projs.Projects
 		} else {
 			logger.Warn("whoami: could not list projects", log.Error(err))

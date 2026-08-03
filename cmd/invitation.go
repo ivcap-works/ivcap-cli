@@ -53,7 +53,7 @@ To invite someone into a project or account, use 'ivcap project invite' or
 		Use:   "list",
 		Short: "List invitations addressed to you",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			res, err := sdk.ListMyInvitationsRaw(context.Background(), CreateAdapter(true), logger)
+			res, err := sdk.ListMyInvitationsRaw(context.Background(), GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -79,7 +79,7 @@ To invite someone into a project or account, use 'ivcap project invite' or
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
-			if _, err := sdk.AcceptInvitationRaw(context.Background(), id, CreateAdapter(true), logger); err != nil {
+			if _, err := sdk.AcceptInvitationRaw(context.Background(), id, GetIdentityAdapter(true), logger); err != nil {
 				return err
 			}
 			if !silent {
@@ -95,7 +95,7 @@ To invite someone into a project or account, use 'ivcap project invite' or
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
-			if _, err := sdk.DeclineInvitationRaw(context.Background(), id, CreateAdapter(true), logger); err != nil {
+			if _, err := sdk.DeclineInvitationRaw(context.Background(), id, GetIdentityAdapter(true), logger); err != nil {
 				return err
 			}
 			if !silent {
@@ -114,7 +114,7 @@ outstanding invitations on a target with 'ivcap project invitations <project>' o
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
-			if _, err := sdk.RevokeInvitationRaw(context.Background(), id, CreateAdapter(true), logger); err != nil {
+			if _, err := sdk.RevokeInvitationRaw(context.Background(), id, GetIdentityAdapter(true), logger); err != nil {
 				return err
 			}
 			if !silent {
