@@ -13,7 +13,7 @@ type Account struct {
 	// Id Account URN
 	Id string `json:"id"`
 
-	// Kind personal | org
+	// Kind personal | workspace
 	Kind string `json:"kind"`
 
 	// Name Display name
@@ -22,7 +22,7 @@ type Account struct {
 
 // AddAccountGrantPayload defines model for AddAccountGrantPayload.
 type AddAccountGrantPayload struct {
-	// Capabilities Account capabilities: read, create_project, manage_members
+	// Capabilities Account capabilities: read, create_project, manage_members. The caller must hold each capability they grant.
 	Capabilities []string `json:"capabilities"`
 
 	// Id Account URN
@@ -37,7 +37,7 @@ type AddAccountGrantPayload struct {
 
 // AddAccountGrantPayload2 defines model for AddAccountGrantPayload2.
 type AddAccountGrantPayload2 struct {
-	// Capabilities Account capabilities: read, create_project, manage_members
+	// Capabilities Account capabilities: read, create_project, manage_members. The caller must hold each capability they grant.
 	Capabilities []string `json:"capabilities"`
 
 	// UserId User URN to grant capabilities to
@@ -46,7 +46,7 @@ type AddAccountGrantPayload2 struct {
 
 // AddProjectGrantPayload defines model for AddProjectGrantPayload.
 type AddProjectGrantPayload struct {
-	// Capabilities Project capabilities: read, write, delete, add_user, remove_user
+	// Capabilities Project capabilities: read, write, delete, add_user, remove_user, add_child_project. The caller must hold each capability they grant.
 	Capabilities []string `json:"capabilities"`
 
 	// PrincipalId Principal URN (for service: the m2m_clients.id, i.e. the session pseudonym)
@@ -64,7 +64,7 @@ type AddProjectGrantPayload struct {
 
 // AddProjectGrantPayload2 defines model for AddProjectGrantPayload2.
 type AddProjectGrantPayload2 struct {
-	// Capabilities Project capabilities: read, write, delete, add_user, remove_user
+	// Capabilities Project capabilities: read, write, delete, add_user, remove_user, add_child_project. The caller must hold each capability they grant.
 	Capabilities []string `json:"capabilities"`
 
 	// PrincipalId Principal URN (for service: the m2m_clients.id, i.e. the session pseudonym)
@@ -109,7 +109,7 @@ type CreateAccountInvitationPayload struct {
 	// AccountId Account URN
 	AccountId string `json:"account_id"`
 
-	// Capabilities Elevated account capabilities to grant on accept (create_project, manage_members); omit for a read-only member
+	// Capabilities Elevated account capabilities to grant on accept (create_project, manage_members); omit for a read-only member. The inviter must hold each capability the invitation carries.
 	Capabilities *[]string `json:"capabilities,omitempty"`
 
 	// Email Invitee email address
@@ -121,7 +121,7 @@ type CreateAccountInvitationPayload struct {
 
 // CreateAccountInvitationPayload2 defines model for CreateAccountInvitationPayload2.
 type CreateAccountInvitationPayload2 struct {
-	// Capabilities Elevated account capabilities to grant on accept (create_project, manage_members); omit for a read-only member
+	// Capabilities Elevated account capabilities to grant on accept (create_project, manage_members); omit for a read-only member. The inviter must hold each capability the invitation carries.
 	Capabilities *[]string `json:"capabilities,omitempty"`
 
 	// Email Invitee email address
@@ -130,7 +130,7 @@ type CreateAccountInvitationPayload2 struct {
 
 // CreateAccountPayload defines model for CreateAccountPayload.
 type CreateAccountPayload struct {
-	// Name Display name for the new org account
+	// Name Display name for the new workspace account
 	Name string `json:"name"`
 
 	// Token Identity-scoped JWT
@@ -139,13 +139,13 @@ type CreateAccountPayload struct {
 
 // CreateAccountPayload2 defines model for CreateAccountPayload2.
 type CreateAccountPayload2 struct {
-	// Name Display name for the new org account
+	// Name Display name for the new workspace account
 	Name string `json:"name"`
 }
 
 // CreateInvitationPayload defines model for CreateInvitationPayload.
 type CreateInvitationPayload struct {
-	// Capabilities Project capabilities to grant on accept
+	// Capabilities Project capabilities to grant on accept. The inviter must hold each capability the invitation carries.
 	Capabilities []string `json:"capabilities"`
 
 	// Email Invitee email address
@@ -160,7 +160,7 @@ type CreateInvitationPayload struct {
 
 // CreateInvitationPayload2 defines model for CreateInvitationPayload2.
 type CreateInvitationPayload2 struct {
-	// Capabilities Project capabilities to grant on accept
+	// Capabilities Project capabilities to grant on accept. The inviter must hold each capability the invitation carries.
 	Capabilities []string `json:"capabilities"`
 
 	// Email Invitee email address
@@ -175,7 +175,7 @@ type CreateProjectPayload struct {
 	// Name Display name for the new project
 	Name string `json:"name"`
 
-	// ParentId Optional parent project URN. The new project inherits this parent's account unless account_id overrides it.
+	// ParentId Optional parent project URN. The new project inherits this parent's account unless account_id overrides it. The caller must have can_add_child_project on the parent.
 	ParentId *string `json:"parent_id,omitempty"`
 
 	// Token Identity-scoped JWT
@@ -190,7 +190,7 @@ type CreateProjectPayload2 struct {
 	// Name Display name for the new project
 	Name string `json:"name"`
 
-	// ParentId Optional parent project URN. The new project inherits this parent's account unless account_id overrides it.
+	// ParentId Optional parent project URN. The new project inherits this parent's account unless account_id overrides it. The caller must have can_add_child_project on the parent.
 	ParentId *string `json:"parent_id,omitempty"`
 }
 
@@ -429,7 +429,7 @@ type Project struct {
 	// Id Project URN
 	Id string `json:"id"`
 
-	// Kind personal | org
+	// Kind personal | workspace
 	Kind string `json:"kind"`
 
 	// Name Display name
