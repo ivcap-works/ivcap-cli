@@ -331,10 +331,11 @@ func doWithRetry(client *http.Client, req *http.Request, respHandler ResponseHan
 			log.Int("body-length", len(respBody)), log.Reflect("headers", resp.Header))
 
 		if resp.StatusCode >= 300 {
+			reqLogger := logger
 			if len(respBody) > 0 {
-				logger = logger.With(log.ByteString("body", respBody))
+				reqLogger = logger.With(log.ByteString("body", respBody))
 			}
-			e := ProcessErrorResponse(resp, endpoint, ToPayload(respBody, resp, logger), logger)
+			e := ProcessErrorResponse(resp, endpoint, ToPayload(respBody, resp, reqLogger), reqLogger)
 			if isRetryableStatusCode(resp.StatusCode) {
 				return e
 			}
@@ -350,9 +351,16 @@ func doWithRetry(client *http.Client, req *http.Request, respHandler ResponseHan
 }
 
 func isRetryableStatusCode(statusCode int) bool {
-	return statusCode >= 500 ||
-		statusCode == http.StatusRequestTimeout ||
-		statusCode == http.StatusTooEarly ||
-		statusCode == http.StatusConflict ||
-		statusCode == http.StatusGone
+	switch statusCode {
+	case http.StatusBadGateway, // 502 - upstream temporarily down
+		http.StatusServiceUnavailable, // 503 - server overloaded/restarting
+		http.StatusGatewayTimeout,     // 504 - upstream timed out
+		http.StatusRequestTimeout,     // 408 - request timed out
+		http.StatusTooEarly,           // 425 - too early
+		http.StatusConflict:           // 409 - conflict (transient)
+		return true
+	}
+	// 500 Internal Server Error is a server bug, not transient — don't retry
+	// 410 Gone is permanent by definition — don't retry
+	return false
 }

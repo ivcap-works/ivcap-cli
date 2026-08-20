@@ -129,7 +129,7 @@ var (
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := GetHistory(args[0])
-			req := &sdk.ReadServiceRequest{Id: GetHistory(recordID)}
+			req := &sdk.ReadServiceRequest{Id: recordID}
 
 			switch outputFormat {
 			case "json", "yaml":
