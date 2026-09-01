@@ -42,33 +42,36 @@ func TestAccountSDKPathsAndVerbs(t *testing.T) {
 	logger := log.NewNop()
 	ctx := context.Background()
 
+	// Paths are asserted with the /1 gateway prefix spelled out, not composed from
+	// accountsAPIPrefix — the point is to pin the bytes that go on the wire, which a
+	// test built from the same constant could not do.
 	cases := []struct {
 		name, method, path string
 		call               func() error
 	}{
-		{"list accounts", "GET", "/accounts", func() error { _, e := ListAccountsRaw(ctx, &ListRequest{}, adp, logger); return e }},
-		{"read account", "GET", "/accounts/urn:acc", func() error { _, e := ReadAccountRaw(ctx, "urn:acc", adp, logger); return e }},
-		{"create account", "POST", "/accounts", func() error { _, e := CreateAccountRaw(ctx, "name", adp, logger); return e }},
-		{"list projects", "GET", "/projects", func() error { _, e := ListProjectsRaw(ctx, &ListRequest{}, adp, logger); return e }},
-		{"read project", "GET", "/projects/urn:p", func() error { _, e := ReadProjectRaw(ctx, "urn:p", adp, logger); return e }},
-		{"create project", "POST", "/projects", func() error {
+		{"list accounts", "GET", "/1/accounts", func() error { _, e := ListAccountsRaw(ctx, &ListRequest{}, adp, logger); return e }},
+		{"read account", "GET", "/1/accounts/urn:acc", func() error { _, e := ReadAccountRaw(ctx, "urn:acc", adp, logger); return e }},
+		{"create account", "POST", "/1/accounts", func() error { _, e := CreateAccountRaw(ctx, "name", adp, logger); return e }},
+		{"list projects", "GET", "/1/projects", func() error { _, e := ListProjectsRaw(ctx, &ListRequest{}, adp, logger); return e }},
+		{"read project", "GET", "/1/projects/urn:p", func() error { _, e := ReadProjectRaw(ctx, "urn:p", adp, logger); return e }},
+		{"create project", "POST", "/1/projects", func() error {
 			_, e := CreateProjectRaw(ctx, &accountsapi.CreateProjectPayload2{Name: "n"}, adp, logger)
 			return e
 		}},
-		{"update project", "PATCH", "/projects/urn:p", func() error {
+		{"update project", "PATCH", "/1/projects/urn:p", func() error {
 			_, e := UpdateProjectRaw(ctx, "urn:p", &accountsapi.UpdateProjectPayload2{Name: "n"}, adp, logger)
 			return e
 		}},
-		{"delete project", "DELETE", "/projects/urn:p", func() error { _, e := DeleteProjectRaw(ctx, "urn:p", adp, logger); return e }},
-		{"leave project", "POST", "/projects/urn:p/leave", func() error { _, e := LeaveProjectRaw(ctx, "urn:p", adp, logger); return e }},
-		{"grant project", "POST", "/projects/urn:p/grants", func() error {
+		{"delete project", "DELETE", "/1/projects/urn:p", func() error { _, e := DeleteProjectRaw(ctx, "urn:p", adp, logger); return e }},
+		{"leave project", "POST", "/1/projects/urn:p/leave", func() error { _, e := LeaveProjectRaw(ctx, "urn:p", adp, logger); return e }},
+		{"grant project", "POST", "/1/projects/urn:p/grants", func() error {
 			_, e := GrantProjectRaw(ctx, "urn:p", &accountsapi.AddProjectGrantPayload2{}, adp, logger)
 			return e
 		}},
-		{"list my invitations", "GET", "/invitations/mine", func() error { _, e := ListMyInvitationsRaw(ctx, adp, logger); return e }},
-		{"accept invitation", "POST", "/invitations/i1/accept", func() error { _, e := AcceptInvitationRaw(ctx, "i1", adp, logger); return e }},
-		{"decline invitation", "POST", "/invitations/i1/decline", func() error { _, e := DeclineInvitationRaw(ctx, "i1", adp, logger); return e }},
-		{"create project invitation", "POST", "/projects/urn:p/invitations", func() error {
+		{"list my invitations", "GET", "/1/invitations/mine", func() error { _, e := ListMyInvitationsRaw(ctx, adp, logger); return e }},
+		{"accept invitation", "POST", "/1/invitations/i1/accept", func() error { _, e := AcceptInvitationRaw(ctx, "i1", adp, logger); return e }},
+		{"decline invitation", "POST", "/1/invitations/i1/decline", func() error { _, e := DeclineInvitationRaw(ctx, "i1", adp, logger); return e }},
+		{"create project invitation", "POST", "/1/projects/urn:p/invitations", func() error {
 			_, e := CreateProjectInvitationRaw(ctx, "urn:p", &accountsapi.CreateInvitationPayload2{Email: "e@x"}, adp, logger)
 			return e
 		}},
