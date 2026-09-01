@@ -40,8 +40,9 @@ type capturedReq struct {
 }
 
 // recordingServer returns an httptest server that records every request. GET
-// /capabilities always returns the capability vocabulary; every other request
-// returns 200 with the supplied body (or "{}" if empty).
+// /1/capabilities always returns the capability vocabulary; every other request
+// returns 200 with the supplied body (or "{}" if empty). The /1 prefix is the
+// core gateway's mount point for ivcap-accounts (see accountsAPIPrefix).
 func recordingServer(t *testing.T, respBody string) (*httptest.Server, func() []capturedReq) {
 	t.Helper()
 	var mu sync.Mutex
@@ -59,7 +60,7 @@ func recordingServer(t *testing.T, respBody string) (*httptest.Server, func() []
 		mu.Unlock()
 
 		w.Header().Set("Content-Type", "application/json")
-		if r.URL.Path == "/capabilities" {
+		if r.URL.Path == "/1/capabilities" {
 			_, _ = w.Write([]byte(capsJSON))
 			return
 		}

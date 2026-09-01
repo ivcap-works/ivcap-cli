@@ -34,8 +34,14 @@ import (
 
 /**** PATH HELPERS ****/
 
+// ivcap-accounts serves its API at the root (/accounts, /projects, …), but the
+// CLI reaches it through the core platform's api-gateway, which mounts every
+// service under /1 and strips that prefix before forwarding. So every path here
+// carries the prefix; ivcap-accounts itself never sees it.
+const accountsAPIPrefix = "/1"
+
 func accountPath(id *string) string {
-	p := "/accounts"
+	p := accountsAPIPrefix + "/accounts"
 	if id != nil {
 		p = p + "/" + *id
 	}
@@ -43,11 +49,17 @@ func accountPath(id *string) string {
 }
 
 func projectPath(id *string) string {
-	p := "/projects"
+	p := accountsAPIPrefix + "/projects"
 	if id != nil {
 		p = p + "/" + *id
 	}
 	return p
+}
+
+// invitationPath builds a top-level /invitations path. The nested forms hang off
+// accountPath/projectPath instead.
+func invitationPath(suffix string) string {
+	return accountsAPIPrefix + "/invitations" + suffix
 }
 
 /**** ACCOUNTS ****/
@@ -183,7 +195,7 @@ func ListProjectMembersRaw(ctxt context.Context, projectID string, adpt *adapter
 /**** INVITATIONS ****/
 
 func ListMyInvitationsRaw(ctxt context.Context, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	return (*adpt).Get(ctxt, "/invitations/mine", logger)
+	return (*adpt).Get(ctxt, invitationPath("/mine"), logger)
 }
 
 func ListMyInvitations(ctxt context.Context, adpt *adapter.Adapter, logger *log.Logger) (*accountsapi.ListInvitationsResult, error) {
@@ -199,11 +211,11 @@ func ListMyInvitations(ctxt context.Context, adpt *adapter.Adapter, logger *log.
 }
 
 func AcceptInvitationRaw(ctxt context.Context, id string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	return (*adpt).Post(ctxt, "/invitations/"+id+"/accept", nil, -1, nil, logger)
+	return (*adpt).Post(ctxt, invitationPath("/"+id+"/accept"), nil, -1, nil, logger)
 }
 
 func DeclineInvitationRaw(ctxt context.Context, id string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	return (*adpt).Post(ctxt, "/invitations/"+id+"/decline", nil, -1, nil, logger)
+	return (*adpt).Post(ctxt, invitationPath("/"+id+"/decline"), nil, -1, nil, logger)
 }
 
 func CreateProjectInvitationRaw(ctxt context.Context, projectID string, req *accountsapi.CreateInvitationPayload2, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
@@ -228,7 +240,7 @@ func ListAccountInvitationsRaw(ctxt context.Context, accountID string, adpt *ada
 
 // RevokeInvitationRaw cancels a pending invitation the caller issued.
 func RevokeInvitationRaw(ctxt context.Context, id string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	return (*adpt).Delete(ctxt, "/invitations/"+id, logger)
+	return (*adpt).Delete(ctxt, invitationPath("/"+id), logger)
 }
 
 /**** CAPABILITIES ****/
@@ -251,7 +263,7 @@ func CapabilitiesForKind(c *accountsapi.CapabilitiesResult, kind string) []accou
 // GetCapabilities fetches the grantable capability vocabulary from ivcap-accounts.
 // The endpoint is public reference data; no project scope is required.
 func GetCapabilities(ctxt context.Context, adpt *adapter.Adapter, logger *log.Logger) (*accountsapi.CapabilitiesResult, error) {
-	pyl, err := (*adpt).Get(ctxt, "/capabilities", logger)
+	pyl, err := (*adpt).Get(ctxt, accountsAPIPrefix+"/capabilities", logger)
 	if err != nil {
 		return nil, err
 	}
