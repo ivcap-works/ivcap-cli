@@ -427,6 +427,9 @@ func waitForTokens(authProvider *AuthProvider, deviceCode *DeviceCode, ctxt *Con
 		}
 
 		elapsedTime := int64(time.Since(startTime).Seconds())
+		if elapsedTime >= deviceCode.ExpiresIn {
+			cobra.CheckErr("The login process was not completed in time - please login again")
+		}
 		if elapsedTime/60 != lastElapsedTime/60 {
 			fmt.Printf("... Time remaining: %d seconds\n", deviceCode.ExpiresIn-elapsedTime)
 		}
