@@ -41,6 +41,7 @@ func setTestContext(t *testing.T, baseURL, currentProject string) {
 			ApiVersion:        1,
 			Name:              "test",
 			URL:               baseURL,
+			IdentityURL:       baseURL,
 			CurrentProject:    currentProject,
 			AccessToken:       "test-token",
 			AccessTokenExpiry: time.Now().Add(time.Hour),

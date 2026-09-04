@@ -38,6 +38,7 @@ func init() {
 	// createContextCmd.Flags().StringVar(&providerID, "provider-id", "", "The account ID to use. Will most likely be set on login")
 	createContextCmd.Flags().StringVar(&hostName, "host-name", "", "optional host name if accessing API through SSH tunnel")
 	createContextCmd.Flags().IntVar(&ctxtApiVersion, "version", 1, "define API version")
+	createContextCmd.Flags().StringVar(&identityURLFlag, "identity-url", "", "identity server URL (required when the second arg is a full URL, e.g. http://localhost:8002)")
 
 	// SET/USE
 	contextCmd.AddCommand(useContextCmd)
@@ -48,10 +49,11 @@ func init() {
 }
 
 var (
-	ctxtName       string
-	ctxtApiVersion int
-	hostName       string
-	refreshToken   bool
+	ctxtName        string
+	ctxtApiVersion  int
+	hostName        string
+	identityURLFlag string
+	refreshToken    bool
 )
 
 // contextCmd represents the config command
@@ -62,23 +64,59 @@ var contextCmd = &cobra.Command{
 }
 
 var createContextCmd = &cobra.Command{
-	Use:   "create ctxtName https://ivcap.net",
+	Use:   "create ctxtName <domain-or-url>",
 	Short: "Create a new context",
-	Args:  cobra.ExactArgs(2),
-	// Aliases: []string{"create"},
+	Long: `Create a named context pointing at an IVCAP deployment.
+
+Pass a bare domain to let the CLI derive both URLs by convention:
+  ivcap context create prod develop.ivcap.net
+  → API: https://api.develop.ivcap.net
+  → Identity: https://id.develop.ivcap.net
+
+Pass a full URL for non-standard deployments (localhost, minikube, SSH tunnels).
+The identity URL is derived by stripping any api. prefix and prepending id.;
+use --identity-url to override when the convention does not apply:
+  ivcap context create local http://localhost:8080 --identity-url http://localhost:8002`,
+	Args: cobra.ExactArgs(2),
 	Run: func(_ *cobra.Command, args []string) {
 		ctxtName = args[0]
-		ctxtUrl := strings.TrimRight(args[1], "/")
-		url, err := url.ParseRequestURI(ctxtUrl)
-		if err != nil || url.Host == "" {
-			cobra.CheckErr(fmt.Sprintf("url '%s' is not a valid URL", ctxtUrl))
+		arg := strings.TrimRight(args[1], "/")
+
+		var apiURL, idURL string
+		if strings.Contains(arg, "://") {
+			// Full URL — validate and derive identity URL from the host.
+			parsed, err := url.ParseRequestURI(arg)
+			if err != nil {
+				cobra.CheckErr(fmt.Sprintf("'%s' is not a valid URL: %s", arg, err))
+			}
+			apiURL = arg
+			if identityURLFlag != "" {
+				idURL = identityURLFlag
+			} else {
+				// Strip api. prefix (if any), prepend id. — works for both
+				// https://api.<domain> and https://<domain>.
+				base := strings.TrimPrefix(parsed.Hostname(), "api.")
+				idURL = parsed.Scheme + "://id." + base
+			}
+		} else {
+			// Bare domain — derive both URLs by convention.
+			if strings.Contains(arg, "/") {
+				cobra.CheckErr(fmt.Sprintf("'%s' is not a valid domain; omit the path", arg))
+			}
+			apiURL = "https://api." + arg
+			if identityURLFlag != "" {
+				idURL = identityURLFlag
+			} else {
+				idURL = "https://id." + arg
+			}
 		}
 
 		ctxt := &Context{
-			ApiVersion: ctxtApiVersion,
-			Name:       ctxtName,
-			URL:        ctxtUrl,
-			Host:       hostName,
+			ApiVersion:  ctxtApiVersion,
+			Name:        ctxtName,
+			URL:         apiURL,
+			IdentityURL: idURL,
+			Host:        hostName,
 		}
 		SetContext(ctxt, false)
 		fmt.Printf("Context '%s' created.\n", ctxtName)

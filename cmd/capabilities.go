@@ -47,7 +47,7 @@ var capabilitiesCmd = &cobra.Command{
 the platform authorization model. These are the values accepted by the --capability
 flag of 'ivcap project grant', 'ivcap account grant', and the 'invite' commands.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		caps, err := sdk.GetCapabilities(context.Background(), CreateAdapter(false), logger)
+		caps, err := sdk.GetCapabilities(context.Background(), GetIdentityAdapter(false), logger)
 		if err != nil {
 			return err
 		}
@@ -137,7 +137,7 @@ func selectCapabilitiesInteractive(kind string, valid []accountsapi.Capability) 
 // the target kind, prompting interactively when none were supplied and we are on a
 // TTY. It is shared by the project/account grant and invite commands.
 func resolveCapabilities(kind string, supplied []string) ([]string, error) {
-	caps, err := sdk.GetCapabilities(context.Background(), CreateAdapter(false), logger)
+	caps, err := sdk.GetCapabilities(context.Background(), GetIdentityAdapter(false), logger)
 	if err != nil {
 		return nil, fmt.Errorf("could not load capabilities: %w", err)
 	}
