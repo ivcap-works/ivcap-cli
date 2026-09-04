@@ -34,11 +34,9 @@ import (
 
 /**** PATH HELPERS ****/
 
-// ivcap-accounts serves its API at the root (/accounts, /projects, …), but the
-// CLI reaches it through the core platform's api-gateway, which mounts every
-// service under /1 and strips that prefix before forwarding. So every path here
-// carries the prefix; ivcap-accounts itself never sees it.
-const accountsAPIPrefix = "/1"
+// ivcap-accounts is reached directly on the identity server (id.<domain>),
+// where it is proxied without any path prefix by ivcap-id.
+const accountsAPIPrefix = ""
 
 func accountPath(id *string) string {
 	p := accountsAPIPrefix + "/accounts"

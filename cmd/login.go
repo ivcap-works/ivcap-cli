@@ -265,16 +265,19 @@ func getTokenResponse(authProvider *AuthProvider, params url.Values, ctxt *Conte
 	return
 }
 
-// fetchOIDCDiscovery retrieves the OIDC discovery document from the context's
-// base URL (proxied by the gateway to ivcap-id). It returns an error (rather than
-// aborting) so callers can fall back to the deprecated authinfo.yaml flow.
+// fetchOIDCDiscovery retrieves the OIDC discovery document directly from the
+// identity server (id.<domain>). It returns an error (rather than aborting) so
+// callers can fall back to the deprecated authinfo.yaml flow.
 func fetchOIDCDiscovery(ctxt *Context) (*OIDCDiscovery, error) {
-	adpt := CreateAdapter(false)
+	adp, err := NewAdapter(identityURL(ctxt), "", timeout, nil)
+	if err != nil {
+		return nil, fmt.Errorf("cannot create identity adapter: %w", err)
+	}
 
 	ctx, cancel := NewTimeoutContext()
 	defer cancel()
 
-	pyld, err := (*adpt).Get(ctx, OIDC_DISCOVERY_PATH, logger)
+	pyld, err := (*adp).Get(ctx, OIDC_DISCOVERY_PATH, logger)
 	if err != nil {
 		return nil, err
 	}

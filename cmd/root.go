@@ -93,6 +93,9 @@ type Context struct {
 	ApiVersion int    `yaml:"api-version"`
 	Name       string `yaml:"name"`
 	URL        string `yaml:"url"`
+	// IdentityURL is the base URL of the identity server (https://id.<domain>).
+	// Set at context creation; older contexts derive it from URL at runtime.
+	IdentityURL string `yaml:"identity-url,omitempty"`
 	// AccountID holds the account of the currently selected project (set by
 	// `project use`); under the new auth flow it is no longer sourced from a token.
 	AccountID string `yaml:"account-id"`
@@ -476,12 +479,32 @@ func CreateAdapter(requiresAuth bool, opts ...adpt.Option) (adapter *adpt.Adapte
 	return createAdapter(requiresAuth, false, timeout, opts...)
 }
 
-// GetIdentityAdapter builds an adapter that never forwards the current project
-// (PROJECT_HEADER). Use it for calls to ivcap-accounts: that service authorizes
-// on the caller identity plus the resource id in the request path/body and never
-// reads the token's project scope, so forwarding a stale current-project would
-// only make the resolver request a project-scoped token whose membership check
-// fails — a spurious 401 for an operation that would otherwise succeed.
+// identityURL returns the base URL of the identity server for a context.
+// If IdentityURL is set (new contexts) it is returned directly. Otherwise it
+// is derived from URL: strip any api. subdomain prefix, prepend id. This
+// handles both https://api.<domain> and https://<domain> pointing at the
+// same gateway. For localhost or IP-only URLs the derivation is the same
+// best-effort fallback; those contexts should set IdentityURL explicitly via
+// --identity-url at context creation time.
+func identityURL(ctxt *Context) string {
+	if ctxt.IdentityURL != "" {
+		return ctxt.IdentityURL
+	}
+	u, err := url.Parse(ctxt.URL)
+	if err != nil {
+		return ctxt.URL
+	}
+	base := strings.TrimPrefix(u.Hostname(), "api.")
+	return u.Scheme + "://id." + base
+}
+
+// GetIdentityAdapter builds an adapter targeting the identity server
+// (id.<domain>) that never forwards the current project (PROJECT_HEADER).
+// Use it for calls to ivcap-accounts: that service authorizes on the caller
+// identity plus the resource id in the request path/body and never reads the
+// token's project scope, so forwarding a stale current-project would only make
+// the resolver request a project-scoped token whose membership check fails — a
+// spurious 401 for an operation that would otherwise succeed.
 func GetIdentityAdapter(requiresAuth bool, opts ...adpt.Option) (adapter *adpt.Adapter) {
 	return createAdapter(requiresAuth, true, timeout, opts...)
 }
@@ -519,6 +542,9 @@ func createAdapter(requiresAuth, identityScoped bool, timeoutSec int, opts ...ad
 	}
 
 	url := ctxt.URL
+	if identityScoped {
+		url = identityURL(ctxt)
+	}
 	sendProject := shouldSendProjectHeader(requiresAuth, ctxt.CurrentProject, identityScoped)
 	sentProjectHeader = sendProject
 	var headers *map[string]string
