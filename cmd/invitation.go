@@ -29,7 +29,7 @@ import (
 )
 
 func init() {
-	rootCmd.AddCommand(invitationCmd)
+	contextCmd.AddCommand(invitationCmd)
 
 	invitationCmd.AddCommand(listInvitationCmd)
 	invitationCmd.AddCommand(acceptInvitationCmd)
@@ -45,8 +45,8 @@ var (
 		Long: `Manage invitations addressed to you: 'list' the ones awaiting your response, then
 'accept' or 'decline' them. 'revoke' cancels an invitation you issued.
 
-To invite someone into a project or account, use 'ivcap project invite' or
-'ivcap account invite'.`,
+To invite someone into a project or account, use 'ivcap context project invite' or
+'ivcap context account invite'.`,
 	}
 
 	listInvitationCmd = &cobra.Command{
@@ -109,8 +109,8 @@ To invite someone into a project or account, use 'ivcap project invite' or
 		Use:   "revoke invitation_id",
 		Short: "Cancel a pending invitation you issued",
 		Long: `Cancel a pending invitation you issued to a project or account. List the
-outstanding invitations on a target with 'ivcap project invitations <project>' or
-'ivcap account invitations <account>' to find the id.`,
+outstanding invitations on a target with 'ivcap context project invitations <project>' or
+'ivcap context account invitations <account>' to find the id.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])

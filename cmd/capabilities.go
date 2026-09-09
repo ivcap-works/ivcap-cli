@@ -35,7 +35,7 @@ import (
 var capabilitiesKind string
 
 func init() {
-	rootCmd.AddCommand(capabilitiesCmd)
+	contextCmd.AddCommand(capabilitiesCmd)
 	capabilitiesCmd.Flags().StringVar(&capabilitiesKind, "kind", "", "Limit to a single kind: project | account")
 }
 
@@ -45,7 +45,7 @@ var capabilitiesCmd = &cobra.Command{
 	Short:   "List the capabilities grantable on projects and accounts",
 	Long: `List the grantable capabilities per target kind (project, account), as defined by
 the platform authorization model. These are the values accepted by the --capability
-flag of 'ivcap project grant', 'ivcap account grant', and the 'invite' commands.`,
+flag of 'ivcap context project grant', 'ivcap context account grant', and the 'invite' commands.`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		caps, err := sdk.GetCapabilities(context.Background(), GetIdentityAdapter(false), logger)
 		if err != nil {

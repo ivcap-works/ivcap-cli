@@ -176,8 +176,8 @@ func authErrorHint(err error) string {
 		ctxt := GetActiveContext()
 		return fmt.Sprintf(
 			"Your current project (%s) may no longer exist, or your access to it may\n"+
-				"have been removed. Switch to another with 'ivcap project use', or list your\n"+
-				"projects with 'ivcap project list'. If the problem persists, re-authenticate\n"+
+				"have been removed. Switch to another with 'ivcap context project use', or list your\n"+
+				"projects with 'ivcap context project list'. If the problem persists, re-authenticate\n"+
 				"with 'ivcap context login'.", ctxt.CurrentProject)
 	}
 	return "Your session may have expired — re-authenticate with 'ivcap context login'."
