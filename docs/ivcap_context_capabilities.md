@@ -1,15 +1,22 @@
-## ivcap context list
+## ivcap context capabilities
 
-List all context
+List the capabilities grantable on projects and accounts
+
+### Synopsis
+
+List the grantable capabilities per target kind (project, account), as defined by
+the platform authorization model. These are the values accepted by the --capability
+flag of 'ivcap context project grant', 'ivcap context account grant', and the 'invite' commands.
 
 ```
-ivcap context list [flags]
+ivcap context capabilities [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+  -h, --help          help for capabilities
+      --kind string   Limit to a single kind: project | account
 ```
 
 ### Options inherited from parent commands

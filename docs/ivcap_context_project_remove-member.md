@@ -1,15 +1,17 @@
-## ivcap context list
+## ivcap context project remove-member
 
-List all context
+Remove a principal from a project entirely (revokes all their capabilities)
 
 ```
-ivcap context list [flags]
+ivcap context project remove-member project_id (--user <urn> | --service <urn>) [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+  -h, --help             help for remove-member
+      --service string   Service principal URN to target
+      --user string      User URN to target
 ```
 
 ### Options inherited from parent commands
@@ -26,5 +28,5 @@ ivcap context list [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
+* [ivcap context project](ivcap_context_project.md)	 - Manage projects and select the current one
 

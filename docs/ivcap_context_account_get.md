@@ -1,15 +1,15 @@
-## ivcap context list
+## ivcap context account get
 
-List all context
+Fetch details about a single account
 
 ```
-ivcap context list [flags]
+ivcap context account get [flags] account_id
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+  -h, --help   help for get
 ```
 
 ### Options inherited from parent commands
@@ -26,5 +26,5 @@ ivcap context list [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
+* [ivcap context account](ivcap_context_account.md)	 - Manage accounts you belong to
 

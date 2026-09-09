@@ -1,15 +1,16 @@
-## ivcap context list
+## ivcap context account create
 
-List all context
+Create a new organisation account
 
 ```
-ivcap context list [flags]
+ivcap context account create --name <name> [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+  -h, --help          help for create
+  -n, --name string   Display name for the new org account
 ```
 
 ### Options inherited from parent commands
@@ -26,5 +27,5 @@ ivcap context list [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
+* [ivcap context account](ivcap_context_account.md)	 - Manage accounts you belong to
 

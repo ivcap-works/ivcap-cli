@@ -1,15 +1,21 @@
-## ivcap context list
+## ivcap context invitation revoke
 
-List all context
+Cancel a pending invitation you issued
+
+### Synopsis
+
+Cancel a pending invitation you issued to a project or account. List the
+outstanding invitations on a target with 'ivcap context project invitations <project>' or
+'ivcap context account invitations <account>' to find the id.
 
 ```
-ivcap context list [flags]
+ivcap context invitation revoke invitation_id [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+  -h, --help   help for revoke
 ```
 
 ### Options inherited from parent commands
@@ -26,5 +32,5 @@ ivcap context list [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
+* [ivcap context invitation](ivcap_context_invitation.md)	 - Respond to invitations addressed to you
 

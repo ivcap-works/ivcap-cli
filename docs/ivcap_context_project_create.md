@@ -1,15 +1,17 @@
-## ivcap context list
+## ivcap context project create
 
-List all context
+Create a new project
 
 ```
-ivcap context list [flags]
+ivcap context project create --name <name> [--account-id <urn>] [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+      --account-id string   Owning account URN
+  -h, --help                help for create
+  -n, --name string         Display name for the new project
 ```
 
 ### Options inherited from parent commands
@@ -26,5 +28,5 @@ ivcap context list [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
+* [ivcap context project](ivcap_context_project.md)	 - Manage projects and select the current one
 

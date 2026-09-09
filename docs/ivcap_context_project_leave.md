@@ -1,15 +1,15 @@
-## ivcap context list
+## ivcap context project leave
 
-List all context
+Leave a project (relinquish your grants)
 
 ```
-ivcap context list [flags]
+ivcap context project leave project_id [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+  -h, --help   help for leave
 ```
 
 ### Options inherited from parent commands
@@ -26,5 +26,5 @@ ivcap context list [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
+* [ivcap context project](ivcap_context_project.md)	 - Manage projects and select the current one
 
