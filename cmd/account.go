@@ -37,7 +37,7 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(accountCmd)
+	contextCmd.AddCommand(accountCmd)
 
 	accountCmd.AddCommand(listAccountCmd)
 	addListFlags(listAccountCmd)
@@ -52,7 +52,7 @@ func init() {
 	accountCmd.AddCommand(grantAccountCmd)
 	grantAccountCmd.Flags().StringVar(&acctPrincipalUser, "user", "", "User URN to grant capabilities to")
 	grantAccountCmd.Flags().StringSliceVarP(&acctCapabilities, "capability", "c", nil,
-		"Capability to grant (repeatable). Run 'ivcap capabilities --kind account' to list valid values")
+		"Capability to grant (repeatable). Run 'ivcap context capabilities --kind account' to list valid values")
 
 	accountCmd.AddCommand(revokeAccountCapabilityCmd)
 	revokeAccountCapabilityCmd.Flags().StringVar(&acctPrincipalUser, "user", "", "User URN to revoke from")
@@ -65,7 +65,7 @@ func init() {
 	accountCmd.AddCommand(inviteAccountCmd)
 	inviteAccountCmd.Flags().StringVarP(&acctInviteEmail, "email", "e", "", "Invitee email address")
 	inviteAccountCmd.Flags().StringSliceVarP(&acctCapabilities, "capability", "c", nil,
-		"Capability to grant on accept (repeatable). Run 'ivcap capabilities --kind account' to list valid values")
+		"Capability to grant on accept (repeatable). Run 'ivcap context capabilities --kind account' to list valid values")
 
 	accountCmd.AddCommand(invitationsAccountCmd)
 }
@@ -180,7 +180,7 @@ var (
 		Use:   "grant account_id --user <urn> --capability <cap> ...",
 		Short: "Grant account capabilities to a user",
 		Long: `Grant one or more account-admin capabilities to an existing member. List the
-grantable capabilities with 'ivcap capabilities --kind account'.`,
+grantable capabilities with 'ivcap context capabilities --kind account'.`,
 		Args: cobra.ExactArgs(1),
 		RunE: runAccountGrant,
 	}
@@ -191,7 +191,7 @@ grantable capabilities with 'ivcap capabilities --kind account'.`,
 		Short:   "Revoke one or more capabilities from an account member",
 		Long: `Revoke individual account capabilities from a user, leaving their remaining
 capabilities intact. To remove a member from the account entirely, use
-'ivcap account remove-member'.`,
+'ivcap context account remove-member'.`,
 		Args: cobra.ExactArgs(1),
 		RunE: runAccountRevokeCapability,
 	}

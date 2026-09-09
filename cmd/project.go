@@ -38,7 +38,7 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(projectCmd)
+	contextCmd.AddCommand(projectCmd)
 
 	projectCmd.AddCommand(listProjectCmd)
 	addListFlags(listProjectCmd)
@@ -58,7 +58,7 @@ func init() {
 	projectCmd.AddCommand(grantProjectCmd)
 	addPrincipalFlags(grantProjectCmd)
 	grantProjectCmd.Flags().StringSliceVarP(&projCapabilities, "capability", "c", nil,
-		"Capability to grant (repeatable). Run 'ivcap capabilities --kind project' to list valid values")
+		"Capability to grant (repeatable). Run 'ivcap context capabilities --kind project' to list valid values")
 
 	projectCmd.AddCommand(revokeProjectCapabilityCmd)
 	addPrincipalFlags(revokeProjectCapabilityCmd)
@@ -71,7 +71,7 @@ func init() {
 	projectCmd.AddCommand(inviteProjectCmd)
 	inviteProjectCmd.Flags().StringVarP(&projInviteEmail, "email", "e", "", "Invitee email address")
 	inviteProjectCmd.Flags().StringSliceVarP(&projCapabilities, "capability", "c", nil,
-		"Capability to grant on accept (repeatable). Run 'ivcap capabilities --kind project' to list valid values")
+		"Capability to grant on accept (repeatable). Run 'ivcap context capabilities --kind project' to list valid values")
 
 	projectCmd.AddCommand(invitationsProjectCmd)
 }
@@ -267,7 +267,7 @@ var (
 		Use:   "grant project_id (--user <urn> | --service <urn>) --capability <cap> ...",
 		Short: "Grant project capabilities to a user or service principal",
 		Long: `Grant one or more project capabilities to an existing member (user or service
-principal). List the grantable capabilities with 'ivcap capabilities --kind project'.`,
+principal). List the grantable capabilities with 'ivcap context capabilities --kind project'.`,
 		Args: cobra.ExactArgs(1),
 		RunE: runProjectGrant,
 	}
@@ -278,7 +278,7 @@ principal). List the grantable capabilities with 'ivcap capabilities --kind proj
 		Short:   "Revoke one or more capabilities from a project principal",
 		Long: `Revoke individual project capabilities from a principal, leaving their remaining
 capabilities intact. To remove a principal from the project entirely, use
-'ivcap project remove-member'.`,
+'ivcap context project remove-member'.`,
 		Args: cobra.ExactArgs(1),
 		RunE: runProjectRevokeCapability,
 	}
@@ -434,10 +434,10 @@ func setCurrentProject(ctxt *Context, p *accountsapi.Project) error {
 // that error as "skip onboarding".
 func selectProjectInteractive(ctxt *Context) error {
 	if accessTokenProvided {
-		return fmt.Errorf("a token was supplied via flag/env; select a project explicitly with 'ivcap project use <id>'")
+		return fmt.Errorf("a token was supplied via flag/env; select a project explicitly with 'ivcap context project use <id>'")
 	}
 	if silent || !term.IsTerminal(int(os.Stdin.Fd())) {
-		return fmt.Errorf("not an interactive terminal; select a project with 'ivcap project use <id>'")
+		return fmt.Errorf("not an interactive terminal; select a project with 'ivcap context project use <id>'")
 	}
 
 	res, err := sdk.ListProjects(context.Background(), &sdk.ListRequest{Limit: 100}, GetIdentityAdapter(true), logger)
@@ -448,7 +448,7 @@ func selectProjectInteractive(ctxt *Context) error {
 	switch len(projects) {
 	case 0:
 		fmt.Println("No projects available yet. A personal project is normally provisioned on first login;")
-		fmt.Println("try re-running 'ivcap context login', or create one with 'ivcap project create --name <name>'.")
+		fmt.Println("try re-running 'ivcap context login', or create one with 'ivcap context project create --name <name>'.")
 		return nil
 	case 1:
 		return setCurrentProject(ctxt, &projects[0])

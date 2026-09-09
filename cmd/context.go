@@ -25,8 +25,37 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const contextDeploymentGroupID = "deployment"
+const contextAccessGroupID = "access"
+
 func init() {
 	rootCmd.AddCommand(contextCmd)
+
+	contextCmd.AddGroup(
+		&cobra.Group{ID: contextDeploymentGroupID, Title: "Deployment management:"},
+		&cobra.Group{ID: contextAccessGroupID, Title: "Access management:"},
+	)
+
+	// Assign group IDs lazily so that login/logout (registered in login.go) and
+	// account/project/etc. (registered in their own files) are all picked up after
+	// all init() functions have run.
+	defaultHelpFunc := contextCmd.HelpFunc()
+	contextCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		if cmd == contextCmd {
+			deploymentCmds := map[string]bool{
+				"create": true, "list": true, "set": true, "get": true,
+				"login": true, "logout": true,
+			}
+			for _, c := range contextCmd.Commands() {
+				if deploymentCmds[c.Name()] {
+					c.GroupID = contextDeploymentGroupID
+				} else if c.Name() != "help" && c.Name() != "completion" {
+					c.GroupID = contextAccessGroupID
+				}
+			}
+		}
+		defaultHelpFunc(cmd, args)
+	})
 
 	// LIST
 	contextCmd.AddCommand(listContextCmd)
@@ -59,7 +88,7 @@ var (
 // contextCmd represents the config command
 var contextCmd = &cobra.Command{
 	Use:     "context",
-	Short:   "Manage and set access to various IVCAP deployments",
+	Short:   "Manage deployment access, projects, and accounts",
 	Aliases: []string{"c"},
 }
 
