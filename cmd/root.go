@@ -1,4 +1,4 @@
-// Copyright 2023 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
+// Copyright 2026 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -17,6 +17,7 @@ package cmd
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -44,6 +45,22 @@ const (
 	ENV_PREFIX = "IVCAP"
 	URN_PREFIX = "ivcap"
 )
+
+// PROJECT_HEADER carries the caller's selected project to the server-side
+// resolver under the opaque-token flow (the CLI never mints project-scoped JWTs).
+const PROJECT_HEADER = "Ivcap-Project"
+
+// sentProjectHeader records whether the most recent adapter attached
+// PROJECT_HEADER, so a subsequent 401 can be explained in project terms.
+var sentProjectHeader bool
+
+// shouldSendProjectHeader decides whether an outgoing authenticated request
+// carries the current project. Identity-scoped calls never do (see
+// CreateIdentityAdapter); other authenticated calls do when a project is
+// selected.
+func shouldSendProjectHeader(requiresAuth bool, currentProject string, identityScoped bool) bool {
+	return requiresAuth && currentProject != "" && !identityScoped
+}
 
 const RELEASE_CHECK_URL = "https://github.com/ivcap-works/ivcap-cli/releases/latest"
 
@@ -76,9 +93,21 @@ type Context struct {
 	ApiVersion int    `yaml:"api-version"`
 	Name       string `yaml:"name"`
 	URL        string `yaml:"url"`
-	AccountID  string `yaml:"account-id"`
-	ProviderID string `yaml:"provider-id"`
-	Host       string `yaml:"host"` // set Host header if necessary
+	// IdentityURL is the base URL of the identity server (https://id.<domain>).
+	// Set at context creation; older contexts derive it from URL at runtime.
+	IdentityURL string `yaml:"identity-url,omitempty"`
+	// AccountID holds the account of the currently selected project (set by
+	// `project use`); under the new auth flow it is no longer sourced from a token.
+	AccountID string `yaml:"account-id"`
+	Host      string `yaml:"host"` // set Host header if necessary
+
+	// Auth mode / OIDC (opaque-token "Model B" flow)
+	AuthMode  string `yaml:"auth-mode,omitempty"`  // "oidc" | "legacy"
+	IssuerURL string `yaml:"issuer-url,omitempty"` // OIDC issuer recorded at login
+	IDToken   string `yaml:"id-token,omitempty"`   // raw id_token JWT for local claim display
+
+	// CurrentProject is forwarded to the server-side resolver via PROJECT_HEADER.
+	CurrentProject string `yaml:"current-project,omitempty"`
 
 	// User Information
 	AccountName     string `yaml:"account-name"`
@@ -119,12 +148,39 @@ const generalSupportGroupID = "general-support"
 func Execute(version string) {
 	rootCmd.Version = version
 	rootCmd.SilenceUsage = true
+	// Print errors ourselves so we can append an actionable hint on auth failures.
+	rootCmd.SilenceErrors = true
 	if err := rootCmd.Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, "Error:", err)
+		if hint := authErrorHint(err); hint != "" {
+			fmt.Fprintln(os.Stderr, "\n"+hint)
+		}
 		os.Exit(1)
 	}
 	if err := saveHistory(); err != nil {
 		os.Exit(1)
 	}
+}
+
+// authErrorHint returns a remediation hint when err is (or wraps) an
+// authorization failure. When the failed request carried a project scope, a 401
+// most often means the current project is stale or the caller was removed from
+// it, so the hint steers the user to switch projects before suggesting a full
+// re-login; otherwise it points at the session.
+func authErrorHint(err error) string {
+	var ue *adpt.UnauthorizedError
+	if !errors.As(err, &ue) {
+		return ""
+	}
+	if sentProjectHeader {
+		ctxt := GetActiveContext()
+		return fmt.Sprintf(
+			"Your current project (%s) may no longer exist, or your access to it may\n"+
+				"have been removed. Switch to another with 'ivcap context project use', or list your\n"+
+				"projects with 'ivcap context project list'. If the problem persists, re-authenticate\n"+
+				"with 'ivcap context login'.", ctxt.CurrentProject)
+	}
+	return "Your session may have expired — re-authenticate with 'ivcap context login'."
 }
 
 // docFix pairs a compiled regex with its replacement template (supports $1/$2 backrefs).
@@ -420,7 +476,37 @@ func initLogger() {
 }
 
 func CreateAdapter(requiresAuth bool, opts ...adpt.Option) (adapter *adpt.Adapter) {
-	return CreateAdapterWithTimeout(requiresAuth, timeout, opts...)
+	return createAdapter(requiresAuth, false, timeout, opts...)
+}
+
+// identityURL returns the base URL of the identity server for a context.
+// If IdentityURL is set (new contexts) it is returned directly. Otherwise it
+// is derived from URL: strip any api. subdomain prefix, prepend id. This
+// handles both https://api.<domain> and https://<domain> pointing at the
+// same gateway. For localhost or IP-only URLs the derivation is the same
+// best-effort fallback; those contexts should set IdentityURL explicitly via
+// --identity-url at context creation time.
+func identityURL(ctxt *Context) string {
+	if ctxt.IdentityURL != "" {
+		return ctxt.IdentityURL
+	}
+	u, err := url.Parse(ctxt.URL)
+	if err != nil {
+		return ctxt.URL
+	}
+	base := strings.TrimPrefix(u.Hostname(), "api.")
+	return u.Scheme + "://id." + base
+}
+
+// GetIdentityAdapter builds an adapter targeting the identity server
+// (id.<domain>) that never forwards the current project (PROJECT_HEADER).
+// Use it for calls to ivcap-accounts: that service authorizes on the caller
+// identity plus the resource id in the request path/body and never reads the
+// token's project scope, so forwarding a stale current-project would only make
+// the resolver request a project-scoped token whose membership check fails — a
+// spurious 401 for an operation that would otherwise succeed.
+func GetIdentityAdapter(requiresAuth bool, opts ...adpt.Option) (adapter *adpt.Adapter) {
+	return createAdapter(requiresAuth, true, timeout, opts...)
 }
 
 // Returns an HTTP adapter which will wait a max. of `timeoutSec` sec for a reply.
@@ -434,6 +520,15 @@ func CreateAdapter(requiresAuth bool, opts ...adpt.Option) (adapter *adpt.Adapte
 //   - If the ActiveContext defines a `Host` parameter, it is also added as a
 //     `Host` HTTP header.
 func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int, opts ...adpt.Option) (adapter *adpt.Adapter) {
+	return createAdapter(requiresAuth, false, timeoutSec, opts...)
+}
+
+// createAdapter is the shared constructor behind CreateAdapter(WithTimeout) and
+// GetIdentityAdapter. When identityScoped is true the current project is never
+// forwarded (see GetIdentityAdapter); otherwise it is attached on authenticated
+// calls under the opaque-token flow so the server-side resolver can scope the
+// request (the CLI never mints project-scoped JWTs itself).
+func createAdapter(requiresAuth, identityScoped bool, timeoutSec int, opts ...adpt.Option) (adapter *adpt.Adapter) {
 	ctxt := GetActiveContext() // will always return with a context
 
 	if requiresAuth {
@@ -447,9 +542,21 @@ func CreateAdapterWithTimeout(requiresAuth bool, timeoutSec int, opts ...adpt.Op
 	}
 
 	url := ctxt.URL
+	if identityScoped {
+		url = identityURL(ctxt)
+	}
+	sendProject := shouldSendProjectHeader(requiresAuth, ctxt.CurrentProject, identityScoped)
+	sentProjectHeader = sendProject
 	var headers *map[string]string
-	if ctxt.Host != "" {
-		headers = &(map[string]string{"Host": ctxt.Host})
+	if ctxt.Host != "" || sendProject {
+		h := map[string]string{}
+		if ctxt.Host != "" {
+			h["Host"] = ctxt.Host
+		}
+		if sendProject {
+			h[PROJECT_HEADER] = ctxt.CurrentProject
+		}
+		headers = &h
 	}
 	logger.Debug("Adapter config", log.String("url", url))
 

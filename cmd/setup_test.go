@@ -1,4 +1,4 @@
-// Copyright 2024 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
+// Copyright 2026 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -33,40 +33,31 @@ var (
 
 func TestMain(m *testing.M) {
 	initConfig()
-	ctxt, err := GetContextWithError("", true)
-	if err != nil {
-		fmt.Printf("Can not get active context, %s\n", err)
-		return
-	}
-	if ctxt.Name != "minikube" && ctxt.Name != "docker-desktop" && !strings.HasPrefix(ctxt.URL, "http://localhost") {
-		fmt.Printf("Unit test should run against minikube, please set to minikube context\n")
-		return
-	}
-	testToken = getAccessToken(true)
-	if testToken == "" {
-		fmt.Printf("Access token not found\n")
-		return
-	}
 
-	url := ctxt.URL
-	var headers *map[string]string
-	if ctxt.Host != "" {
-		headers = &(map[string]string{"Host": ctxt.Host})
-	}
-
-	adapter, err = NewAdapter(url, testToken, DEFAULT_SERVICE_TIMEOUT_IN_SECONDS, headers)
-	if err != nil {
-		fmt.Printf("Failed to get adapter: %v\n", err)
-		return
-	}
-	cfg := log.NewDevelopmentConfig()
-	cfg.OutputPaths = []string{"stdout"}
-	logLevel := zapcore.ErrorLevel
-	cfg.Level = log.NewAtomicLevelAt(logLevel)
-	tlogger, err = cfg.Build()
-	if err != nil {
-		fmt.Printf("Failed to create tlogger: %v\n", err)
-		return
+	// Best-effort integration setup: wire up the shared adapter/token only when a
+	// suitable local context is configured and already authorised. Pure unit tests
+	// (httptest-based) run regardless; integration tests self-skip on testToken == "".
+	if ctxt, err := GetContextWithError("", true); err == nil {
+		localish := ctxt.Name == "minikube" || ctxt.Name == "docker-desktop" ||
+			strings.HasPrefix(ctxt.URL, "http://localhost")
+		if localish && IsAuthorised() {
+			testToken = getAccessToken(true)
+			var headers *map[string]string
+			if ctxt.Host != "" {
+				headers = &(map[string]string{"Host": ctxt.Host})
+			}
+			if ad, aerr := NewAdapter(ctxt.URL, testToken, DEFAULT_SERVICE_TIMEOUT_IN_SECONDS, headers); aerr == nil {
+				adapter = ad
+			} else {
+				fmt.Printf("Failed to get adapter: %v\n", aerr)
+			}
+			cfg := log.NewDevelopmentConfig()
+			cfg.OutputPaths = []string{"stdout"}
+			cfg.Level = log.NewAtomicLevelAt(zapcore.ErrorLevel)
+			if lg, lerr := cfg.Build(); lerr == nil {
+				tlogger = lg
+			}
+		}
 	}
 
 	os.Exit(m.Run())
