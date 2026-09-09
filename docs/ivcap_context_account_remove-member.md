@@ -1,15 +1,16 @@
-## ivcap context list
+## ivcap context account remove-member
 
-List all context
+Remove a user from an account entirely (revokes all their grants)
 
 ```
-ivcap context list [flags]
+ivcap context account remove-member account_id --user <urn> [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+  -h, --help          help for remove-member
+      --user string   User URN to remove from the account
 ```
 
 ### Options inherited from parent commands
@@ -26,5 +27,5 @@ ivcap context list [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
+* [ivcap context account](ivcap_context_account.md)	 - Manage accounts you belong to
 

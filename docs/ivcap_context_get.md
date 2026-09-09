@@ -27,5 +27,5 @@ ivcap context get [all|name|account-id|url|access-token] [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage and set access to various IVCAP deployments
+* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
 

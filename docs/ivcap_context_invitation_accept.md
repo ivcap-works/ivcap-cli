@@ -1,15 +1,15 @@
-## ivcap context list
+## ivcap context invitation accept
 
-List all context
+Accept an invitation addressed to you
 
 ```
-ivcap context list [flags]
+ivcap context invitation accept invitation_id [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help   help for list
+  -h, --help   help for accept
 ```
 
 ### Options inherited from parent commands
@@ -26,5 +26,5 @@ ivcap context list [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
+* [ivcap context invitation](ivcap_context_invitation.md)	 - Respond to invitations addressed to you
 

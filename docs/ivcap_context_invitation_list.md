@@ -1,9 +1,9 @@
-## ivcap context list
+## ivcap context invitation list
 
-List all context
+List invitations addressed to you
 
 ```
-ivcap context list [flags]
+ivcap context invitation list [flags]
 ```
 
 ### Options
@@ -26,5 +26,5 @@ ivcap context list [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
+* [ivcap context invitation](ivcap_context_invitation.md)	 - Respond to invitations addressed to you
 
