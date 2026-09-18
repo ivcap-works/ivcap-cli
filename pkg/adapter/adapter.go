@@ -1,4 +1,4 @@
-// Copyright 2023 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
+// Copyright 2026 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -179,6 +179,13 @@ func (a *restAdapter) GetSSE(
 	client := sse.NewClient(parsedURL.String())
 	if lastEventID != nil {
 		client.LastEventID.Store([]byte(*lastEventID))
+	}
+	// Apply connection-level headers (e.g. Host, Ivcap-Project) first so per-call
+	// headers below can override them, mirroring Connect().
+	if a.connCtxt.Headers != nil {
+		for key, value := range *a.connCtxt.Headers {
+			client.Headers[key] = value
+		}
 	}
 	if headers != nil {
 		for key, value := range *headers {

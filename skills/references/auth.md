@@ -41,6 +41,16 @@ When authentication fails, MCP tools now return a result with `isError: true`:
 3. **Session expires**: Token becomes invalid after timeout or explicit logout
 4. **Re-authentication**: User must run `ivcap context login` again
 
+## OIDC login (ivcap-id deployments)
+
+Where `ivcap-id` is deployed, `ivcap context login` uses an OIDC device-code flow
+(falling back to the legacy `authinfo.yaml`/Auth0 flow). For agents:
+
+- Access tokens are opaque (`ivcap_at_…`), not JWTs; authorised server-side
+- Requests scope to a project via the `Ivcap-Project` header from the current context
+- Headless: set it with `ivcap project use <project-urn>` (the picker needs a TTY)
+- `ivcap whoami` shows the current identity, accounts, and projects
+
 ## Handling in agent workflows
 
 When you detect an authentication error:

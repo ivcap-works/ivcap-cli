@@ -71,6 +71,53 @@ Tokens are sourced in priority order:
 
 For automation/agents, prefer headless auth via env var or `--access-token`.
 
+#### Login flow: OIDC device-code (new) with authinfo fallback (deprecated)
+
+`ivcap context login` resolves how to authenticate via `resolveAuthProvider` (`cmd/login.go`):
+
+1. **OIDC discovery (preferred).** It fetches `GET {identityURL}/.well-known/openid-configuration`
+   directly from the identity server (`id.<domain>`) and reads the absolute `token_endpoint`,
+   `device_authorization_endpoint` and `jwks_uri`. The OAuth2 **device-code** grant then runs
+   against those endpoints using the compiled-in public client id `ivcap-cli`
+   (constant `IVCAP_CLI_CLIENT_ID`; the non-standard `ivcap_cli_client_id` discovery field is
+   ignored). The context records `auth-mode: oidc`.
+2. **authinfo fallback (deprecated).** If discovery is unavailable, it falls back to the legacy
+   `GET /1/authinfo.yaml` + Auth0 device-code flow (`auth-mode: legacy`).
+
+#### Opaque tokens and the `Ivcap-Project` header
+
+Under the new flow `ivcap-id` issues **opaque** tokens (`ivcap_at_…` access, `ivcap_rt_…` refresh),
+not self-describing JWTs. The CLI stores them as-is and never performs a token exchange itself. To
+scope a request to a project it sends the selected project as an `Ivcap-Project` header
+(constant `PROJECT_HEADER`), and a **server-side resolver** exchanges the opaque token + project for
+a project-scoped JWT. The header is attached by `CreateAdapterWithTimeout` (and the MCP adapter) on
+authenticated requests whenever the active context has a `current-project` set (via `ivcap context project use`).
+
+The login-time `id_token` is still a JWT; it is verified against `jwks_uri` only to display the
+user's own identity (email/name) locally. It carries no account/provider claims — the account shown by
+`ivcap whoami` is derived from the selected project.
+
+> **Behaviour change.** `ivcap context get access-token` / `IVCAP_ACCESS_TOKEN` now yield an
+> **opaque** reference that only works via the server-side resolver plus a project header — it is not a
+> standalone bearer JWT. Headless/CI callers receive **no** `Ivcap-Project` header unless they first run
+> `ivcap context project use <id>` (the post-login project picker is interactive-only), so scoped requests must
+> set the project explicitly.
+
+#### New auth-service commands
+
+- `ivcap whoami` — show the authenticated identity and accessible accounts/projects (root-level command).
+- `ivcap context project list|get|create|use|leave|delete` — `use` selects the current project (and drives the
+  `Ivcap-Project` header); with no argument it launches an interactive picker.
+- `ivcap context account list|get|create` and `ivcap context invitation list|accept|decline|revoke` — backed by
+  `ivcap-accounts`.
+- `ivcap context capabilities [--kind project|account]` — list the capability vocabulary accepted by `grant`/`invite`.
+
+All IAM commands live under `ivcap context` (alias `ivcap c`), keeping the root command surface focused on functional operations. Short aliases exist at every level: `ivcap c p use`, `ivcap c a list`, `ivcap c inv list`.
+
+Their request/response models live in `pkg/accountsapi` and are **generated** from the ivcap-accounts
+OpenAPI3 spec (`make sync-specs` refreshes the vendored spec, `make gen` regenerates the models; a CI
+`make check-gen` fails on drift).
+
 ### Output formats
 
 `--output json|yaml` is the primary mechanism for stable, machine-readable output.
@@ -111,16 +158,20 @@ This section describes the typical steps to implement a new CLI command in the e
 
 ### 1) Choose where it fits in the command tree
 
-Most functionality is grouped under a top-level noun:
+The command tree has two attachment points:
 
+**`rootCmd`** — functional operations on platform resources:
 - `ivcap service ...`
 - `ivcap job ...`
 - `ivcap artifact ...`
 - `ivcap package ...`
+- `ivcap whoami`
 
-If you are adding a new domain area, create a new `cmd/<domain>.go` and attach a new top-level Cobra command to `rootCmd` in that file’s `init()`.
-
-If you are adding a subcommand to an existing domain, update the corresponding file (for example `cmd/service.go`).
+**`contextCmd`** — identity and access management (IAM):
+- `ivcap context project ...`
+- `ivcap context account ...`
+- `ivcap context capabilities`
+- `ivcap context invitation ...`
 
 ### 2) Implement the Cobra command
 
@@ -278,9 +329,15 @@ When implementing new commands, aim for:
 
 ## Appendix: repo map
 
-- `cmd/root.go`: root command, global flags, adapter creation, doc generation.
+- `cmd/root.go`: root command, global flags, adapter creation, auth-error hints, doc generation.
+- `cmd/context.go`: deployment context management (create/list/set/get) and the IAM group layout.
+- `cmd/login.go`: OIDC device-code login and logout, registered under `contextCmd`.
+- `cmd/account.go`, `cmd/project.go`, `cmd/capabilities.go`, `cmd/invitation.go`: IAM commands, all registered under `contextCmd`.
+- `cmd/whoami.go`: identity display, registered under `rootCmd`.
 - `cmd/common.go`: shared flags, config/history helpers, list request builder.
 - `pkg/adapter/*`: payloads, printing helpers, transport.
+- `pkg/account.go`: API wrappers for accounts, projects, capabilities, invitations.
+- `pkg/accountsapi/`: generated models from the ivcap-accounts OpenAPI3 spec.
 - `pkg/*`: API operations called by commands.
 - `skills/`: embedded skill docs; `ivcap skills ...` reads these at runtime.
-- `doc/`: generated CLI docs.
+- `docs/`: generated CLI docs.
