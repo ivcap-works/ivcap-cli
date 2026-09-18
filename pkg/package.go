@@ -85,7 +85,21 @@ func PushPackage(ctx context.Context, srcTagName string, forcePush, localImage b
 		return nil, err
 	}
 
+	// Namespace the repository by the selected project.
+	//
+	// This is the only way the push carries the project: the image bytes go
+	// through the local Docker daemon, and ImagePush takes no headers - its
+	// only knob is RegistryAuth. But the daemon does send the repository in the
+	// `scope` parameter of its token request, so the gateway can read the
+	// project there and exchange the opaque token for a project-scoped JWT.
+	//
+	// With no project selected (a service principal, or a deployment that is
+	// still account-scoped) the repository stays unqualified and the gateway
+	// falls back to deriving the namespace from the caller's identity.
 	targetImage := registrySrvHost + "/docker-registry/" + srcTagName
+	if project := uuidOf(adpt.GetConnectionContext().Project()); project != "" {
+		targetImage = registrySrvHost + "/docker-registry/" + project + "/" + srcTagName
+	}
 	if err := client.ImageTag(ctx, srcTagName, targetImage); err != nil {
 		return nil, fmt.Errorf("failed to tag image: %w", err)
 	}
@@ -104,6 +118,9 @@ func PushPackage(ctx context.Context, srcTagName string, forcePush, localImage b
 	}
 	defer func() { _ = pushResp.Close() }()
 
+	// The daemon reports registry failures in the response stream, not in the
+	// error from ImagePush, so a failed push must fail the command here or it
+	// is indistinguishable from a successful one.
 	if err = checkPushResponse(pushResp, srcTagName); err != nil {
 		fmt.Printf("\033[2K\r %s push failed, error: %s\n", srcTagName, err.Error())
 		return nil, err
@@ -113,6 +130,18 @@ func PushPackage(ctx context.Context, srcTagName string, forcePush, localImage b
 	return &api.PushResponseBody{
 		Digest: &srcTagName,
 	}, nil
+}
+
+// uuidOf returns the last segment of an IVCAP URN, or s unchanged when it is
+// not one. Repository paths cannot contain the ':' of a URN.
+func uuidOf(s string) string {
+	if !strings.HasPrefix(s, "urn:") {
+		return s
+	}
+	if idx := strings.LastIndex(s, ":"); idx >= 0 {
+		return s[idx+1:]
+	}
+	return s
 }
 
 func PullPackage(ctxt context.Context, tag string, adpt adapter.Adapter, logger *log.Logger) error {
@@ -220,6 +249,17 @@ func pkgPath(id *string) string {
 	return path
 }
 
+// checkPushResponse consumes the daemon's JSON-lines push stream and returns
+// the first error it reports.
+//
+// It decodes the stream rather than scanning fixed-size chunks of it. Reading
+// 1024 bytes at a time splits JSON objects across reads and concatenates
+// several into one, so both the `"error":` substring test and the Unmarshal
+// that followed it depended on where the chunk boundaries happened to land -
+// and the final Read, which returns the last bytes together with io.EOF, was
+// discarded entirely. Docker reports a failed push in the *last* line of the
+// stream, so that was exactly the line being dropped: an unauthorized push
+// reported success.
 func checkPushResponse(pushResp io.Reader, digest string) error {
 	dec := json.NewDecoder(pushResp)
 	for {

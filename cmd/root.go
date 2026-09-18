@@ -48,7 +48,9 @@ const (
 
 // PROJECT_HEADER carries the caller's selected project to the server-side
 // resolver under the opaque-token flow (the CLI never mints project-scoped JWTs).
-const PROJECT_HEADER = "Ivcap-Project"
+// Defined in pkg/adapter so `ivcap package push`, which cannot import cmd/, can
+// read the same value off the connection context.
+const PROJECT_HEADER = adpt.ProjectHeader
 
 // sentProjectHeader records whether the most recent adapter attached
 // PROJECT_HEADER, so a subsequent 401 can be explained in project terms.

@@ -30,11 +30,26 @@ import (
 	log "go.uber.org/zap"
 )
 
+// ProjectHeader carries the caller's selected project to the server-side
+// resolver under the opaque-token flow (the CLI never mints project-scoped
+// JWTs). It lives here rather than in cmd/ so pkg/ can read the project off a
+// ConnectionCtxt without importing cmd/, which would be an import cycle.
+const ProjectHeader = "Ivcap-Project"
+
 type ConnectionCtxt struct {
 	URL         string
 	AccessToken string
 	TimeoutSec  int
 	Headers     *map[string]string // default headers
+}
+
+// Project returns the selected project as carried in ProjectHeader, or ""
+// when the caller is identity-scoped or has no project selected.
+func (c *ConnectionCtxt) Project() string {
+	if c == nil || c.Headers == nil {
+		return ""
+	}
+	return (*c.Headers)[ProjectHeader]
 }
 
 type Option func(adpr *restAdapter)
