@@ -166,6 +166,9 @@ func PullPackage(ctxt context.Context, tag string, adpt adapter.Adapter, logger 
 		return err
 	}
 	sourceImage := registrySrvHost + "/docker-registry/" + tag
+	if project := uuidOf(adpt.GetConnectionContext().Project()); project != "" {
+		sourceImage = registrySrvHost + "/docker-registry/" + project + "/" + tag
+	}
 
 	// Encode bearer token as Docker AuthConfig
 	encodedAuth, err := getDockerRegistryAuth(registrySrvHost, adpt)
