@@ -28,6 +28,7 @@ import (
 	dockerregistry "github.com/docker/docker/api/types/registry"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/uuid"
 	"github.com/inhies/go-bytesize"
 	log "go.uber.org/zap"
 
@@ -126,16 +127,21 @@ func PushPackage(ctx context.Context, srcTagName string, forcePush, localImage b
 	}, nil
 }
 
-// uuidOf returns the last segment of an IVCAP URN, or s unchanged when it is
-// not one. Repository paths cannot contain the ':' of a URN.
+// uuidOf extracts the UUID from an IVCAP URN (last colon-delimited segment),
+// returning "" if the segment is not a valid UUID. Returns s unchanged when s
+// is not a URN.
 func uuidOf(s string) string {
 	if !strings.HasPrefix(s, "urn:") {
 		return s
 	}
 	if idx := strings.LastIndex(s, ":"); idx >= 0 {
-		return s[idx+1:]
+		seg := s[idx+1:]
+		if _, err := uuid.Parse(seg); err != nil {
+			return ""
+		}
+		return seg
 	}
-	return s
+	return ""
 }
 
 func PullPackage(ctxt context.Context, tag string, adpt adapter.Adapter, logger *log.Logger) error {
