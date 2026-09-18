@@ -203,7 +203,7 @@ var useContextCmd = &cobra.Command{
 }
 
 var getContextCmd = &cobra.Command{
-	Use:     "get [all|name|account-id|url|access-token]",
+	Use:     "get [all|name|account-id|project-id|url|access-token]",
 	Short:   "Display the current context",
 	Aliases: []string{"current", "show"},
 	Run: func(_ *cobra.Command, args []string) {
@@ -227,6 +227,8 @@ var getContextCmd = &cobra.Command{
 			}
 		case "account-id":
 			fmt.Println(context.AccountID)
+		case "project-id":
+			fmt.Println(context.CurrentProject)
 		case "url":
 			fmt.Println(context.URL)
 		case "all":
