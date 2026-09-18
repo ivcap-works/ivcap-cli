@@ -228,11 +228,6 @@ var getContextCmd = &cobra.Command{
 		case "account-id":
 			fmt.Println(context.AccountID)
 		case "project-id":
-			// Scriptable counterpart to the "Current Project" row of `get all`.
-			// Callers need it to build registry references: `package push`
-			// namespaces the repository by project, so anything that has to
-			// name the resulting image - a service's controller.image, a
-			// Makefile - has to resolve the same project the push used.
 			fmt.Println(context.CurrentProject)
 		case "url":
 			fmt.Println(context.URL)

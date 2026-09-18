@@ -85,17 +85,11 @@ func PushPackage(ctx context.Context, srcTagName string, forcePush, localImage b
 		return nil, err
 	}
 
-	// Namespace the repository by the selected project.
-	//
-	// This is the only way the push carries the project: the image bytes go
-	// through the local Docker daemon, and ImagePush takes no headers - its
-	// only knob is RegistryAuth. But the daemon does send the repository in the
-	// `scope` parameter of its token request, so the gateway can read the
-	// project there and exchange the opaque token for a project-scoped JWT.
-	//
-	// With no project selected (a service principal, or a deployment that is
-	// still account-scoped) the repository stays unqualified and the gateway
-	// falls back to deriving the namespace from the caller's identity.
+	// Namespace the repository by project so the daemon includes it in the
+	// `scope` of its token request — the only channel available since ImagePush
+	// takes no headers. The gateway exchanges the scoped repo for a project JWT.
+	// Without a project the repository is unqualified and the gateway falls back
+	// to the caller's identity.
 	targetImage := registrySrvHost + "/docker-registry/" + srcTagName
 	if project := uuidOf(adpt.GetConnectionContext().Project()); project != "" {
 		targetImage = registrySrvHost + "/docker-registry/" + project + "/" + srcTagName
@@ -249,17 +243,9 @@ func pkgPath(id *string) string {
 	return path
 }
 
-// checkPushResponse consumes the daemon's JSON-lines push stream and returns
-// the first error it reports.
-//
-// It decodes the stream rather than scanning fixed-size chunks of it. Reading
-// 1024 bytes at a time splits JSON objects across reads and concatenates
-// several into one, so both the `"error":` substring test and the Unmarshal
-// that followed it depended on where the chunk boundaries happened to land -
-// and the final Read, which returns the last bytes together with io.EOF, was
-// discarded entirely. Docker reports a failed push in the *last* line of the
-// stream, so that was exactly the line being dropped: an unauthorized push
-// reported success.
+// checkPushResponse decodes the daemon's JSON-lines push stream and returns
+// the first error it finds. Push failures arrive in the stream, not from
+// ImagePush itself, so the final line must be decoded — not chunk-scanned.
 func checkPushResponse(pushResp io.Reader, digest string) error {
 	dec := json.NewDecoder(pushResp)
 	for {
