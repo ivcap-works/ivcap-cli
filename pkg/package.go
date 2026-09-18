@@ -15,7 +15,6 @@
 package client
 
 import (
-	"bytes"
 	"context"
 	"encoding/base64"
 	"encoding/json"
@@ -107,9 +106,9 @@ func PushPackage(ctx context.Context, srcTagName string, forcePush, localImage b
 
 	if err = checkPushResponse(pushResp, srcTagName); err != nil {
 		fmt.Printf("\033[2K\r %s push failed, error: %s\n", srcTagName, err.Error())
-	} else {
-		fmt.Printf("\033[2K\r %s pushed\n", srcTagName)
+		return nil, err
 	}
+	fmt.Printf("\033[2K\r %s pushed\n", srcTagName)
 
 	return &api.PushResponseBody{
 		Digest: &srcTagName,
@@ -155,9 +154,9 @@ func PullPackage(ctxt context.Context, tag string, adpt adapter.Adapter, logger 
 
 	if err = checkPullResponse(pullResp, tag); err != nil {
 		fmt.Printf("\033[2K\r %s pull failed, error: %s\n", srcTag.TagStr(), err.Error())
-	} else {
-		fmt.Printf("\033[2K\r %s pulled\n", tag)
+		return err
 	}
+	fmt.Printf("\033[2K\r %s pulled\n", tag)
 
 	return nil
 
@@ -222,95 +221,69 @@ func pkgPath(id *string) string {
 }
 
 func checkPushResponse(pushResp io.Reader, digest string) error {
+	dec := json.NewDecoder(pushResp)
 	for {
-		data := make([]byte, 1024)
-		if _, err := pushResp.Read(data); err != nil {
-			if !errors.Is(err, io.EOF) {
-				return fmt.Errorf("failed to read push response: %w", err)
-			}
-			break
+		var msg struct {
+			Status         string          `json:"status,omitempty"`
+			ID             string          `json:"id,omitempty"`
+			Error          string          `json:"error,omitempty"`
+			ErrorDetail    json.RawMessage `json:"errorDetail,omitempty"`
+			ProgressDetail json.RawMessage `json:"progressDetail,omitempty"`
 		}
-		output := string(bytes.ReplaceAll(data, []byte{0x00}, nil))
-		switch {
-		case strings.Contains(output, `"error":`):
-			var errResult struct {
-				Error       string          `json:"error,omitempty"`
-				ErrorDetail json.RawMessage `json:"errorDetail,omitempty"`
+		if err := dec.Decode(&msg); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
 			}
-			if err := json.Unmarshal([]byte(output), &errResult); err == nil {
-				return fmt.Errorf("failed to push :%s, detail:%s", strings.TrimSpace(errResult.Error), errResult.ErrorDetail)
+			return fmt.Errorf("failed to read push response: %w", err)
+		}
+		if msg.Error != "" {
+			return fmt.Errorf("failed to push :%s, detail:%s", strings.TrimSpace(msg.Error), msg.ErrorDetail)
+		}
+		if msg.Status == "Pushing" {
+			var pushingDetail struct {
+				Current float64 `json:"current,omitempty"`
+				Total   float64 `json:"total,omitempty"`
 			}
-			return fmt.Errorf("failed to push : %s", output)
-		default:
-			var progress struct {
-				Status         string          `json:"status,omitempty"`
-				ProgressDetail json.RawMessage `json:"progressDetail,omitempty"`
-				ID             string          `json:"id,omitempty"`
-			}
-			if err := json.Unmarshal([]byte(output), &progress); err == nil {
-				if progress.Status == "Pushing" {
-					var pushingDetail struct {
-						Current float64 `json:"current,omitempty"`
-						Total   float64 `json:"total,omitempty"`
-					}
-					if err := json.Unmarshal(progress.ProgressDetail, &pushingDetail); err == nil {
-						fmt.Printf("\033[2K\r %10s %12s %12s%10s Pushing", digest, progress.ID, bytesize.New(pushingDetail.Current), bytesize.New(pushingDetail.Total))
-					} else {
-						fmt.Printf("\033[2K\r %10s %12s %10s", digest, progress.ID, progress.Status)
-					}
-				} else {
-					fmt.Printf("\033[2K\r %10s %12s %10s", digest, progress.ID, progress.Status)
-				}
+			if err := json.Unmarshal(msg.ProgressDetail, &pushingDetail); err == nil {
+				fmt.Printf("\033[2K\r %10s %12s %12s%10s Pushing", digest, msg.ID, bytesize.New(pushingDetail.Current), bytesize.New(pushingDetail.Total))
+				continue
 			}
 		}
+		fmt.Printf("\033[2K\r %10s %12s %10s", digest, msg.ID, msg.Status)
 	}
-
-	return nil
 }
 
 func checkPullResponse(pullResp io.Reader, digest string) error {
+	dec := json.NewDecoder(pullResp)
 	for {
-		data := make([]byte, 1024)
-		if _, err := pullResp.Read(data); err != nil {
-			if !errors.Is(err, io.EOF) {
-				return fmt.Errorf("failed to read pull response: %w", err)
-			}
-			break
+		var msg struct {
+			Status         string          `json:"status,omitempty"`
+			Error          string          `json:"error,omitempty"`
+			ErrorDetail    json.RawMessage `json:"errorDetail,omitempty"`
+			ProgressDetail json.RawMessage `json:"progressDetail,omitempty"`
 		}
-		output := string(bytes.ReplaceAll(data, []byte{0x00}, nil))
+		if err := dec.Decode(&msg); err != nil {
+			if errors.Is(err, io.EOF) {
+				return nil
+			}
+			return fmt.Errorf("failed to read pull response: %w", err)
+		}
+		if msg.Error != "" {
+			return fmt.Errorf("failed to pull :%s, detail:%s", strings.TrimSpace(msg.Error), msg.ErrorDetail)
+		}
 		switch {
-		case strings.Contains(output, `"error":`):
-			var errResult struct {
-				Error       string          `json:"error,omitempty"`
-				ErrorDetail json.RawMessage `json:"errorDetail,omitempty"`
+		case strings.Contains(msg.Status, "Downloading"), strings.Contains(msg.Status, "Extracting"):
+			var pushingDetail struct {
+				Current float64 `json:"current,omitempty"`
+				Total   float64 `json:"total,omitempty"`
 			}
-			if err := json.Unmarshal([]byte(output), &errResult); err == nil {
-				return fmt.Errorf("failed to pull :%s, detail:%s", strings.TrimSpace(errResult.Error), errResult.ErrorDetail)
+			if err := json.Unmarshal(msg.ProgressDetail, &pushingDetail); err == nil {
+				fmt.Printf("\033[2K\r %10s %12s%10s Downloading", digest, bytesize.New(pushingDetail.Current), bytesize.New(pushingDetail.Total))
+			} else {
+				fmt.Printf("\033[2K\r %10s Downloading", digest)
 			}
-			return fmt.Errorf("failed to pull : %s", output)
 		default:
-			var progress struct {
-				Status         string          `json:"status,omitempty"`
-				ProgressDetail json.RawMessage `json:"progressDetail,omitempty"`
-			}
-			if err := json.Unmarshal([]byte(output), &progress); err == nil {
-				switch {
-				case strings.Contains(progress.Status, "Downloading"), strings.Contains(progress.Status, "Extracting"):
-					var pushingDetail struct {
-						Current float64 `json:"current,omitempty"`
-						Total   float64 `json:"total,omitempty"`
-					}
-					if err := json.Unmarshal(progress.ProgressDetail, &pushingDetail); err == nil {
-						fmt.Printf("\033[2K\r %10s %12s%10s Downloading", digest, bytesize.New(pushingDetail.Current), bytesize.New(pushingDetail.Total))
-					} else {
-						fmt.Printf("\033[2K\r %10s Downloading", digest)
-					}
-				default:
-					fmt.Printf("\033[2K\r %10s Pulling", digest)
-				}
-			}
+			fmt.Printf("\033[2K\r %10s Pulling", digest)
 		}
 	}
-
-	return nil
 }
