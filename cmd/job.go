@@ -18,7 +18,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -191,7 +190,11 @@ provided through 'stdin' use '-' as the file name and also include the --format 
 					cobra.CheckErr(fmt.Sprintf("While reading job file '%s' - %v", fileName, err))
 				}
 			}
-			res, jobCreate, err := sdk.CreateServiceJobRaw(ctxt, serviceID, pyld, 0, CreateAdapter(true), logger)
+			serverTimeout := timeout
+			if watchFlag {
+				serverTimeout = 0 // poll via watchJob; don't block the HTTP call
+			}
+			res, jobCreate, err := sdk.CreateServiceJobRaw(ctxt, serviceID, pyld, serverTimeout, CreateAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -218,17 +221,18 @@ func waitForResult(
 	if streamFlag {
 		return streamJobResults(ctxt, jobCreate)
 	}
-	wait := 2
-	if !watchFlag {
-		wait = int(math.Min(jobCreate.RetryLater, float64(timeout)))
+	retryAfter := int(jobCreate.RetryLater)
+	if retryAfter < 1 {
+		retryAfter = 2
+	}
+	wait := retryAfter
+	maxCheck := 1
+	if watchFlag {
+		maxCheck = 99 // should really define that in terms of max. wait
 	}
 	logger.Info("Job created", log.String("job-id", jobCreate.JobID), log.Int("waiting [sec]", wait))
 
 	jobID := jobCreate.JobID
-	maxCheck := 1
-	if watchFlag {
-		maxCheck = 99 // should really define that in t terms of max. wait
-	}
 	job, pyld, err := watchJob(ctxt, jobID, maxCheck, wait)
 	if err != nil {
 		return err
@@ -237,25 +241,27 @@ func waitForResult(
 }
 
 func watchJob(ctxt context.Context, jobID string, maxChecks int, wait int) (*sdk.JobReadResponseBody, a.Payload, error) {
-	done := false
 	tries := 0
-	for !done {
+	for {
 		time.Sleep(time.Duration(wait) * time.Second)
 		job, pyld, _, _, err := readJob(ctxt, jobID)
+		tries++
 		if err != nil {
-			return nil, nil, err
+			if tries >= maxChecks {
+				return nil, nil, err
+			}
+			// transient — aspect not indexed yet; keep retrying
+			logger.Info("Job not ready, retrying", log.String("job-id", jobID), log.NamedError("reason", err))
+			continue
 		}
 		status := "?"
 		if job.Status != nil {
 			status = *job.Status
 		}
-		tries += 1
-		done = tries >= maxChecks || (status != "?" && status != "scheduled" && status != "executing")
-		if done {
+		if tries >= maxChecks || (status != "?" && status != "scheduled" && status != "executing") {
 			return job, pyld, nil
 		}
 	}
-	return nil, nil, fmt.Errorf("timed out waiting for job to finish")
 }
 
 func streamJobResults(ctxt context.Context, jobCreate *sdk.JobCreateT) error {
