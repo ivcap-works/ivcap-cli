@@ -1,4 +1,4 @@
-// Copyright 2023 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
+// Copyright 2026 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,11 +30,24 @@ import (
 	log "go.uber.org/zap"
 )
 
+// ProjectHeader is in pkg/adapter (not cmd/) so pkg/ can reference it without
+// an import cycle.
+const ProjectHeader = "Ivcap-Project"
+
 type ConnectionCtxt struct {
 	URL         string
 	AccessToken string
 	TimeoutSec  int
 	Headers     *map[string]string // default headers
+}
+
+// Project returns the selected project as carried in ProjectHeader, or ""
+// when the caller is identity-scoped or has no project selected.
+func (c *ConnectionCtxt) Project() string {
+	if c == nil || c.Headers == nil {
+		return ""
+	}
+	return (*c.Headers)[ProjectHeader]
 }
 
 type Option func(adpr *restAdapter)
@@ -179,6 +192,13 @@ func (a *restAdapter) GetSSE(
 	client := sse.NewClient(parsedURL.String())
 	if lastEventID != nil {
 		client.LastEventID.Store([]byte(*lastEventID))
+	}
+	// Apply connection-level headers (e.g. Host, Ivcap-Project) first so per-call
+	// headers below can override them, mirroring Connect().
+	if a.connCtxt.Headers != nil {
+		for key, value := range *a.connCtxt.Headers {
+			client.Headers[key] = value
+		}
 	}
 	if headers != nil {
 		for key, value := range *headers {
