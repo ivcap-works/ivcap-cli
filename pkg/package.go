@@ -28,6 +28,7 @@ import (
 	dockerregistry "github.com/docker/docker/api/types/registry"
 	dockerclient "github.com/docker/docker/client"
 	"github.com/google/go-containerregistry/pkg/name"
+	"github.com/google/uuid"
 	"github.com/inhies/go-bytesize"
 	log "go.uber.org/zap"
 
@@ -85,7 +86,15 @@ func PushPackage(ctx context.Context, srcTagName string, forcePush, localImage b
 		return nil, err
 	}
 
+	// Namespace the repository by project so the daemon includes it in the
+	// `scope` of its token request — the only channel available since ImagePush
+	// takes no headers. The gateway exchanges the scoped repo for a project JWT.
+	// Without a project the repository is unqualified and the gateway falls back
+	// to the caller's identity.
 	targetImage := registrySrvHost + "/docker-registry/" + srcTagName
+	if project := uuidOf(adpt.GetConnectionContext().Project()); project != "" {
+		targetImage = registrySrvHost + "/docker-registry/" + project + "/" + srcTagName
+	}
 	if err := client.ImageTag(ctx, srcTagName, targetImage); err != nil {
 		return nil, fmt.Errorf("failed to tag image: %w", err)
 	}
@@ -104,6 +113,9 @@ func PushPackage(ctx context.Context, srcTagName string, forcePush, localImage b
 	}
 	defer func() { _ = pushResp.Close() }()
 
+	// The daemon reports registry failures in the response stream, not in the
+	// error from ImagePush, so a failed push must fail the command here or it
+	// is indistinguishable from a successful one.
 	if err = checkPushResponse(pushResp, srcTagName); err != nil {
 		fmt.Printf("\033[2K\r %s push failed, error: %s\n", srcTagName, err.Error())
 		return nil, err
@@ -113,6 +125,23 @@ func PushPackage(ctx context.Context, srcTagName string, forcePush, localImage b
 	return &api.PushResponseBody{
 		Digest: &srcTagName,
 	}, nil
+}
+
+// uuidOf extracts the UUID from an IVCAP URN (last colon-delimited segment),
+// returning "" if the segment is not a valid UUID. Returns s unchanged when s
+// is not a URN.
+func uuidOf(s string) string {
+	if !strings.HasPrefix(s, "urn:") {
+		return s
+	}
+	if idx := strings.LastIndex(s, ":"); idx >= 0 {
+		seg := s[idx+1:]
+		if _, err := uuid.Parse(seg); err != nil {
+			return ""
+		}
+		return seg
+	}
+	return ""
 }
 
 func PullPackage(ctxt context.Context, tag string, adpt adapter.Adapter, logger *log.Logger) error {
@@ -137,6 +166,9 @@ func PullPackage(ctxt context.Context, tag string, adpt adapter.Adapter, logger 
 		return err
 	}
 	sourceImage := registrySrvHost + "/docker-registry/" + tag
+	if project := uuidOf(adpt.GetConnectionContext().Project()); project != "" {
+		sourceImage = registrySrvHost + "/docker-registry/" + project + "/" + tag
+	}
 
 	// Encode bearer token as Docker AuthConfig
 	encodedAuth, err := getDockerRegistryAuth(registrySrvHost, adpt)
@@ -220,6 +252,9 @@ func pkgPath(id *string) string {
 	return path
 }
 
+// checkPushResponse decodes the daemon's JSON-lines push stream and returns
+// the first error it finds. Push failures arrive in the stream, not from
+// ImagePush itself, so the final line must be decoded — not chunk-scanned.
 func checkPushResponse(pushResp io.Reader, digest string) error {
 	dec := json.NewDecoder(pushResp)
 	for {

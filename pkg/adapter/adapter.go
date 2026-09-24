@@ -30,11 +30,24 @@ import (
 	log "go.uber.org/zap"
 )
 
+// ProjectHeader is in pkg/adapter (not cmd/) so pkg/ can reference it without
+// an import cycle.
+const ProjectHeader = "Ivcap-Project"
+
 type ConnectionCtxt struct {
 	URL         string
 	AccessToken string
 	TimeoutSec  int
 	Headers     *map[string]string // default headers
+}
+
+// Project returns the selected project as carried in ProjectHeader, or ""
+// when the caller is identity-scoped or has no project selected.
+func (c *ConnectionCtxt) Project() string {
+	if c == nil || c.Headers == nil {
+		return ""
+	}
+	return (*c.Headers)[ProjectHeader]
 }
 
 type Option func(adpr *restAdapter)
