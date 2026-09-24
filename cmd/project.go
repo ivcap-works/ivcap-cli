@@ -168,15 +168,27 @@ var (
 	createProjectCmd = &cobra.Command{
 		Use:   "create --name <name> [--account-id <urn>]",
 		Short: "Create a new project",
+		Long: `Create a new project under a workspace account.
+
+If --account-id is omitted on an interactive terminal, you will be prompted to
+select from your workspace accounts or create a new one. In non-interactive mode
+(CI, --access-token flag, piped stdin) --account-id is required.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if projectName == "" {
 				return fmt.Errorf("please provide a name via --name")
 			}
+			adpt := GetIdentityAdapter(true)
 			req := &accountsapi.CreateProjectPayload2{Name: projectName}
 			if projectAccountID != "" {
 				req.AccountId = &projectAccountID
+			} else {
+				accountID, err := resolveAccountForProject(context.Background(), adpt)
+				if err != nil {
+					return err
+				}
+				req.AccountId = &accountID
 			}
-			res, err := sdk.CreateProjectRaw(context.Background(), req, GetIdentityAdapter(true), logger)
+			res, err := sdk.CreateProjectRaw(context.Background(), req, adpt, logger)
 			if err != nil {
 				return err
 			}
@@ -466,6 +478,94 @@ func selectProjectInteractive(ctxt *Context) error {
 		return fmt.Errorf("invalid selection %q", line)
 	}
 	return setCurrentProject(ctxt, &projects[n-1])
+}
+
+// resolveAccountForProject returns the workspace account URN to assign to a new
+// project. On an interactive terminal it presents a picker; otherwise it fails
+// with a helpful error listing available workspace account URNs.
+func resolveAccountForProject(ctx context.Context, adpt *a.Adapter) (string, error) {
+	res, err := sdk.ListAccounts(ctx, &sdk.ListRequest{Limit: 100}, adpt, logger)
+	if err != nil {
+		return "", fmt.Errorf("failed to list accounts: %w", err)
+	}
+	var workspaces []accountsapi.Account
+	for _, acc := range res.Accounts {
+		if acc.Kind == "workspace" {
+			workspaces = append(workspaces, acc)
+		}
+	}
+
+	if !isInteractive() {
+		if len(workspaces) == 0 {
+			return "", fmt.Errorf(
+				"--account-id is required in non-interactive mode\n" +
+					"No workspace accounts found; create one with 'ivcap context account create --name <name>'")
+		}
+		var sb strings.Builder
+		sb.WriteString("--account-id is required in non-interactive mode\nAvailable workspace accounts:")
+		for _, acc := range workspaces {
+			fmt.Fprintf(&sb, "\n  %s  (%s)", acc.Id, acc.Name)
+		}
+		return "", fmt.Errorf("%s", sb.String())
+	}
+	return selectAccountInteractive(ctx, adpt, workspaces)
+}
+
+// selectAccountInteractive presents the caller's workspace accounts as a
+// numbered list, with "Create a new workspace account" always appended as the
+// final option.
+func selectAccountInteractive(ctx context.Context, adpt *a.Adapter, workspaces []accountsapi.Account) (string, error) {
+	if len(workspaces) == 0 {
+		fmt.Println("You don't have a workspace account yet.")
+		return createWorkspaceAccountInteractive(ctx, adpt)
+	}
+
+	createIdx := len(workspaces) + 1
+	fmt.Println("Select an account for this project:")
+	for i, acc := range workspaces {
+		fmt.Printf("  [%d] %-30s  (%s)\n", i+1, acc.Name, acc.Id)
+	}
+	fmt.Printf("  [%d] Create a new workspace account\n", createIdx)
+	fmt.Print("Enter number: ")
+
+	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	line = strings.TrimSpace(line)
+	n, err := strconv.Atoi(line)
+	if err != nil || n < 1 || n > createIdx {
+		return "", fmt.Errorf("invalid selection %q", line)
+	}
+	if n == createIdx {
+		return createWorkspaceAccountInteractive(ctx, adpt)
+	}
+	return workspaces[n-1].Id, nil
+}
+
+// createWorkspaceAccountInteractive prompts for an account name and calls
+// POST /accounts. A 403 response is surfaced as a clear permission error so
+// the caller understands that account creation may be restricted on this
+// platform.
+func createWorkspaceAccountInteractive(ctx context.Context, adpt *a.Adapter) (string, error) {
+	fmt.Print("Enter a name for your new workspace account: ")
+	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	name := strings.TrimSpace(line)
+	if name == "" {
+		return "", fmt.Errorf("account name cannot be empty")
+	}
+	pyl, err := sdk.CreateAccountRaw(ctx, name, adpt, logger)
+	if err != nil {
+		if strings.Contains(err.Error(), "403") || strings.Contains(strings.ToLower(err.Error()), "forbidden") {
+			return "", fmt.Errorf("account creation is not permitted on this platform; contact your administrator")
+		}
+		return "", fmt.Errorf("failed to create account: %w", err)
+	}
+	var acc accountsapi.Account
+	if err = pyl.AsType(&acc); err != nil {
+		return "", fmt.Errorf("failed to parse created account: %w", err)
+	}
+	if !silent {
+		fmt.Printf("Created workspace account %q (%s)\n", acc.Name, acc.Id)
+	}
+	return acc.Id, nil
 }
 
 // printMemberTable renders a project's or account's members. Shared by the
