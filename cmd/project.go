@@ -37,6 +37,12 @@ var (
 	projectAccountID string
 )
 
+// stdinReader is the shared buffered reader for all interactive prompts in
+// this file. A single reader must be reused across sequential prompts so that
+// bufio's internal buffer does not consume input intended for a later read.
+// Tests replace this variable via t.Cleanup.
+var stdinReader = bufio.NewReader(os.Stdin)
+
 func init() {
 	contextCmd.AddCommand(projectCmd)
 
@@ -528,7 +534,7 @@ func selectAccountInteractive(ctx context.Context, adpt *a.Adapter, workspaces [
 	fmt.Printf("  [%d] Create a new workspace account\n", createIdx)
 	fmt.Print("Enter number: ")
 
-	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	line, _ := stdinReader.ReadString('\n')
 	line = strings.TrimSpace(line)
 	n, err := strconv.Atoi(line)
 	if err != nil || n < 1 || n > createIdx {
@@ -546,7 +552,7 @@ func selectAccountInteractive(ctx context.Context, adpt *a.Adapter, workspaces [
 // platform.
 func createWorkspaceAccountInteractive(ctx context.Context, adpt *a.Adapter) (string, error) {
 	fmt.Print("Enter a name for your new workspace account: ")
-	line, _ := bufio.NewReader(os.Stdin).ReadString('\n')
+	line, _ := stdinReader.ReadString('\n')
 	name := strings.TrimSpace(line)
 	if name == "" {
 		return "", fmt.Errorf("account name cannot be empty")
