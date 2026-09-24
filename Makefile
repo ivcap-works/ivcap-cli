@@ -32,41 +32,42 @@ build-dangerously:
 install-dangerously: build-dangerously
 	go install -ldflags ${LD_FLAGS} ivcap.go
 
-# ── Code generation: ivcap-accounts data models from its OpenAPI3 spec ──────────
+# ── Code generation: ivcap-accounts data models from its OpenAPI spec ───────────
 # Source of truth *in this repo* is the vendored, committed spec at
-# pkg/accountsapi/openapi3.yaml (itself emitted from the ivcap-accounts Goa
-# design). We generate models-only Go types from it so they can't drift from the
-# spec. Because the spec is vendored, `make gen` and `make check-gen` are fully
-# self-contained — contributors and public CI never need the (private) ivcap-iam
-# monorepo. Only `make sync-specs` reaches for the upstream spec, and that is a
-# maintainer-only step: the CLI is public but the auth monorepo is private, so
-# there is deliberately no default source that a public checkout could fetch.
-OAPI_CODEGEN_VERSION := v2.4.1
+# pkg/accountsapi/openapi.json. We generate models-only Go types from it so they
+# can't drift from the spec, and because it is vendored `make gen` and
+# `make check-gen` need no network or other repository.
+#
+# The spec is the one ivcap-id publishes at https://id.<domain>/openapi.json:
+# the ivcap-id + ivcap-accounts API, merged and served by ivcap-id (built from
+# the Goa designs in the private ivcap-iam monorepo). It is public, so anyone
+# can refresh the vendored copy with `make sync-specs`.
+OAPI_CODEGEN_VERSION := v2.8.0
 
-# Where `sync-specs` pulls the upstream spec from. Defaults to a sibling
-# ivcap-accounts checkout — the setup a maintainer with private-repo access has
-# when refreshing the vendored copy. It may also be an http(s) URL, e.g. a spec
-# published as a release artifact:
-#   make sync-specs ACCOUNTS_SPEC_SRC=https://.../openapi3.yaml
-ACCOUNTS_SPEC_SRC ?= ../ivcap-accounts/gen/http/openapi3.yaml
+# Where `sync-specs` pulls the spec from: the develop deployment by default, the
+# API this branch is built against. Override for another deployment or a local
+# ivcap-iam checkout (that copy has the same schemas; only servers and security
+# differ from the served one, and models-only generation ignores both):
+#   make sync-specs ACCOUNTS_SPEC_SRC=https://id.sciansa.net/openapi.json
+#   make sync-specs ACCOUNTS_SPEC_SRC=../ivcap-iam/ivcap-id/internal/apidocs/openapi.json
+ACCOUNTS_SPEC_SRC ?= https://id.develop.ivcap.net/openapi.json
 
-# Refresh the vendored OpenAPI3 spec (maintainer-only; requires access to the
-# upstream spec). ACCOUNTS_SPEC_SRC may be a local file path (copied) or an
-# http(s) URL (fetched with curl).
+# Refresh the vendored OpenAPI spec. ACCOUNTS_SPEC_SRC may be an http(s) URL
+# (fetched with curl) or a local file path (copied). Run `make gen` afterwards.
 sync-specs:
 	@case "$(ACCOUNTS_SPEC_SRC)" in \
 		http://*|https://*) \
 			echo "Fetching $(ACCOUNTS_SPEC_SRC)"; \
-			curl -fsSL "$(ACCOUNTS_SPEC_SRC)" -o pkg/accountsapi/openapi3.yaml ;; \
+			curl -fsSL "$(ACCOUNTS_SPEC_SRC)" -o pkg/accountsapi/openapi.json ;; \
 		*) \
-			test -f "$(ACCOUNTS_SPEC_SRC)" || { echo "spec not found: $(ACCOUNTS_SPEC_SRC) (set ACCOUNTS_SPEC_SRC to a sibling checkout or a published spec URL)"; exit 1; }; \
-			cp "$(ACCOUNTS_SPEC_SRC)" pkg/accountsapi/openapi3.yaml ;; \
+			test -f "$(ACCOUNTS_SPEC_SRC)" || { echo "spec not found: $(ACCOUNTS_SPEC_SRC)"; exit 1; }; \
+			cp "$(ACCOUNTS_SPEC_SRC)" pkg/accountsapi/openapi.json ;; \
 	esac
-	@echo "Synced pkg/accountsapi/openapi3.yaml from $(ACCOUNTS_SPEC_SRC)"
+	@echo "Synced pkg/accountsapi/openapi.json from $(ACCOUNTS_SPEC_SRC)"
 
 # Regenerate model types from the vendored spec.
 gen:
-	cd pkg/accountsapi && go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@$(OAPI_CODEGEN_VERSION) -config cfg.yaml openapi3.yaml
+	cd pkg/accountsapi && go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen@$(OAPI_CODEGEN_VERSION) -config cfg.yaml openapi.json
 	@echo "Generated pkg/accountsapi/models.gen.go"
 
 # Fail if the committed models are stale vs the vendored spec (CI drift guard).

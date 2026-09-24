@@ -55,24 +55,24 @@ func TestAccountSDKPathsAndVerbs(t *testing.T) {
 		{"list projects", "GET", "/projects", func() error { _, e := ListProjectsRaw(ctx, &ListRequest{}, adp, logger); return e }},
 		{"read project", "GET", "/projects/urn:p", func() error { _, e := ReadProjectRaw(ctx, "urn:p", adp, logger); return e }},
 		{"create project", "POST", "/projects", func() error {
-			_, e := CreateProjectRaw(ctx, &accountsapi.CreateProjectPayload2{Name: "n"}, adp, logger)
+			_, e := CreateProjectRaw(ctx, &accountsapi.CreateProjectPayload{Name: "n"}, adp, logger)
 			return e
 		}},
 		{"update project", "PATCH", "/projects/urn:p", func() error {
-			_, e := UpdateProjectRaw(ctx, "urn:p", &accountsapi.UpdateProjectPayload2{Name: "n"}, adp, logger)
+			_, e := UpdateProjectRaw(ctx, "urn:p", &accountsapi.UpdateProjectPayload{Name: "n"}, adp, logger)
 			return e
 		}},
 		{"delete project", "DELETE", "/projects/urn:p", func() error { _, e := DeleteProjectRaw(ctx, "urn:p", adp, logger); return e }},
 		{"leave project", "POST", "/projects/urn:p/leave", func() error { _, e := LeaveProjectRaw(ctx, "urn:p", adp, logger); return e }},
 		{"grant project", "POST", "/projects/urn:p/grants", func() error {
-			_, e := GrantProjectRaw(ctx, "urn:p", &accountsapi.AddProjectGrantPayload2{}, adp, logger)
+			_, e := GrantProjectRaw(ctx, "urn:p", &accountsapi.AddProjectGrantPayload{}, adp, logger)
 			return e
 		}},
 		{"list my invitations", "GET", "/invitations/mine", func() error { _, e := ListMyInvitationsRaw(ctx, adp, logger); return e }},
 		{"accept invitation", "POST", "/invitations/i1/accept", func() error { _, e := AcceptInvitationRaw(ctx, "i1", adp, logger); return e }},
 		{"decline invitation", "POST", "/invitations/i1/decline", func() error { _, e := DeclineInvitationRaw(ctx, "i1", adp, logger); return e }},
 		{"create project invitation", "POST", "/projects/urn:p/invitations", func() error {
-			_, e := CreateProjectInvitationRaw(ctx, "urn:p", &accountsapi.CreateInvitationPayload2{Email: "e@x"}, adp, logger)
+			_, e := CreateProjectInvitationRaw(ctx, "urn:p", &accountsapi.CreateInvitationPayload{Email: "e@x"}, adp, logger)
 			return e
 		}},
 	}

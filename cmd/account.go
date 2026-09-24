@@ -266,7 +266,7 @@ func runAccountGrant(cmd *cobra.Command, args []string) error {
 	if len(caps) == 0 {
 		return fmt.Errorf("provide at least one --capability to grant")
 	}
-	req := &accountsapi.AddAccountGrantPayload2{UserId: userID, Capabilities: caps}
+	req := &accountsapi.AddAccountGrantPayload{UserId: userID, Capabilities: caps}
 	if _, err := sdk.GrantAccountRaw(context.Background(), accountID, req, GetIdentityAdapter(true), logger); err != nil {
 		return err
 	}
@@ -314,7 +314,7 @@ func runAccountInvite(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	req := &accountsapi.CreateAccountInvitationPayload2{Email: acctInviteEmail}
+	req := &accountsapi.CreateAccountInvitationPayload{Email: acctInviteEmail}
 	if len(caps) > 0 {
 		req.Capabilities = &caps
 	}

@@ -1,6 +1,7 @@
 # oapi-codegen config for the ivcap-accounts data models.
-# Source of truth: ivcap-accounts Goa design -> gen/http/openapi3.yaml (vendored
-# here as openapi3.yaml, refreshed via `make sync-specs`). Regenerate with `make gen`.
+# Source of truth: the Goa designs -> the spec ivcap-id publishes at
+# /openapi.json (vendored here as openapi.json, refreshed via `make sync-specs`).
+# Regenerate with `make gen`.
 package: accountsapi
 output: models.gen.go
 generate:

@@ -184,7 +184,7 @@ select from your workspace accounts or create a new one. In non-interactive mode
 				return fmt.Errorf("please provide a name via --name")
 			}
 			adpt := GetIdentityAdapter(true)
-			req := &accountsapi.CreateProjectPayload2{Name: projectName}
+			req := &accountsapi.CreateProjectPayload{Name: projectName}
 			if projectAccountID != "" {
 				req.AccountId = &projectAccountID
 			} else {
@@ -371,7 +371,7 @@ func runProjectGrant(cmd *cobra.Command, args []string) error {
 	if len(caps) == 0 {
 		return fmt.Errorf("provide at least one --capability to grant")
 	}
-	req := &accountsapi.AddProjectGrantPayload2{
+	req := &accountsapi.AddProjectGrantPayload{
 		PrincipalKind: kind,
 		PrincipalId:   principalID,
 		Capabilities:  caps,
@@ -425,7 +425,7 @@ func runProjectInvite(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	req := &accountsapi.CreateInvitationPayload2{Email: projInviteEmail, Capabilities: caps}
+	req := &accountsapi.CreateInvitationPayload{Email: projInviteEmail, Capabilities: caps}
 	res, err := sdk.CreateProjectInvitationRaw(context.Background(), projectID, req, GetIdentityAdapter(true), logger)
 	if err != nil {
 		return err

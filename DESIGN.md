@@ -114,9 +114,9 @@ user's own identity (email/name) locally. It carries no account/provider claims 
 
 All IAM commands live under `ivcap context` (alias `ivcap c`), keeping the root command surface focused on functional operations. Short aliases exist at every level: `ivcap c p use`, `ivcap c a list`, `ivcap c inv list`.
 
-Their request/response models live in `pkg/accountsapi` and are **generated** from the ivcap-accounts
-OpenAPI3 spec (`make sync-specs` refreshes the vendored spec, `make gen` regenerates the models; a CI
-`make check-gen` fails on drift).
+Their request/response models live in `pkg/accountsapi` and are **generated** from the OpenAPI spec
+ivcap-id publishes at `https://id.<domain>/openapi.json` (`make sync-specs` refreshes the vendored
+copy, `make gen` regenerates the models, `make check-gen` fails on drift).
 
 ### Output formats
 

@@ -87,7 +87,7 @@ func ReadAccountRaw(ctxt context.Context, id string, adpt *adapter.Adapter, logg
 }
 
 func CreateAccountRaw(ctxt context.Context, name string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	return postJSON(ctxt, accountPath(nil), accountsapi.CreateAccountPayload2{Name: name}, adpt, logger)
+	return postJSON(ctxt, accountPath(nil), accountsapi.CreateAccountPayload{Name: name}, adpt, logger)
 }
 
 func ListAccountMembersRaw(ctxt context.Context, accountID string, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
@@ -95,7 +95,7 @@ func ListAccountMembersRaw(ctxt context.Context, accountID string, adpt *adapter
 }
 
 // GrantAccountRaw grants account-admin capabilities to a user (batch add).
-func GrantAccountRaw(ctxt context.Context, accountID string, req *accountsapi.AddAccountGrantPayload2, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+func GrantAccountRaw(ctxt context.Context, accountID string, req *accountsapi.AddAccountGrantPayload, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	return postJSON(ctxt, accountPath(&accountID)+"/grants", req, adpt, logger)
 }
 
@@ -148,11 +148,11 @@ func ReadProject(ctxt context.Context, id string, adpt *adapter.Adapter, logger 
 	return &p, nil
 }
 
-func CreateProjectRaw(ctxt context.Context, req *accountsapi.CreateProjectPayload2, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+func CreateProjectRaw(ctxt context.Context, req *accountsapi.CreateProjectPayload, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	return postJSON(ctxt, projectPath(nil), req, adpt, logger)
 }
 
-func UpdateProjectRaw(ctxt context.Context, id string, req *accountsapi.UpdateProjectPayload2, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+func UpdateProjectRaw(ctxt context.Context, id string, req *accountsapi.UpdateProjectPayload, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	body, err := json.MarshalIndent(req, "", "  ")
 	if err != nil {
 		return nil, err
@@ -168,7 +168,7 @@ func LeaveProjectRaw(ctxt context.Context, id string, adpt *adapter.Adapter, log
 	return (*adpt).Post(ctxt, projectPath(&id)+"/leave", nil, -1, nil, logger)
 }
 
-func GrantProjectRaw(ctxt context.Context, id string, req *accountsapi.AddProjectGrantPayload2, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+func GrantProjectRaw(ctxt context.Context, id string, req *accountsapi.AddProjectGrantPayload, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	return postJSON(ctxt, projectPath(&id)+"/grants", req, adpt, logger)
 }
 
@@ -216,12 +216,12 @@ func DeclineInvitationRaw(ctxt context.Context, id string, adpt *adapter.Adapter
 	return (*adpt).Post(ctxt, invitationPath("/"+id+"/decline"), nil, -1, nil, logger)
 }
 
-func CreateProjectInvitationRaw(ctxt context.Context, projectID string, req *accountsapi.CreateInvitationPayload2, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+func CreateProjectInvitationRaw(ctxt context.Context, projectID string, req *accountsapi.CreateInvitationPayload, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	id := projectID
 	return postJSON(ctxt, projectPath(&id)+"/invitations", req, adpt, logger)
 }
 
-func CreateAccountInvitationRaw(ctxt context.Context, accountID string, req *accountsapi.CreateAccountInvitationPayload2, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+func CreateAccountInvitationRaw(ctxt context.Context, accountID string, req *accountsapi.CreateAccountInvitationPayload, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
 	id := accountID
 	return postJSON(ctxt, accountPath(&id)+"/invitations", req, adpt, logger)
 }

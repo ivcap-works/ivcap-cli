@@ -108,13 +108,13 @@ func TestSDKGrantAndRemoveShaping(t *testing.T) {
 
 	// Project grant — POST with principal fields + capabilities.
 	if _, err := sdk.GrantProjectRaw(ctx, "P1",
-		&accountsapi.AddProjectGrantPayload2{PrincipalKind: "user", PrincipalId: "U1", Capabilities: []string{"read", "write"}},
+		&accountsapi.AddProjectGrantPayload{PrincipalKind: "user", PrincipalId: "U1", Capabilities: []string{"read", "write"}},
 		CreateAdapter(true), logger); err != nil {
 		t.Fatalf("GrantProjectRaw: %v", err)
 	}
 	// Account grant — POST with user_id + capabilities.
 	if _, err := sdk.GrantAccountRaw(ctx, "A1",
-		&accountsapi.AddAccountGrantPayload2{UserId: "U1", Capabilities: []string{"manage_members"}},
+		&accountsapi.AddAccountGrantPayload{UserId: "U1", Capabilities: []string{"manage_members"}},
 		CreateAdapter(true), logger); err != nil {
 		t.Fatalf("GrantAccountRaw: %v", err)
 	}
