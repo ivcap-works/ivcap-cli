@@ -15,8 +15,10 @@
 package cmd
 
 import (
+	"bytes"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -31,7 +33,32 @@ var (
 	tlogger   *log.Logger
 )
 
+// realConfigFile is the user's actual config.yaml, resolved before any test can
+// redirect the config dir. It is only ever read, never written, by the tests.
+var realConfigFile string
+
+// useIsolatedConfigDir points the CLI at a fresh temp config dir and verifies
+// the redirect took effect, so a test can never write to the user's real config.
+func useIsolatedConfigDir(t *testing.T) string {
+	t.Helper()
+	dir := t.TempDir()
+	t.Setenv(CONFIG_DIR_ENV, dir)
+
+	got := GetConfigFilePath()
+	if filepath.Dir(got) != dir {
+		t.Fatalf("config path %q is not inside the isolated dir %q", got, dir)
+	}
+	if realConfigFile != "" && got == realConfigFile {
+		t.Fatalf("refusing to run: config path %q is the user's real config", got)
+	}
+	return dir
+}
+
 func TestMain(m *testing.M) {
+	if os.Getenv(CONFIG_DIR_ENV) == "" {
+		realConfigFile = GetConfigFilePath()
+	}
+	realBefore, _ := os.ReadFile(realConfigFile) // nil if absent
 	initConfig()
 
 	// Best-effort integration setup: wire up the shared adapter/token only when a
@@ -60,5 +87,35 @@ func TestMain(m *testing.M) {
 		}
 	}
 
-	os.Exit(m.Run())
+	code := m.Run()
+
+	// Safety net: fail the run loudly if anything modified the real config.
+	if realConfigFile != "" {
+		if after, _ := os.ReadFile(realConfigFile); !bytes.Equal(realBefore, after) {
+			fmt.Fprintf(os.Stderr, "FAIL: tests modified the user's real config %s\n", realConfigFile)
+			code = 1
+		}
+	}
+	os.Exit(code)
+}
+
+func TestConfigDirEnvOverride(t *testing.T) {
+	dir := useIsolatedConfigDir(t)
+	if got := GetConfigDir(false); got != dir {
+		t.Fatalf("GetConfigDir = %q, want %q", got, dir)
+	}
+	if got, want := GetConfigFilePath(), filepath.Join(dir, CONFIG_FILE_NAME); got != want {
+		t.Fatalf("GetConfigFilePath = %q, want %q", got, want)
+	}
+}
+
+func TestConfigDirDefaultsToUserConfigDir(t *testing.T) {
+	t.Setenv(CONFIG_DIR_ENV, "")
+	want, err := os.UserConfigDir()
+	if err != nil {
+		t.Skip("no user config dir")
+	}
+	if got := GetConfigDir(false); got != filepath.Join(want, CONFIG_FILE_DIR) {
+		t.Fatalf("GetConfigDir = %q", got)
+	}
 }

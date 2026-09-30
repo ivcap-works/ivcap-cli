@@ -26,7 +26,7 @@ import (
 // baseURL, and resets the token-related globals so each test is hermetic.
 func setTestContext(t *testing.T, baseURL, currentProject string) {
 	t.Helper()
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	useIsolatedConfigDir(t)
 	// reset process-global auth state that persists across CreateAdapter calls
 	accessToken = ""
 	accessTokenF = ""

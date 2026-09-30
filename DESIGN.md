@@ -57,6 +57,8 @@ Contexts are stored under the OS user config directory in a folder named `ivcap-
 - Config file: `config.yaml`
 - History file: `history.yaml`
 
+Set `IVCAP_CONFIG_DIR` to use a different config directory (used as-is, on every OS). Tests rely on this.
+
 The active context determines the base URL (and optional Host header) used by the HTTP adapter.
 
 ### Authentication
