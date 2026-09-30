@@ -29,7 +29,7 @@ ivcap [flags]
 * [ivcap agent-context](ivcap_agent-context.md)	 - Print embedded agent context guidance (markdown)
 * [ivcap artifact](ivcap_artifact.md)	 - Create and manage artifacts
 * [ivcap collection](ivcap_collection.md)	 - Create and manage collections
-* [ivcap context](ivcap_context.md)	 - Manage and set access to various IVCAP deployments
+* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
 * [ivcap datafabric](ivcap_datafabric.md)	 - Query the datafabric and create and manage aspects within
 * [ivcap job](ivcap_job.md)	 - Create and manage jobs
 * [ivcap mcp](ivcap_mcp.md)	 - Start an MCP server for accessing all tools on an IVCAP platform
@@ -39,4 +39,5 @@ ivcap [flags]
 * [ivcap secret](ivcap_secret.md)	 - Set and list secrets 
 * [ivcap service](ivcap_service.md)	 - Create and manage services
 * [ivcap skills](ivcap_skills.md)	 - List and show agent skill docs embedded in this CLI release
+* [ivcap whoami](ivcap_whoami.md)	 - Show the currently authenticated identity and accessible accounts/projects
 

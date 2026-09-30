@@ -1,6 +1,6 @@
 ## ivcap context
 
-Manage and set access to various IVCAP deployments
+Manage deployment access, projects, and accounts
 
 ### Options
 
@@ -23,10 +23,14 @@ Manage and set access to various IVCAP deployments
 ### SEE ALSO
 
 * [ivcap](ivcap.md)	 - A command line tool to interact with a IVCAP deployment
+* [ivcap context account](ivcap_context_account.md)	 - Manage accounts you belong to
+* [ivcap context capabilities](ivcap_context_capabilities.md)	 - List the capabilities grantable on projects and accounts
 * [ivcap context create](ivcap_context_create.md)	 - Create a new context
 * [ivcap context get](ivcap_context_get.md)	 - Display the current context
+* [ivcap context invitation](ivcap_context_invitation.md)	 - Respond to invitations addressed to you
 * [ivcap context list](ivcap_context_list.md)	 - List all context
 * [ivcap context login](ivcap_context_login.md)	 - Authenticate with a current deployment/context
 * [ivcap context logout](ivcap_context_logout.md)	 - Remove authentication tokens from the current deployment/context
+* [ivcap context project](ivcap_context_project.md)	 - Manage projects and select the current one
 * [ivcap context set](ivcap_context_set.md)	 - Set the current context in the config file
 

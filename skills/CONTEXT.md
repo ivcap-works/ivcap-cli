@@ -41,6 +41,17 @@ ivcap --output json ...
 
 Avoid browser-based `ivcap context login` unless a human confirms they can complete the flow.
 
+- On new (`ivcap-id`) deployments the access token is an **opaque** reference (`ivcap_at_…`), not a JWT —
+  don't decode it; it is authorised server-side.
+- Project scoping travels in the `Ivcap-Project` header, taken from the context's current project. The
+  post-login picker is interactive-only, so when running headless set the project explicitly first:
+
+```bash
+ivcap project list --output json          # find the project URN
+ivcap project use urn:ivcap:project:...   # sets the current project for this context
+ivcap whoami --output json                # identity + accessible accounts/projects
+```
+
 ### Listing resources
 - Always use `--limit`.
 - Use `--page` for pagination.

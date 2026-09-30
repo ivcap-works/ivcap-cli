@@ -143,8 +143,17 @@ func createMCPAdapter(timeoutSec int) (*a.Adapter, error) {
 
 	url := ctxt.URL
 	var headers *map[string]string
-	if ctxt.Host != "" {
-		headers = &(map[string]string{"Host": ctxt.Host})
+	if ctxt.Host != "" || ctxt.CurrentProject != "" {
+		h := map[string]string{}
+		if ctxt.Host != "" {
+			h["Host"] = ctxt.Host
+		}
+		// Opaque-token flow: forward the selected project so the server-side
+		// resolver can scope requests (mirrors CreateAdapterWithTimeout).
+		if ctxt.CurrentProject != "" {
+			h[PROJECT_HEADER] = ctxt.CurrentProject
+		}
+		headers = &h
 	}
 	adp, err := NewAdapter(url, accessToken, timeoutSec, headers)
 	if err != nil {

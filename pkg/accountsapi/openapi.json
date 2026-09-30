@@ -1,0 +1,4381 @@
+{
+  "components": {
+    "schemas": {
+      "Account": {
+        "example": {
+          "id": "Autem dolorem quibusdam et consectetur corrupti aut.",
+          "kind": "Ut mollitia.",
+          "name": "Quis nisi."
+        },
+        "properties": {
+          "id": {
+            "description": "Account URN",
+            "example": "Autem dolorem quibusdam et consectetur corrupti aut.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "personal | workspace",
+            "example": "Ut mollitia.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name",
+            "example": "Quis nisi.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name"
+        ],
+        "type": "object"
+      },
+      "AddAccountGrantPayload": {
+        "description": "Request body for add-account-grant.",
+        "example": {
+          "capabilities": [
+            "b4q",
+            "qgw",
+            "8rh"
+          ],
+          "user_id": "twn"
+        },
+        "properties": {
+          "capabilities": {
+            "description": "Account capabilities: read, create_project, manage_members. The caller must hold each capability they grant.",
+            "example": [
+              "b4q",
+              "qgw",
+              "8rh"
+            ],
+            "items": {
+              "example": "b4q",
+              "maxLength": 64,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "user_id": {
+            "description": "User URN to grant capabilities to",
+            "example": "twn",
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "capabilities"
+        ],
+        "type": "object"
+      },
+      "AddProjectGrantPayload": {
+        "description": "Request body for add-project-grant.",
+        "example": {
+          "capabilities": [
+            "w3r",
+            "myr",
+            "h0i"
+          ],
+          "principal_id": "0af",
+          "principal_kind": "rqu"
+        },
+        "properties": {
+          "capabilities": {
+            "description": "Project capabilities: read, write, delete, add_user, remove_user, add_child_project. The caller must hold each capability they grant.",
+            "example": [
+              "w3r",
+              "myr",
+              "h0i"
+            ],
+            "items": {
+              "example": "w3r",
+              "maxLength": 64,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "principal_id": {
+            "description": "Principal URN (for service: the m2m_clients.id, i.e. the session pseudonym)",
+            "example": "0af",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "principal_kind": {
+            "description": "user | service",
+            "example": "rqu",
+            "maxLength": 32,
+            "type": "string"
+          }
+        },
+        "required": [
+          "principal_kind",
+          "principal_id",
+          "capabilities"
+        ],
+        "type": "object"
+      },
+      "BadRequestT": {
+        "description": "bad request",
+        "example": {
+          "message": "Quidem ducimus incidunt atque at."
+        },
+        "properties": {
+          "message": {
+            "description": "Error message",
+            "example": "Quidem ducimus incidunt atque at.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "CapabilitiesResult": {
+        "example": {
+          "account": [
+            {
+              "description": "At voluptatum ut expedita commodi.",
+              "name": "Consectetur minima."
+            },
+            {
+              "description": "At voluptatum ut expedita commodi.",
+              "name": "Consectetur minima."
+            },
+            {
+              "description": "At voluptatum ut expedita commodi.",
+              "name": "Consectetur minima."
+            },
+            {
+              "description": "At voluptatum ut expedita commodi.",
+              "name": "Consectetur minima."
+            }
+          ],
+          "project": [
+            {
+              "description": "At voluptatum ut expedita commodi.",
+              "name": "Consectetur minima."
+            },
+            {
+              "description": "At voluptatum ut expedita commodi.",
+              "name": "Consectetur minima."
+            },
+            {
+              "description": "At voluptatum ut expedita commodi.",
+              "name": "Consectetur minima."
+            }
+          ]
+        },
+        "properties": {
+          "account": {
+            "description": "Capabilities grantable on an account",
+            "example": [
+              {
+                "description": "At voluptatum ut expedita commodi.",
+                "name": "Consectetur minima."
+              },
+              {
+                "description": "At voluptatum ut expedita commodi.",
+                "name": "Consectetur minima."
+              },
+              {
+                "description": "At voluptatum ut expedita commodi.",
+                "name": "Consectetur minima."
+              },
+              {
+                "description": "At voluptatum ut expedita commodi.",
+                "name": "Consectetur minima."
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            },
+            "type": "array"
+          },
+          "project": {
+            "description": "Capabilities grantable on a project",
+            "example": [
+              {
+                "description": "At voluptatum ut expedita commodi.",
+                "name": "Consectetur minima."
+              },
+              {
+                "description": "At voluptatum ut expedita commodi.",
+                "name": "Consectetur minima."
+              },
+              {
+                "description": "At voluptatum ut expedita commodi.",
+                "name": "Consectetur minima."
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "project",
+          "account"
+        ],
+        "type": "object"
+      },
+      "Capability": {
+        "example": {
+          "description": "At voluptatum ut expedita commodi.",
+          "name": "Consectetur minima."
+        },
+        "properties": {
+          "description": {
+            "description": "Human-readable description of what the capability allows",
+            "example": "At voluptatum ut expedita commodi.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Capability name as used in grants and invitations",
+            "example": "Consectetur minima.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "ConflictT": {
+        "description": "conflict",
+        "example": {
+          "message": "Natus reiciendis eligendi minima."
+        },
+        "properties": {
+          "message": {
+            "description": "Error message",
+            "example": "Natus reiciendis eligendi minima.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "CreateAccountInvitationPayload": {
+        "description": "Request body for create-account-invitation.",
+        "example": {
+          "capabilities": [
+            "gd8",
+            "zzq",
+            "mte"
+          ],
+          "email": "xbj"
+        },
+        "properties": {
+          "capabilities": {
+            "description": "Elevated account capabilities to grant on accept (create_project, manage_members); omit for a read-only member. The inviter must hold each capability the invitation carries.",
+            "example": [
+              "gd8",
+              "zzq",
+              "mte"
+            ],
+            "items": {
+              "example": "gd8",
+              "maxLength": 64,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "email": {
+            "description": "Invitee email address",
+            "example": "xbj",
+            "maxLength": 254,
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "CreateAccountPayload": {
+        "description": "Request body for create-account.",
+        "example": {
+          "name": "sz3"
+        },
+        "properties": {
+          "name": {
+            "description": "Display name for the new workspace account",
+            "example": "sz3",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "CreateInvitationPayload": {
+        "description": "Request body for create-invitation.",
+        "example": {
+          "capabilities": [
+            "2ee",
+            "men",
+            "2xx"
+          ],
+          "email": "bjv"
+        },
+        "properties": {
+          "capabilities": {
+            "description": "Project capabilities to grant on accept. The inviter must hold each capability the invitation carries.",
+            "example": [
+              "2ee",
+              "men",
+              "2xx"
+            ],
+            "items": {
+              "example": "2ee",
+              "maxLength": 64,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "email": {
+            "description": "Invitee email address",
+            "example": "bjv",
+            "maxLength": 254,
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "capabilities"
+        ],
+        "type": "object"
+      },
+      "CreateProjectPayload": {
+        "description": "Request body for create-project.",
+        "example": {
+          "account_id": "mt0",
+          "name": "wdl",
+          "parent_id": "kp6"
+        },
+        "properties": {
+          "account_id": {
+            "description": "Owning account URN. Optional when parent_id is given (defaults to the parent's account); required otherwise. When supplied it overrides the inherited account, and the caller must have can_create_project on it.",
+            "example": "mt0",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name for the new project",
+            "example": "wdl",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "parent_id": {
+            "description": "Optional parent project URN. The new project inherits this parent's account unless account_id overrides it. The caller must have can_add_child_project on the parent.",
+            "example": "kp6",
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "ForbiddenT": {
+        "description": "forbidden",
+        "example": {
+          "message": "Voluptatem atque."
+        },
+        "properties": {
+          "message": {
+            "description": "Error message",
+            "example": "Voluptatem atque.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "Invitation": {
+        "example": {
+          "account_id": "In repudiandae ut.",
+          "capabilities": [
+            "Neque in consectetur earum.",
+            "Exercitationem eligendi natus.",
+            "Qui in soluta."
+          ],
+          "email": "Rerum est qui ut iusto et.",
+          "expires_at": "Voluptas quis velit quo.",
+          "id": "Aut odit.",
+          "kind": "Saepe mollitia quisquam quia.",
+          "project_id": "Est beatae repellat consequuntur culpa.",
+          "status": "Aut veritatis odio perspiciatis fugiat."
+        },
+        "properties": {
+          "account_id": {
+            "description": "Account URN (set for account invitations)",
+            "example": "In repudiandae ut.",
+            "type": "string"
+          },
+          "capabilities": {
+            "description": "Capabilities the invite grants (project or account caps per kind)",
+            "example": [
+              "Neque in consectetur earum.",
+              "Exercitationem eligendi natus.",
+              "Qui in soluta."
+            ],
+            "items": {
+              "example": "Neque in consectetur earum.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "email": {
+            "description": "Invitee email (only on the inviter's create response / project listing)",
+            "example": "Rerum est qui ut iusto et.",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "RFC3339 expiry",
+            "example": "Voluptas quis velit quo.",
+            "type": "string"
+          },
+          "id": {
+            "description": "Invitation URN",
+            "example": "Aut odit.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Invitation target kind: project | account",
+            "example": "Saepe mollitia quisquam quia.",
+            "type": "string"
+          },
+          "project_id": {
+            "description": "Project URN (set for project invitations)",
+            "example": "Est beatae repellat consequuntur culpa.",
+            "type": "string"
+          },
+          "status": {
+            "description": "pending | accepted | declined | revoked",
+            "example": "Aut veritatis odio perspiciatis fugiat.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "capabilities",
+          "kind",
+          "status",
+          "expires_at"
+        ],
+        "type": "object"
+      },
+      "ListAccountsResult": {
+        "example": {
+          "accounts": [
+            {
+              "id": "Fuga cumque dolorem eum omnis rerum.",
+              "kind": "Sint minus qui quaerat.",
+              "name": "Molestiae iure autem ratione suscipit commodi rerum."
+            },
+            {
+              "id": "Fuga cumque dolorem eum omnis rerum.",
+              "kind": "Sint minus qui quaerat.",
+              "name": "Molestiae iure autem ratione suscipit commodi rerum."
+            },
+            {
+              "id": "Fuga cumque dolorem eum omnis rerum.",
+              "kind": "Sint minus qui quaerat.",
+              "name": "Molestiae iure autem ratione suscipit commodi rerum."
+            },
+            {
+              "id": "Fuga cumque dolorem eum omnis rerum.",
+              "kind": "Sint minus qui quaerat.",
+              "name": "Molestiae iure autem ratione suscipit commodi rerum."
+            }
+          ]
+        },
+        "properties": {
+          "accounts": {
+            "example": [
+              {
+                "id": "Fuga cumque dolorem eum omnis rerum.",
+                "kind": "Sint minus qui quaerat.",
+                "name": "Molestiae iure autem ratione suscipit commodi rerum."
+              },
+              {
+                "id": "Fuga cumque dolorem eum omnis rerum.",
+                "kind": "Sint minus qui quaerat.",
+                "name": "Molestiae iure autem ratione suscipit commodi rerum."
+              },
+              {
+                "id": "Fuga cumque dolorem eum omnis rerum.",
+                "kind": "Sint minus qui quaerat.",
+                "name": "Molestiae iure autem ratione suscipit commodi rerum."
+              },
+              {
+                "id": "Fuga cumque dolorem eum omnis rerum.",
+                "kind": "Sint minus qui quaerat.",
+                "name": "Molestiae iure autem ratione suscipit commodi rerum."
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Account"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "accounts"
+        ],
+        "type": "object"
+      },
+      "ListInvitationsResult": {
+        "example": {
+          "invitations": [
+            {
+              "account_id": "Ab voluptas dolores nihil corporis.",
+              "capabilities": [
+                "Quae temporibus omnis sit quis perferendis sequi.",
+                "Corporis qui voluptatem aspernatur.",
+                "Aliquid nihil laboriosam ex sunt.",
+                "Aut eum non error."
+              ],
+              "email": "Sunt aut quidem qui nemo quis aut.",
+              "expires_at": "Quam impedit officiis qui.",
+              "id": "Perferendis nesciunt molestiae reprehenderit quis.",
+              "kind": "Beatae minima ipsam dolorem totam cum.",
+              "project_id": "Maiores quaerat.",
+              "status": "Atque voluptates qui et dolor nostrum."
+            },
+            {
+              "account_id": "Ab voluptas dolores nihil corporis.",
+              "capabilities": [
+                "Quae temporibus omnis sit quis perferendis sequi.",
+                "Corporis qui voluptatem aspernatur.",
+                "Aliquid nihil laboriosam ex sunt.",
+                "Aut eum non error."
+              ],
+              "email": "Sunt aut quidem qui nemo quis aut.",
+              "expires_at": "Quam impedit officiis qui.",
+              "id": "Perferendis nesciunt molestiae reprehenderit quis.",
+              "kind": "Beatae minima ipsam dolorem totam cum.",
+              "project_id": "Maiores quaerat.",
+              "status": "Atque voluptates qui et dolor nostrum."
+            }
+          ]
+        },
+        "properties": {
+          "invitations": {
+            "example": [
+              {
+                "account_id": "Ab voluptas dolores nihil corporis.",
+                "capabilities": [
+                  "Quae temporibus omnis sit quis perferendis sequi.",
+                  "Corporis qui voluptatem aspernatur.",
+                  "Aliquid nihil laboriosam ex sunt.",
+                  "Aut eum non error."
+                ],
+                "email": "Sunt aut quidem qui nemo quis aut.",
+                "expires_at": "Quam impedit officiis qui.",
+                "id": "Perferendis nesciunt molestiae reprehenderit quis.",
+                "kind": "Beatae minima ipsam dolorem totam cum.",
+                "project_id": "Maiores quaerat.",
+                "status": "Atque voluptates qui et dolor nostrum."
+              },
+              {
+                "account_id": "Ab voluptas dolores nihil corporis.",
+                "capabilities": [
+                  "Quae temporibus omnis sit quis perferendis sequi.",
+                  "Corporis qui voluptatem aspernatur.",
+                  "Aliquid nihil laboriosam ex sunt.",
+                  "Aut eum non error."
+                ],
+                "email": "Sunt aut quidem qui nemo quis aut.",
+                "expires_at": "Quam impedit officiis qui.",
+                "id": "Perferendis nesciunt molestiae reprehenderit quis.",
+                "kind": "Beatae minima ipsam dolorem totam cum.",
+                "project_id": "Maiores quaerat.",
+                "status": "Atque voluptates qui et dolor nostrum."
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Invitation"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "invitations"
+        ],
+        "type": "object"
+      },
+      "ListMembersResult": {
+        "example": {
+          "members": [
+            {
+              "capabilities": [
+                "Dolores qui animi.",
+                "Iste molestias nisi.",
+                "Nobis optio autem omnis cupiditate officia."
+              ],
+              "display_name": "Temporibus odit sit officia est explicabo.",
+              "email": "Officiis illo sunt eos repudiandae aliquam.",
+              "kind": "Non eius non et.",
+              "user_id": "Labore vitae fugiat est sed."
+            },
+            {
+              "capabilities": [
+                "Dolores qui animi.",
+                "Iste molestias nisi.",
+                "Nobis optio autem omnis cupiditate officia."
+              ],
+              "display_name": "Temporibus odit sit officia est explicabo.",
+              "email": "Officiis illo sunt eos repudiandae aliquam.",
+              "kind": "Non eius non et.",
+              "user_id": "Labore vitae fugiat est sed."
+            },
+            {
+              "capabilities": [
+                "Dolores qui animi.",
+                "Iste molestias nisi.",
+                "Nobis optio autem omnis cupiditate officia."
+              ],
+              "display_name": "Temporibus odit sit officia est explicabo.",
+              "email": "Officiis illo sunt eos repudiandae aliquam.",
+              "kind": "Non eius non et.",
+              "user_id": "Labore vitae fugiat est sed."
+            },
+            {
+              "capabilities": [
+                "Dolores qui animi.",
+                "Iste molestias nisi.",
+                "Nobis optio autem omnis cupiditate officia."
+              ],
+              "display_name": "Temporibus odit sit officia est explicabo.",
+              "email": "Officiis illo sunt eos repudiandae aliquam.",
+              "kind": "Non eius non et.",
+              "user_id": "Labore vitae fugiat est sed."
+            }
+          ]
+        },
+        "properties": {
+          "members": {
+            "example": [
+              {
+                "capabilities": [
+                  "Dolores qui animi.",
+                  "Iste molestias nisi.",
+                  "Nobis optio autem omnis cupiditate officia."
+                ],
+                "display_name": "Temporibus odit sit officia est explicabo.",
+                "email": "Officiis illo sunt eos repudiandae aliquam.",
+                "kind": "Non eius non et.",
+                "user_id": "Labore vitae fugiat est sed."
+              },
+              {
+                "capabilities": [
+                  "Dolores qui animi.",
+                  "Iste molestias nisi.",
+                  "Nobis optio autem omnis cupiditate officia."
+                ],
+                "display_name": "Temporibus odit sit officia est explicabo.",
+                "email": "Officiis illo sunt eos repudiandae aliquam.",
+                "kind": "Non eius non et.",
+                "user_id": "Labore vitae fugiat est sed."
+              },
+              {
+                "capabilities": [
+                  "Dolores qui animi.",
+                  "Iste molestias nisi.",
+                  "Nobis optio autem omnis cupiditate officia."
+                ],
+                "display_name": "Temporibus odit sit officia est explicabo.",
+                "email": "Officiis illo sunt eos repudiandae aliquam.",
+                "kind": "Non eius non et.",
+                "user_id": "Labore vitae fugiat est sed."
+              },
+              {
+                "capabilities": [
+                  "Dolores qui animi.",
+                  "Iste molestias nisi.",
+                  "Nobis optio autem omnis cupiditate officia."
+                ],
+                "display_name": "Temporibus odit sit officia est explicabo.",
+                "email": "Officiis illo sunt eos repudiandae aliquam.",
+                "kind": "Non eius non et.",
+                "user_id": "Labore vitae fugiat est sed."
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/MemberProfile"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "members"
+        ],
+        "type": "object"
+      },
+      "ListProjectsResult": {
+        "example": {
+          "projects": [
+            {
+              "account_id": "Qui perferendis quam autem aut sit.",
+              "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
+              "kind": "Aperiam et numquam atque dolorum consequuntur et.",
+              "name": "Iure sunt ipsum eius aperiam mollitia.",
+              "owner_user_id": "Est deleniti nihil.",
+              "parent_id": "Deleniti repellendus accusantium quis."
+            },
+            {
+              "account_id": "Qui perferendis quam autem aut sit.",
+              "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
+              "kind": "Aperiam et numquam atque dolorum consequuntur et.",
+              "name": "Iure sunt ipsum eius aperiam mollitia.",
+              "owner_user_id": "Est deleniti nihil.",
+              "parent_id": "Deleniti repellendus accusantium quis."
+            },
+            {
+              "account_id": "Qui perferendis quam autem aut sit.",
+              "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
+              "kind": "Aperiam et numquam atque dolorum consequuntur et.",
+              "name": "Iure sunt ipsum eius aperiam mollitia.",
+              "owner_user_id": "Est deleniti nihil.",
+              "parent_id": "Deleniti repellendus accusantium quis."
+            }
+          ]
+        },
+        "properties": {
+          "projects": {
+            "example": [
+              {
+                "account_id": "Qui perferendis quam autem aut sit.",
+                "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
+                "kind": "Aperiam et numquam atque dolorum consequuntur et.",
+                "name": "Iure sunt ipsum eius aperiam mollitia.",
+                "owner_user_id": "Est deleniti nihil.",
+                "parent_id": "Deleniti repellendus accusantium quis."
+              },
+              {
+                "account_id": "Qui perferendis quam autem aut sit.",
+                "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
+                "kind": "Aperiam et numquam atque dolorum consequuntur et.",
+                "name": "Iure sunt ipsum eius aperiam mollitia.",
+                "owner_user_id": "Est deleniti nihil.",
+                "parent_id": "Deleniti repellendus accusantium quis."
+              },
+              {
+                "account_id": "Qui perferendis quam autem aut sit.",
+                "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
+                "kind": "Aperiam et numquam atque dolorum consequuntur et.",
+                "name": "Iure sunt ipsum eius aperiam mollitia.",
+                "owner_user_id": "Est deleniti nihil.",
+                "parent_id": "Deleniti repellendus accusantium quis."
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Project"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "projects"
+        ],
+        "type": "object"
+      },
+      "MemberProfile": {
+        "example": {
+          "capabilities": [
+            "Dolores qui animi.",
+            "Iste molestias nisi.",
+            "Nobis optio autem omnis cupiditate officia."
+          ],
+          "display_name": "Temporibus odit sit officia est explicabo.",
+          "email": "Officiis illo sunt eos repudiandae aliquam.",
+          "kind": "Non eius non et.",
+          "user_id": "Labore vitae fugiat est sed."
+        },
+        "properties": {
+          "capabilities": {
+            "description": "Granted capabilities on the object (project or account grants)",
+            "example": [
+              "Dolores qui animi.",
+              "Iste molestias nisi.",
+              "Nobis optio autem omnis cupiditate officia."
+            ],
+            "items": {
+              "example": "Dolores qui animi.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "display_name": {
+            "description": "Display name (empty if not available)",
+            "example": "Temporibus odit sit officia est explicabo.",
+            "type": "string"
+          },
+          "email": {
+            "description": "Email (empty if not available or service principal)",
+            "example": "Officiis illo sunt eos repudiandae aliquam.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "user | service",
+            "example": "Non eius non et.",
+            "type": "string"
+          },
+          "user_id": {
+            "description": "Principal URN",
+            "example": "Labore vitae fugiat est sed.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "kind",
+          "display_name",
+          "email",
+          "capabilities"
+        ],
+        "type": "object"
+      },
+      "NotFoundT": {
+        "description": "not found",
+        "example": {
+          "id": "Non ratione velit.",
+          "message": "Odio nemo rerum ipsum inventore."
+        },
+        "properties": {
+          "id": {
+            "description": "Resource identifier",
+            "example": "Non ratione velit.",
+            "type": "string"
+          },
+          "message": {
+            "description": "Error message",
+            "example": "Odio nemo rerum ipsum inventore.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "Project": {
+        "example": {
+          "account_id": "Qui perferendis quam autem aut sit.",
+          "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
+          "kind": "Aperiam et numquam atque dolorum consequuntur et.",
+          "name": "Iure sunt ipsum eius aperiam mollitia.",
+          "owner_user_id": "Est deleniti nihil.",
+          "parent_id": "Deleniti repellendus accusantium quis."
+        },
+        "properties": {
+          "account_id": {
+            "description": "Owning account URN",
+            "example": "Qui perferendis quam autem aut sit.",
+            "type": "string"
+          },
+          "id": {
+            "description": "Project URN",
+            "example": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
+            "type": "string"
+          },
+          "kind": {
+            "description": "personal | workspace",
+            "example": "Aperiam et numquam atque dolorum consequuntur et.",
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name",
+            "example": "Iure sunt ipsum eius aperiam mollitia.",
+            "type": "string"
+          },
+          "owner_user_id": {
+            "description": "Owner user URN (record of provenance)",
+            "example": "Est deleniti nihil.",
+            "type": "string"
+          },
+          "parent_id": {
+            "description": "Parent project URN, if any",
+            "example": "Deleniti repellendus accusantium quis.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "account_id",
+          "name",
+          "owner_user_id",
+          "kind"
+        ],
+        "type": "object"
+      },
+      "UnauthorizedT": {
+        "description": "not authorized",
+        "example": {
+          "message": "Enim aliquid eveniet facere cupiditate."
+        },
+        "properties": {
+          "message": {
+            "description": "Error message",
+            "example": "Enim aliquid eveniet facere cupiditate.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "UpdateProjectPayload": {
+        "description": "Request body for update-project.",
+        "example": {
+          "name": "r6j"
+        },
+        "properties": {
+          "name": {
+            "description": "New display name",
+            "example": "r6j",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "bearer": {
+        "bearerFormat": "opaque",
+        "description": "An opaque ivcap_at_… access token issued by ivcap-id's /oauth2/token. It is not a JWT and carries no readable claims.",
+        "scheme": "bearer",
+        "type": "http"
+      },
+      "oauth2": {
+        "description": "Obtain an access token from ivcap-id. Browser apps use the authorization code flow with PKCE (S256); the IVCAP CLI uses the device authorization flow.",
+        "flows": {
+          "authorizationCode": {
+            "authorizationUrl": "https://id.develop.ivcap.net/oauth2/auth",
+            "refreshUrl": "https://id.develop.ivcap.net/oauth2/token",
+            "scopes": {
+              "email": "Email claim in the ID token",
+              "offline_access": "Issue a refresh token",
+              "openid": "OpenID Connect sign-in",
+              "profile": "Basic profile claims in the ID token"
+            },
+            "tokenUrl": "https://id.develop.ivcap.net/oauth2/token"
+          },
+          "deviceAuthorization": {
+            "deviceAuthorizationUrl": "https://id.develop.ivcap.net/oauth2/device/auth",
+            "refreshUrl": "https://id.develop.ivcap.net/oauth2/token",
+            "scopes": {
+              "email": "Email claim in the ID token",
+              "offline_access": "Issue a refresh token",
+              "openid": "OpenID Connect sign-in",
+              "profile": "Basic profile claims in the ID token"
+            },
+            "tokenUrl": "https://id.develop.ivcap.net/oauth2/token"
+          }
+        },
+        "oauth2MetadataUrl": "https://id.develop.ivcap.net/.well-known/openid-configuration",
+        "type": "oauth2"
+      }
+    }
+  },
+  "info": {
+    "description": "Identity and account management for IVCAP: accounts, projects, membership, invitations and capabilities.\n\n## Authentication\n\nEvery endpoint except the JWKS and the capability vocabulary takes an access token in\nthe Authorization header:\n\n    Authorization: Bearer ivcap_at_…\n\nAccess tokens are opaque and short-lived. Obtain one, with a refresh token, from `/oauth2/token`:\n\n- **Browser apps**: the authorization code flow with PKCE, starting at `/oauth2/auth`.\n- **The IVCAP CLI and other headless tools**: the device authorization flow, starting at `/oauth2/device/auth`.\n\nThe OpenID Connect discovery document at `/.well-known/openid-configuration` lists every endpoint.",
+    "title": "IVCAP Identity \u0026 Accounts API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.2.0",
+  "paths": {
+    "/.well-known/jwks.json": {
+      "get": {
+        "description": "Return merged JWKS (local signing key + Hydra public keys)",
+        "operationId": "jwks#list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK response."
+          }
+        },
+        "summary": "list jwks",
+        "tags": [
+          "jwks"
+        ]
+      }
+    },
+    "/accounts": {
+      "get": {
+        "description": "List accounts the caller belongs to",
+        "operationId": "accounts#list-accounts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "accounts": [
+                    {
+                      "id": "Fuga cumque dolorem eum omnis rerum.",
+                      "kind": "Sint minus qui quaerat.",
+                      "name": "Molestiae iure autem ratione suscipit commodi rerum."
+                    },
+                    {
+                      "id": "Fuga cumque dolorem eum omnis rerum.",
+                      "kind": "Sint minus qui quaerat.",
+                      "name": "Molestiae iure autem ratione suscipit commodi rerum."
+                    },
+                    {
+                      "id": "Fuga cumque dolorem eum omnis rerum.",
+                      "kind": "Sint minus qui quaerat.",
+                      "name": "Molestiae iure autem ratione suscipit commodi rerum."
+                    },
+                    {
+                      "id": "Fuga cumque dolorem eum omnis rerum.",
+                      "kind": "Sint minus qui quaerat.",
+                      "name": "Molestiae iure autem ratione suscipit commodi rerum."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListAccountsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Iusto ea facere in doloremque reiciendis sit."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Sed cupiditate ut."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Et ipsum asperiores sit eveniet laborum."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Asperiores alias non.",
+                  "message": "Harum tempora velit ut repudiandae qui."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Doloribus reprehenderit vero blanditiis perferendis at ut."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "list-accounts accounts",
+        "tags": [
+          "accounts"
+        ]
+      },
+      "post": {
+        "description": "Create a new workspace account; the caller becomes its first admin",
+        "operationId": "accounts#create-account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "name": "sz3"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccountPayload"
+              }
+            }
+          },
+          "description": "Request body for create-account.",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Autem dolorem quibusdam et consectetur corrupti aut.",
+                  "kind": "Ut mollitia.",
+                  "name": "Quis nisi."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            },
+            "description": "Created response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Quidem ducimus incidunt atque at."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Enim aliquid eveniet facere cupiditate."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Voluptatem atque."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Non ratione velit.",
+                  "message": "Odio nemo rerum ipsum inventore."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Natus reiciendis eligendi minima."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "create-account accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/accounts/{account_id}/invitations": {
+      "get": {
+        "description": "List an account's invitations (gated on can_manage_members)",
+        "operationId": "accounts#list-account-invitations",
+        "parameters": [
+          {
+            "description": "Account URN",
+            "example": "lw6",
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "lw6",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "invitations": [
+                    {
+                      "account_id": "Ab voluptas dolores nihil corporis.",
+                      "capabilities": [
+                        "Quae temporibus omnis sit quis perferendis sequi.",
+                        "Corporis qui voluptatem aspernatur.",
+                        "Aliquid nihil laboriosam ex sunt.",
+                        "Aut eum non error."
+                      ],
+                      "email": "Sunt aut quidem qui nemo quis aut.",
+                      "expires_at": "Quam impedit officiis qui.",
+                      "id": "Perferendis nesciunt molestiae reprehenderit quis.",
+                      "kind": "Beatae minima ipsam dolorem totam cum.",
+                      "project_id": "Maiores quaerat.",
+                      "status": "Atque voluptates qui et dolor nostrum."
+                    },
+                    {
+                      "account_id": "Ab voluptas dolores nihil corporis.",
+                      "capabilities": [
+                        "Quae temporibus omnis sit quis perferendis sequi.",
+                        "Corporis qui voluptatem aspernatur.",
+                        "Aliquid nihil laboriosam ex sunt.",
+                        "Aut eum non error."
+                      ],
+                      "email": "Sunt aut quidem qui nemo quis aut.",
+                      "expires_at": "Quam impedit officiis qui.",
+                      "id": "Perferendis nesciunt molestiae reprehenderit quis.",
+                      "kind": "Beatae minima ipsam dolorem totam cum.",
+                      "project_id": "Maiores quaerat.",
+                      "status": "Atque voluptates qui et dolor nostrum."
+                    },
+                    {
+                      "account_id": "Ab voluptas dolores nihil corporis.",
+                      "capabilities": [
+                        "Quae temporibus omnis sit quis perferendis sequi.",
+                        "Corporis qui voluptatem aspernatur.",
+                        "Aliquid nihil laboriosam ex sunt.",
+                        "Aut eum non error."
+                      ],
+                      "email": "Sunt aut quidem qui nemo quis aut.",
+                      "expires_at": "Quam impedit officiis qui.",
+                      "id": "Perferendis nesciunt molestiae reprehenderit quis.",
+                      "kind": "Beatae minima ipsam dolorem totam cum.",
+                      "project_id": "Maiores quaerat.",
+                      "status": "Atque voluptates qui et dolor nostrum."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListInvitationsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Est maxime perferendis facere rem."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Suscipit possimus laudantium temporibus placeat."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Voluptatibus et."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Earum consectetur incidunt.",
+                  "message": "Sint atque omnis qui ea cumque provident."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Id et aut ullam consectetur voluptas quos."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "list-account-invitations accounts",
+        "tags": [
+          "accounts"
+        ]
+      },
+      "post": {
+        "description": "Invite an email to an account (gated on can_manage_members). On accept the invitee joins the account roster and receives the selected account capabilities.",
+        "operationId": "accounts#create-account-invitation",
+        "parameters": [
+          {
+            "description": "Account URN",
+            "example": "gfp",
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "gfp",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "capabilities": [
+                  "gd8",
+                  "zzq",
+                  "mte"
+                ],
+                "email": "xbj"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccountInvitationPayload"
+              }
+            }
+          },
+          "description": "Request body for create-account-invitation.",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account_id": "In nesciunt ut molestiae qui dolorum voluptatem.",
+                  "capabilities": [
+                    "Qui aliquam fugit tenetur qui dolores dicta.",
+                    "Alias provident expedita doloremque sit laudantium.",
+                    "Tempore excepturi et omnis numquam magnam."
+                  ],
+                  "email": "Est totam id illo.",
+                  "expires_at": "Aperiam quod aut impedit.",
+                  "id": "At doloremque dolorum reiciendis corporis totam eos.",
+                  "kind": "Aut nemo maxime.",
+                  "project_id": "Quia quis nihil voluptatem quam dolores est.",
+                  "status": "Rem distinctio tempore aperiam veniam."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            },
+            "description": "Created response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Iste ipsum labore inventore saepe qui."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Et laborum."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Assumenda dolor veniam natus cum corrupti voluptatem."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Sit alias quisquam iure.",
+                  "message": "Sunt beatae quis enim sint."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Architecto quo ea soluta."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "create-account-invitation accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/accounts/{id}": {
+      "get": {
+        "description": "Get a single account",
+        "operationId": "accounts#get-account",
+        "parameters": [
+          {
+            "description": "Account URN",
+            "example": "8d5",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "8d5",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Ut distinctio nihil odit repellendus placeat cum.",
+                  "kind": "Est modi nam.",
+                  "name": "Veniam unde."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Consequatur dolorem dolorem."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Autem quis quidem asperiores nulla eum voluptate."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Deleniti tenetur quia."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Ut rerum.",
+                  "message": "Voluptas iusto sint delectus qui ducimus."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Qui dolores nihil veritatis laudantium."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "get-account accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/accounts/{id}/grants": {
+      "post": {
+        "description": "Grant account-admin capabilities to a user",
+        "operationId": "accounts#add-account-grant",
+        "parameters": [
+          {
+            "description": "Account URN",
+            "example": "ig3",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "ig3",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "capabilities": [
+                  "b4q",
+                  "qgw",
+                  "8rh"
+                ],
+                "user_id": "twn"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/AddAccountGrantPayload"
+              }
+            }
+          },
+          "description": "Request body for add-account-grant.",
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Eos itaque ut corporis omnis nisi ad."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Et autem rerum."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Architecto ratione itaque."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Et id ut inventore.",
+                  "message": "Rerum non autem qui."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Ipsa facilis corrupti est."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "add-account-grant accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/accounts/{id}/grants/{user_id}": {
+      "delete": {
+        "description": "Revoke an account-admin capability from a user",
+        "operationId": "accounts#remove-account-grant",
+        "parameters": [
+          {
+            "allowEmptyValue": true,
+            "description": "Account capability to revoke",
+            "example": "uea",
+            "in": "query",
+            "name": "capability",
+            "required": true,
+            "schema": {
+              "description": "Account capability to revoke",
+              "example": "uea",
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Account URN",
+            "example": "p9j",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "p9j",
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "description": "User URN",
+            "example": "tew",
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "description": "User URN",
+              "example": "tew",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Adipisci ut."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Aliquid sit."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Nemo maiores qui eum quis magnam."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Et delectus qui sit.",
+                  "message": "Quibusdam nulla ipsa blanditiis minima aliquid qui."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Quas aspernatur laboriosam laudantium molestias nobis vero."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "remove-account-grant accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/accounts/{id}/members": {
+      "get": {
+        "description": "List an account's members with their display profiles (gated on member)",
+        "operationId": "accounts#list-account-members",
+        "parameters": [
+          {
+            "description": "Account URN",
+            "example": "pw6",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "pw6",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "members": [
+                    {
+                      "capabilities": [
+                        "Dolores qui animi.",
+                        "Iste molestias nisi.",
+                        "Nobis optio autem omnis cupiditate officia."
+                      ],
+                      "display_name": "Temporibus odit sit officia est explicabo.",
+                      "email": "Officiis illo sunt eos repudiandae aliquam.",
+                      "kind": "Non eius non et.",
+                      "user_id": "Labore vitae fugiat est sed."
+                    },
+                    {
+                      "capabilities": [
+                        "Dolores qui animi.",
+                        "Iste molestias nisi.",
+                        "Nobis optio autem omnis cupiditate officia."
+                      ],
+                      "display_name": "Temporibus odit sit officia est explicabo.",
+                      "email": "Officiis illo sunt eos repudiandae aliquam.",
+                      "kind": "Non eius non et.",
+                      "user_id": "Labore vitae fugiat est sed."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListMembersResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Similique at nobis quas error eius quia."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Laboriosam quod dicta."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Voluptas ut praesentium."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Pariatur laboriosam excepturi accusantium dignissimos est.",
+                  "message": "Enim assumenda magni sed qui eaque."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Et debitis."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "list-account-members accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/accounts/{id}/members/{user_id}": {
+      "delete": {
+        "description": "Remove a user from a workspace account (revokes all their account grants). Members join only via invitation — there is no direct add-member endpoint.",
+        "operationId": "accounts#remove-account-member",
+        "parameters": [
+          {
+            "description": "Account URN",
+            "example": "c3l",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "c3l",
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "description": "User URN to remove",
+            "example": "0oh",
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "description": "User URN to remove",
+              "example": "0oh",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Nihil voluptatem."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Aliquid modi tenetur pariatur eos aliquid ipsam."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Sit eos ullam necessitatibus."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Eum vel consectetur quas ab.",
+                  "message": "Occaecati ut suscipit et minus eum hic."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Nam aliquid voluptatem nemo."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "remove-account-member accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/accounts/{id}/projects": {
+      "get": {
+        "description": "List projects belonging to an account (gated on account membership)",
+        "operationId": "accounts#list-account-projects",
+        "parameters": [
+          {
+            "description": "Account URN",
+            "example": "z55",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "z55",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "projects": [
+                    {
+                      "account_id": "Qui perferendis quam autem aut sit.",
+                      "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
+                      "kind": "Aperiam et numquam atque dolorum consequuntur et.",
+                      "name": "Iure sunt ipsum eius aperiam mollitia.",
+                      "owner_user_id": "Est deleniti nihil.",
+                      "parent_id": "Deleniti repellendus accusantium quis."
+                    },
+                    {
+                      "account_id": "Qui perferendis quam autem aut sit.",
+                      "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
+                      "kind": "Aperiam et numquam atque dolorum consequuntur et.",
+                      "name": "Iure sunt ipsum eius aperiam mollitia.",
+                      "owner_user_id": "Est deleniti nihil.",
+                      "parent_id": "Deleniti repellendus accusantium quis."
+                    },
+                    {
+                      "account_id": "Qui perferendis quam autem aut sit.",
+                      "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
+                      "kind": "Aperiam et numquam atque dolorum consequuntur et.",
+                      "name": "Iure sunt ipsum eius aperiam mollitia.",
+                      "owner_user_id": "Est deleniti nihil.",
+                      "parent_id": "Deleniti repellendus accusantium quis."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListProjectsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Et qui."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Quo et voluptatem eum molestiae alias."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Dicta amet sint tempore iure."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Nemo nemo totam nam asperiores suscipit qui.",
+                  "message": "Ab odio laudantium temporibus in occaecati nostrum."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Libero provident officia aut iusto assumenda."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "list-account-projects accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/capabilities": {
+      "get": {
+        "description": "List the grantable capability vocabulary per object kind (project, account). Public, non-sensitive reference data used by clients like ivcap-cli to validate and present grants/invitations. No authentication required.",
+        "operationId": "accounts#list-capabilities",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account": [
+                    {
+                      "description": "At voluptatum ut expedita commodi.",
+                      "name": "Consectetur minima."
+                    },
+                    {
+                      "description": "At voluptatum ut expedita commodi.",
+                      "name": "Consectetur minima."
+                    },
+                    {
+                      "description": "At voluptatum ut expedita commodi.",
+                      "name": "Consectetur minima."
+                    },
+                    {
+                      "description": "At voluptatum ut expedita commodi.",
+                      "name": "Consectetur minima."
+                    }
+                  ],
+                  "project": [
+                    {
+                      "description": "At voluptatum ut expedita commodi.",
+                      "name": "Consectetur minima."
+                    },
+                    {
+                      "description": "At voluptatum ut expedita commodi.",
+                      "name": "Consectetur minima."
+                    },
+                    {
+                      "description": "At voluptatum ut expedita commodi.",
+                      "name": "Consectetur minima."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilitiesResult"
+                }
+              }
+            },
+            "description": "OK response."
+          }
+        },
+        "summary": "list-capabilities accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/invitations/mine": {
+      "get": {
+        "description": "List pending invitations bound to the caller",
+        "operationId": "accounts#list-my-invitations",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "invitations": [
+                    {
+                      "account_id": "Ab voluptas dolores nihil corporis.",
+                      "capabilities": [
+                        "Quae temporibus omnis sit quis perferendis sequi.",
+                        "Corporis qui voluptatem aspernatur.",
+                        "Aliquid nihil laboriosam ex sunt.",
+                        "Aut eum non error."
+                      ],
+                      "email": "Sunt aut quidem qui nemo quis aut.",
+                      "expires_at": "Quam impedit officiis qui.",
+                      "id": "Perferendis nesciunt molestiae reprehenderit quis.",
+                      "kind": "Beatae minima ipsam dolorem totam cum.",
+                      "project_id": "Maiores quaerat.",
+                      "status": "Atque voluptates qui et dolor nostrum."
+                    },
+                    {
+                      "account_id": "Ab voluptas dolores nihil corporis.",
+                      "capabilities": [
+                        "Quae temporibus omnis sit quis perferendis sequi.",
+                        "Corporis qui voluptatem aspernatur.",
+                        "Aliquid nihil laboriosam ex sunt.",
+                        "Aut eum non error."
+                      ],
+                      "email": "Sunt aut quidem qui nemo quis aut.",
+                      "expires_at": "Quam impedit officiis qui.",
+                      "id": "Perferendis nesciunt molestiae reprehenderit quis.",
+                      "kind": "Beatae minima ipsam dolorem totam cum.",
+                      "project_id": "Maiores quaerat.",
+                      "status": "Atque voluptates qui et dolor nostrum."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListInvitationsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Dolorem minus libero est ratione dolorem."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Delectus sed consequatur et iure."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Sit quibusdam commodi molestias et modi."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Laboriosam quas rerum.",
+                  "message": "Necessitatibus doloremque consequatur qui enim illo."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Non sint explicabo quis et iure."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "list-my-invitations accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/invitations/{id}": {
+      "delete": {
+        "description": "Revoke a pending invitation",
+        "operationId": "accounts#revoke-invitation",
+        "parameters": [
+          {
+            "description": "Invitation URN",
+            "example": "hg4",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Invitation URN",
+              "example": "hg4",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Minima est soluta."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Numquam non velit aut quaerat quaerat."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Commodi harum quia."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Suscipit omnis eum quisquam voluptas illo.",
+                  "message": "Sunt sed aspernatur accusantium illum."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Accusantium quia voluptate."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "revoke-invitation accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/invitations/{id}/accept": {
+      "post": {
+        "description": "Accept a pending invitation bound to the caller; writes grants",
+        "operationId": "accounts#accept-invitation",
+        "parameters": [
+          {
+            "description": "Invitation URN",
+            "example": "sgb",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Invitation URN",
+              "example": "sgb",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Aspernatur architecto nobis."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Rerum minus odio ex sequi."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Laudantium reprehenderit eaque est voluptas."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Beatae omnis nisi.",
+                  "message": "Laudantium est blanditiis qui ut et."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Libero nihil voluptas placeat adipisci libero dicta."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "accept-invitation accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/invitations/{id}/decline": {
+      "post": {
+        "description": "Decline a pending invitation bound to the caller",
+        "operationId": "accounts#decline-invitation",
+        "parameters": [
+          {
+            "description": "Invitation URN",
+            "example": "sgb",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Invitation URN",
+              "example": "sgb",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Amet a ut occaecati commodi."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Et fuga eligendi est facere."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Enim quos."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Nobis laboriosam quo ut voluptatibus ipsa aut.",
+                  "message": "Eos consequatur ut molestiae autem."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Dolorem voluptas eveniet natus molestias laboriosam."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "decline-invitation accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/projects": {
+      "get": {
+        "description": "List projects the caller is a member of",
+        "operationId": "accounts#list-my-projects",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "projects": [
+                    {
+                      "account_id": "Qui perferendis quam autem aut sit.",
+                      "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
+                      "kind": "Aperiam et numquam atque dolorum consequuntur et.",
+                      "name": "Iure sunt ipsum eius aperiam mollitia.",
+                      "owner_user_id": "Est deleniti nihil.",
+                      "parent_id": "Deleniti repellendus accusantium quis."
+                    },
+                    {
+                      "account_id": "Qui perferendis quam autem aut sit.",
+                      "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
+                      "kind": "Aperiam et numquam atque dolorum consequuntur et.",
+                      "name": "Iure sunt ipsum eius aperiam mollitia.",
+                      "owner_user_id": "Est deleniti nihil.",
+                      "parent_id": "Deleniti repellendus accusantium quis."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListProjectsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Necessitatibus quisquam non."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Minus voluptatibus molestiae officiis optio dignissimos."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "At delectus nulla est quo eos totam."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Officiis rem quod neque sunt assumenda.",
+                  "message": "Vel amet non."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Doloribus nesciunt quam quo laudantium."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "list-my-projects accounts",
+        "tags": [
+          "accounts"
+        ]
+      },
+      "post": {
+        "description": "Create a project under an account (gated on can_create_project). With a parent_id and no account_id the project inherits the parent's account; account_id overrides it and is gated on can_create_project too. A parent_id is additionally gated on can_add_child_project on that parent, since permissions cascade from parent to child.",
+        "operationId": "accounts#create-project",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "account_id": "mt0",
+                "name": "wdl",
+                "parent_id": "kp6"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectPayload"
+              }
+            }
+          },
+          "description": "Request body for create-project.",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account_id": "Vitae temporibus nostrum deleniti quasi.",
+                  "id": "Soluta rerum enim rem voluptas rem.",
+                  "kind": "Dolorum qui rem.",
+                  "name": "Delectus provident possimus hic dolorem incidunt.",
+                  "owner_user_id": "Harum eius ut molestiae ratione consequatur.",
+                  "parent_id": "Et nam est voluptatem facere perspiciatis qui."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            },
+            "description": "Created response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Qui perspiciatis ut repellat qui ut."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Eum perferendis voluptas nostrum."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Voluptas ut delectus rem cumque."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Molestias alias possimus in.",
+                  "message": "Laudantium sed reiciendis error."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Voluptatem officiis est."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "create-project accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/projects/{id}": {
+      "delete": {
+        "description": "Soft-delete a project and remove its FGA tuples",
+        "operationId": "accounts#delete-project",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "9il",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "9il",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Et delectus ea ut consequatur."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Ipsa velit provident repudiandae consectetur vel nihil."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Ut deleniti."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Nobis hic explicabo esse.",
+                  "message": "Dolore architecto."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Ut quia."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "delete-project accounts",
+        "tags": [
+          "accounts"
+        ]
+      },
+      "get": {
+        "description": "Get a single project",
+        "operationId": "accounts#get-project",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "d5j",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "d5j",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account_id": "Qui sit aut saepe eaque accusamus.",
+                  "id": "Quia nisi accusantium ab enim et laudantium.",
+                  "kind": "Sapiente voluptas quia aliquam facere unde sint.",
+                  "name": "Excepturi reiciendis veritatis odio voluptatibus.",
+                  "owner_user_id": "Qui iure omnis.",
+                  "parent_id": "Aliquid cum qui voluptas enim minima sit."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Voluptate natus explicabo maxime voluptas molestias."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Consectetur repellat voluptatem soluta maiores beatae."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Ipsum quis consequuntur atque."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Saepe quos unde repudiandae.",
+                  "message": "Corrupti quam in molestiae."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Reiciendis eum minima saepe voluptatibus quaerat."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "get-project accounts",
+        "tags": [
+          "accounts"
+        ]
+      },
+      "patch": {
+        "description": "Update a project's display name",
+        "operationId": "accounts#update-project",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "8hv",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "8hv",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "name": "r6j"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectPayload"
+              }
+            }
+          },
+          "description": "Request body for update-project.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account_id": "Nam et omnis dolor perspiciatis.",
+                  "id": "Dolores et occaecati.",
+                  "kind": "Odio qui repudiandae.",
+                  "name": "Officia quo fugit et totam quaerat.",
+                  "owner_user_id": "Et dolorem harum quia.",
+                  "parent_id": "Sed doloribus ut."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Commodi ipsam dolores."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Dicta dolorem quam reiciendis ad ut."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Deserunt aliquam corrupti."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Maxime perspiciatis consequatur quibusdam vero excepturi minus.",
+                  "message": "Debitis dolorem quidem aut qui illo accusantium."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Aliquid saepe."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "update-project accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/projects/{id}/leave": {
+      "post": {
+        "description": "Voluntarily leave a project (strips all caller's grants, subject to orphan guard)",
+        "operationId": "accounts#leave-project",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "zyt",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "zyt",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Quia nostrum ut odit."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Laborum nesciunt sunt et."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Est consectetur quo."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Aperiam fugiat quia qui.",
+                  "message": "Facilis sit laborum delectus et repellat."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Ea esse fuga."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "leave-project accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/projects/{id}/members": {
+      "get": {
+        "description": "List a project's members with their display profiles (gated on can_read)",
+        "operationId": "accounts#list-project-members",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "qze",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "qze",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "members": [
+                    {
+                      "capabilities": [
+                        "Dolores qui animi.",
+                        "Iste molestias nisi.",
+                        "Nobis optio autem omnis cupiditate officia."
+                      ],
+                      "display_name": "Temporibus odit sit officia est explicabo.",
+                      "email": "Officiis illo sunt eos repudiandae aliquam.",
+                      "kind": "Non eius non et.",
+                      "user_id": "Labore vitae fugiat est sed."
+                    },
+                    {
+                      "capabilities": [
+                        "Dolores qui animi.",
+                        "Iste molestias nisi.",
+                        "Nobis optio autem omnis cupiditate officia."
+                      ],
+                      "display_name": "Temporibus odit sit officia est explicabo.",
+                      "email": "Officiis illo sunt eos repudiandae aliquam.",
+                      "kind": "Non eius non et.",
+                      "user_id": "Labore vitae fugiat est sed."
+                    },
+                    {
+                      "capabilities": [
+                        "Dolores qui animi.",
+                        "Iste molestias nisi.",
+                        "Nobis optio autem omnis cupiditate officia."
+                      ],
+                      "display_name": "Temporibus odit sit officia est explicabo.",
+                      "email": "Officiis illo sunt eos repudiandae aliquam.",
+                      "kind": "Non eius non et.",
+                      "user_id": "Labore vitae fugiat est sed."
+                    },
+                    {
+                      "capabilities": [
+                        "Dolores qui animi.",
+                        "Iste molestias nisi.",
+                        "Nobis optio autem omnis cupiditate officia."
+                      ],
+                      "display_name": "Temporibus odit sit officia est explicabo.",
+                      "email": "Officiis illo sunt eos repudiandae aliquam.",
+                      "kind": "Non eius non et.",
+                      "user_id": "Labore vitae fugiat est sed."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListMembersResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "In cum quia rerum doloribus."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Est quia assumenda aut itaque."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Neque enim nam sunt assumenda reiciendis maiores."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Consequuntur similique explicabo numquam magni nulla nostrum.",
+                  "message": "Occaecati vel dolorem adipisci asperiores voluptates."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Alias dolorem iste et nesciunt provident aut."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "list-project-members accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/projects/{project_id}/grants": {
+      "post": {
+        "description": "Grant project capabilities to a user or service principal",
+        "operationId": "accounts#add-project-grant",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "rcj",
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "rcj",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "capabilities": [
+                  "w3r",
+                  "myr",
+                  "h0i"
+                ],
+                "principal_id": "0af",
+                "principal_kind": "rqu"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/AddProjectGrantPayload"
+              }
+            }
+          },
+          "description": "Request body for add-project-grant.",
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Voluptatibus pariatur ipsa dolor rem."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Sunt consequuntur in."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Omnis pariatur quia eos facilis tenetur."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Omnis nemo dolor ut similique repudiandae.",
+                  "message": "Minus similique fugit et eos."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Aut sunt ea."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "add-project-grant accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/projects/{project_id}/grants/{principal_id}": {
+      "delete": {
+        "description": "Revoke a project capability from a principal",
+        "operationId": "accounts#remove-project-grant",
+        "parameters": [
+          {
+            "allowEmptyValue": true,
+            "description": "user | service",
+            "example": "0tm",
+            "in": "query",
+            "name": "principal_kind",
+            "required": true,
+            "schema": {
+              "description": "user | service",
+              "example": "0tm",
+              "maxLength": 32,
+              "type": "string"
+            }
+          },
+          {
+            "allowEmptyValue": true,
+            "description": "Project capability to revoke",
+            "example": "r8m",
+            "in": "query",
+            "name": "capability",
+            "required": true,
+            "schema": {
+              "description": "Project capability to revoke",
+              "example": "r8m",
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Project URN",
+            "example": "w2f",
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "w2f",
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Principal URN",
+            "example": "h6d",
+            "in": "path",
+            "name": "principal_id",
+            "required": true,
+            "schema": {
+              "description": "Principal URN",
+              "example": "h6d",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Molestiae et eius rerum."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Assumenda fuga cum ducimus qui."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Rerum in quia."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Sit beatae officia.",
+                  "message": "Esse facere et."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Dolor vero labore rerum dignissimos non aut."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "remove-project-grant accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/projects/{project_id}/invitations": {
+      "get": {
+        "description": "List a project's invitations",
+        "operationId": "accounts#list-project-invitations",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "jbx",
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "jbx",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "invitations": [
+                    {
+                      "account_id": "Ab voluptas dolores nihil corporis.",
+                      "capabilities": [
+                        "Quae temporibus omnis sit quis perferendis sequi.",
+                        "Corporis qui voluptatem aspernatur.",
+                        "Aliquid nihil laboriosam ex sunt.",
+                        "Aut eum non error."
+                      ],
+                      "email": "Sunt aut quidem qui nemo quis aut.",
+                      "expires_at": "Quam impedit officiis qui.",
+                      "id": "Perferendis nesciunt molestiae reprehenderit quis.",
+                      "kind": "Beatae minima ipsam dolorem totam cum.",
+                      "project_id": "Maiores quaerat.",
+                      "status": "Atque voluptates qui et dolor nostrum."
+                    },
+                    {
+                      "account_id": "Ab voluptas dolores nihil corporis.",
+                      "capabilities": [
+                        "Quae temporibus omnis sit quis perferendis sequi.",
+                        "Corporis qui voluptatem aspernatur.",
+                        "Aliquid nihil laboriosam ex sunt.",
+                        "Aut eum non error."
+                      ],
+                      "email": "Sunt aut quidem qui nemo quis aut.",
+                      "expires_at": "Quam impedit officiis qui.",
+                      "id": "Perferendis nesciunt molestiae reprehenderit quis.",
+                      "kind": "Beatae minima ipsam dolorem totam cum.",
+                      "project_id": "Maiores quaerat.",
+                      "status": "Atque voluptates qui et dolor nostrum."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListInvitationsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Quis quisquam perspiciatis facere quod."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Eos aut aut ea est."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Magni voluptatem saepe id a voluptates."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Impedit esse quo dolor quis non.",
+                  "message": "Sit voluptatem mollitia quia aliquam magnam amet."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Error eos esse quisquam facilis officia."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "list-project-invitations accounts",
+        "tags": [
+          "accounts"
+        ]
+      },
+      "post": {
+        "description": "Invite an email to a project (gated on can_add_user)",
+        "operationId": "accounts#create-invitation",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "u4h",
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "u4h",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "capabilities": [
+                  "2ee",
+                  "men",
+                  "2xx"
+                ],
+                "email": "bjv"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvitationPayload"
+              }
+            }
+          },
+          "description": "Request body for create-invitation.",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account_id": "In repudiandae ut.",
+                  "capabilities": [
+                    "Neque in consectetur earum.",
+                    "Exercitationem eligendi natus.",
+                    "Qui in soluta."
+                  ],
+                  "email": "Rerum est qui ut iusto et.",
+                  "expires_at": "Voluptas quis velit quo.",
+                  "id": "Aut odit.",
+                  "kind": "Saepe mollitia quisquam quia.",
+                  "project_id": "Est beatae repellat consequuntur culpa.",
+                  "status": "Aut veritatis odio perspiciatis fugiat."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            },
+            "description": "Created response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Reiciendis et nemo."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Veniam consequatur excepturi."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Fugit delectus."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Neque aut nihil dolorum neque error.",
+                  "message": "Est nam."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Voluptatibus omnis aut iusto."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "create-invitation accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    },
+    "/projects/{project_id}/members/{principal_id}": {
+      "delete": {
+        "description": "Remove a principal from a project entirely, atomically revoking all of their project grants (subject to the orphan guard). Unlike remove-project-grant this does not target a single capability.",
+        "operationId": "accounts#remove-project-member",
+        "parameters": [
+          {
+            "allowEmptyValue": true,
+            "description": "user | service",
+            "example": "ljs",
+            "in": "query",
+            "name": "principal_kind",
+            "required": true,
+            "schema": {
+              "description": "user | service",
+              "example": "ljs",
+              "maxLength": 32,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Project URN",
+            "example": "b5x",
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "b5x",
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Principal URN",
+            "example": "3jc",
+            "in": "path",
+            "name": "principal_id",
+            "required": true,
+            "schema": {
+              "description": "Principal URN",
+              "example": "3jc",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Ipsa enim."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Commodi ea odit placeat fugiat vero."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Eveniet provident amet omnis."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "Voluptatum accusamus ut.",
+                  "message": "Quo et."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "Molestias sed maxime."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "oauth2": []
+          },
+          {
+            "bearer": []
+          }
+        ],
+        "summary": "remove-project-member accounts",
+        "tags": [
+          "accounts"
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "description": "IVCAP identity service",
+      "url": "https://id.develop.ivcap.net"
+    }
+  ],
+  "tags": [
+    {
+      "description": "JWKS public key endpoint",
+      "name": "jwks"
+    },
+    {
+      "description": "Account, project and invitation lifecycle management",
+      "name": "accounts"
+    }
+  ]
+}

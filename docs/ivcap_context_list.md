@@ -26,5 +26,5 @@ ivcap context list [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage and set access to various IVCAP deployments
+* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
 
