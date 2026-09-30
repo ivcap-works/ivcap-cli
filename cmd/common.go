@@ -416,7 +416,7 @@ func WriteConfigFile(config *Config) {
 }
 
 func GetConfigDir(createIfNoExist bool) (configDir string) {
-	if configDir = os.Getenv(CONFIG_DIR_ENV); configDir == "" {
+	if configDir = filepath.Clean(os.Getenv(CONFIG_DIR_ENV)); configDir == "." {
 		userConfigDir, err := os.UserConfigDir()
 		if err != nil {
 			cobra.CheckErr(fmt.Sprintf("Cannot find the user configuration directory - %v", err))
@@ -426,7 +426,7 @@ func GetConfigDir(createIfNoExist bool) (configDir string) {
 	}
 	// Create it if it doesn't exist
 	if createIfNoExist {
-		err := os.MkdirAll(configDir, 0750)
+		err := os.MkdirAll(configDir, 0750) // #nosec G703 -- path is the user's own config dir (CONFIG_DIR_ENV is set by the user running the CLI)
 		if err != nil && !os.IsExist(err) {
 			cobra.CheckErr(fmt.Sprintf("Could not create configuration directory %s - %v", configDir, err))
 			return
