@@ -475,7 +475,8 @@ func setCurrentProject(ctxt *Context, p *accountsapi.Project) error {
 	ctxt.AccountID = p.AccountId
 	SetContext(ctxt, true)
 	if !silent {
-		fmt.Printf("Using project %s (%s)\n", p.Name, p.Id)
+		id := p.Id
+		fmt.Printf("Using project %s (%s, %s)\n", p.Name, p.Id, MakeHistory(&id))
 	}
 	return nil
 }
@@ -728,12 +729,12 @@ func printProject(p *accountsapi.Project) {
 	tw.Style().Options.SeparateColumns = false
 	tw.Style().Options.SeparateRows = false
 	tw.Style().Options.DrawBorder = false
-	id := p.Id
+	id, accID := p.Id, p.AccountId
 	rows := []table.Row{
 		{"Name", p.Name},
 		{"ID", fmt.Sprintf("%s (%s)", p.Id, MakeHistory(&id))},
 		{"Kind", p.Kind},
-		{"Account", p.AccountId},
+		{"Account", fmt.Sprintf("%s (%s)", p.AccountId, MakeHistory(&accID))},
 	}
 	if p.OwnerUserId != "" {
 		rows = append(rows, table.Row{"Owner", p.OwnerUserId})

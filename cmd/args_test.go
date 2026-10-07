@@ -75,3 +75,21 @@ func TestSuggestNames(t *testing.T) {
 		t.Errorf("expected suggestion in error, got %v", err)
 	}
 }
+
+func TestWhoamiTarget(t *testing.T) {
+	old := noHistory
+	defer func() { noHistory = old; history = nil }()
+
+	noHistory, history = false, nil
+	if got := whoamiTarget("Proj", "urn:ivcap:project:p1"); got != "Proj  urn:ivcap:project:p1 (@1)" {
+		t.Errorf("with name: %q", got)
+	}
+	if got := whoamiTarget("", "urn:ivcap:account:a1"); got != "urn:ivcap:account:a1 (@2)" {
+		t.Errorf("without name: %q", got)
+	}
+
+	noHistory = true
+	if got := whoamiTarget("Proj", "urn:x"); got != "Proj  urn:x" {
+		t.Errorf("history disabled: %q", got)
+	}
+}

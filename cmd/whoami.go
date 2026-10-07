@@ -39,16 +39,16 @@ type whoamiIdentity struct {
 }
 
 type whoamiOutput struct {
-	Identity       whoamiIdentity        `json:"identity"`
-	CurrentProject string                `json:"current_project,omitempty"`
-	AccountID      string                `json:"account_id,omitempty"`
-	Accounts       []accountsapi.Account `json:"accounts"`
-	Projects       []accountsapi.Project `json:"projects"`
+	Identity           whoamiIdentity `json:"identity"`
+	CurrentProject     string         `json:"current_project,omitempty"`
+	CurrentProjectName string         `json:"current_project_name,omitempty"`
+	AccountID          string         `json:"account_id,omitempty"`
+	AccountName        string         `json:"account_name,omitempty"`
 }
 
 var whoamiCmd = &cobra.Command{
 	Use:   "whoami",
-	Short: "Show the currently authenticated identity and accessible accounts/projects",
+	Short: "Show the currently authenticated identity, current project and account",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ctxt := GetActiveContext()
 		if !IsAuthorised() {
@@ -69,21 +69,27 @@ var whoamiCmd = &cobra.Command{
 			},
 			CurrentProject: ctxt.CurrentProject,
 			AccountID:      ctxt.AccountID,
-			Accounts:       []accountsapi.Account{},
-			Projects:       []accountsapi.Project{},
 		}
 
-		// Enrich with live memberships. Best-effort: if the accounts service is
-		// unreachable (e.g. resolver not yet deployed) still show local identity.
-		if accs, err := sdk.ListAccounts(context.Background(), &sdk.ListRequest{Limit: 100}, GetIdentityAdapter(true), logger); err == nil {
-			out.Accounts = accs.Accounts
-		} else {
-			logger.Warn("whoami: could not list accounts", log.Error(err))
+		// Best-effort: add the names of the current project and account. If the
+		// accounts service is unreachable still show the local identity.
+		adpt := GetIdentityAdapter(true)
+		if ctxt.CurrentProject != "" {
+			if p, err := sdk.ReadProject(context.Background(), ctxt.CurrentProject, adpt, logger); err == nil {
+				out.CurrentProjectName = p.Name
+			} else {
+				logger.Warn("whoami: could not read current project", log.Error(err))
+			}
 		}
-		if projs, err := sdk.ListProjects(context.Background(), &sdk.ListRequest{Limit: 100}, GetIdentityAdapter(true), logger); err == nil {
-			out.Projects = projs.Projects
-		} else {
-			logger.Warn("whoami: could not list projects", log.Error(err))
+		if ctxt.AccountID != "" {
+			if res, err := sdk.ReadAccountRaw(context.Background(), ctxt.AccountID, adpt, logger); err == nil {
+				var acc accountsapi.Account
+				if err = res.AsType(&acc); err == nil {
+					out.AccountName = acc.Name
+				}
+			} else {
+				logger.Warn("whoami: could not read account", log.Error(err))
+			}
 		}
 
 		switch outputFormat {
@@ -118,10 +124,10 @@ func printWhoami(out *whoamiOutput) {
 		rows = append(rows, table.Row{"Nickname", out.Identity.Nickname})
 	}
 	if out.CurrentProject != "" {
-		rows = append(rows, table.Row{"Current Project", out.CurrentProject})
+		rows = append(rows, table.Row{"Current Project", whoamiTarget(out.CurrentProjectName, out.CurrentProject)})
 	}
 	if out.AccountID != "" {
-		rows = append(rows, table.Row{"Account", out.AccountID})
+		rows = append(rows, table.Row{"Current Account", whoamiTarget(out.AccountName, out.AccountID)})
 	}
 	tw.AppendRows(rows)
 	tw.SetColumnConfigs([]table.ColumnConfig{
@@ -130,13 +136,20 @@ func printWhoami(out *whoamiOutput) {
 	})
 	fmt.Printf("\n%s\n", tw.Render())
 
-	if len(out.Accounts) > 0 {
-		fmt.Printf("\nAccounts:\n")
-		printAccountTable(out.Accounts)
-	}
-	if len(out.Projects) > 0 {
-		fmt.Printf("\nProjects:\n")
-		printProjectTable(out.Projects)
-	}
 	fmt.Println()
+}
+
+// whoamiTarget renders "name  urn (@N)" so the id can be reused via the history
+// token in later commands.
+func whoamiTarget(name, id string) string {
+	token := MakeHistory(&id)
+	if token == id {
+		token = ""
+	} else {
+		token = " (" + token + ")"
+	}
+	if name == "" {
+		return id + token
+	}
+	return fmt.Sprintf("%s  %s%s", name, id, token)
 }
