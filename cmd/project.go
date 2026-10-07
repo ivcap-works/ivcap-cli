@@ -214,7 +214,10 @@ select from your workspace accounts or create a new one. In non-interactive mode
 			if len(args) == 0 {
 				return selectProjectInteractive(ctxt)
 			}
-			id := GetHistory(args[0])
+			id, err := resolveProjectID(args[0])
+			if err != nil {
+				return err
+			}
 			p, err := sdk.ReadProject(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return fmt.Errorf("cannot select project %s: %w", id, err)
@@ -228,8 +231,11 @@ select from your workspace accounts or create a new one. In non-interactive mode
 		Short: "Leave a project (relinquish your grants)",
 		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id := GetHistory(args[0])
-			_, err := sdk.LeaveProjectRaw(context.Background(), id, GetIdentityAdapter(true), logger)
+			id, err := resolveProjectID(args[0])
+			if err != nil {
+				return err
+			}
+			_, err = sdk.LeaveProjectRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -246,8 +252,11 @@ select from your workspace accounts or create a new one. In non-interactive mode
 		Short:   "Delete a project",
 		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id := GetHistory(args[0])
-			_, err := sdk.DeleteProjectRaw(context.Background(), id, GetIdentityAdapter(true), logger)
+			id, err := resolveProjectID(args[0])
+			if err != nil {
+				return err
+			}
+			_, err = sdk.DeleteProjectRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
 			}
@@ -312,7 +321,10 @@ capabilities intact. To remove a principal from the project entirely, use
 		Short: "Remove a principal from a project entirely (revokes all their capabilities)",
 		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			projectID := GetHistory(args[0])
+			projectID, err := resolveProjectID(args[0])
+			if err != nil {
+				return err
+			}
 			kind, principalID, err := principalFromFlags()
 			if err != nil {
 				return err
@@ -368,7 +380,10 @@ will be prompted to choose from the valid set.`,
 )
 
 func runProjectGrant(cmd *cobra.Command, args []string) error {
-	projectID := GetHistory(args[0])
+	projectID, err := resolveProjectID(args[0])
+	if err != nil {
+		return err
+	}
 	kind, principalID, err := principalFromFlags()
 	if err != nil {
 		return err
@@ -395,7 +410,10 @@ func runProjectGrant(cmd *cobra.Command, args []string) error {
 }
 
 func runProjectRevokeCapability(cmd *cobra.Command, args []string) error {
-	projectID := GetHistory(args[0])
+	projectID, err := resolveProjectID(args[0])
+	if err != nil {
+		return err
+	}
 	kind, principalID, err := principalFromFlags()
 	if err != nil {
 		return err
@@ -426,7 +444,10 @@ func runProjectRevokeCapability(cmd *cobra.Command, args []string) error {
 }
 
 func runProjectInvite(cmd *cobra.Command, args []string) error {
-	projectID := GetHistory(args[0])
+	projectID, err := resolveProjectID(args[0])
+	if err != nil {
+		return err
+	}
 	if projInviteEmail == "" {
 		return fmt.Errorf("please provide the invitee's --email")
 	}

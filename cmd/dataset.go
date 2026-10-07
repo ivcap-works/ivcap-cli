@@ -97,7 +97,10 @@ Datasets are addressed by URN (urn:ivcap:dataset:<uuid>).`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			pid := ""
 			if len(args) > 0 {
-				pid = GetHistory(args[0])
+				var err error
+				if pid, err = resolveProjectID(args[0]); err != nil {
+					return err
+				}
 			}
 			pid, err := datasetProjectID(pid)
 			if err != nil {
@@ -153,7 +156,14 @@ Datasets are addressed by URN (urn:ivcap:dataset:<uuid>).`,
 			if datasetName == "" {
 				return fmt.Errorf("please provide a name via --name")
 			}
-			pid, err := datasetProjectID(GetHistory(datasetProject))
+			pid := ""
+			if datasetProject != "" {
+				var err error
+				if pid, err = resolveProjectID(datasetProject); err != nil {
+					return err
+				}
+			}
+			pid, err := datasetProjectID(pid)
 			if err != nil {
 				return err
 			}

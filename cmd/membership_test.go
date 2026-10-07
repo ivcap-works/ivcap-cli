@@ -243,12 +243,12 @@ func TestRevokeCapabilityLoops(t *testing.T) {
 	projPrincipalUser = "U1"
 	projCapabilities = []string{"read", "write"}
 
-	if err := runProjectRevokeCapability(revokeProjectCapabilityCmd, []string{"P1"}); err != nil {
+	if err := runProjectRevokeCapability(revokeProjectCapabilityCmd, []string{"urn:ivcap:project:p1"}); err != nil {
 		t.Fatalf("runProjectRevokeCapability: %v", err)
 	}
 	n := 0
 	for _, r := range captured() {
-		if r.method == http.MethodDelete && strings.Contains(r.path, "/projects/P1/grants/U1") {
+		if r.method == http.MethodDelete && strings.Contains(r.path, "/grants/U1") {
 			n++
 		}
 	}
@@ -267,7 +267,7 @@ func TestGrantValidatesCapabilities(t *testing.T) {
 	projPrincipalUser = "U1"
 	projCapabilities = []string{"bogus"}
 
-	err := runProjectGrant(grantProjectCmd, []string{"P1"})
+	err := runProjectGrant(grantProjectCmd, []string{"urn:ivcap:project:p1"})
 	if err == nil || !strings.Contains(err.Error(), "unknown capabilit") {
 		t.Fatalf("expected unknown-capability error, got: %v", err)
 	}

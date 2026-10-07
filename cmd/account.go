@@ -207,7 +207,10 @@ capabilities intact. To remove a member from the account entirely, use
 		Short: "Remove a user from an account entirely (revokes all their grants)",
 		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			accountID := GetHistory(args[0])
+			accountID, err := resolveAccountID(args[0])
+			if err != nil {
+				return err
+			}
 			userID, err := acctUserFromFlag()
 			if err != nil {
 				return err
@@ -263,7 +266,10 @@ you are on an interactive terminal, you will be prompted to choose.`,
 )
 
 func runAccountGrant(cmd *cobra.Command, args []string) error {
-	accountID := GetHistory(args[0])
+	accountID, err := resolveAccountID(args[0])
+	if err != nil {
+		return err
+	}
 	userID, err := acctUserFromFlag()
 	if err != nil {
 		return err
@@ -286,7 +292,10 @@ func runAccountGrant(cmd *cobra.Command, args []string) error {
 }
 
 func runAccountRevokeCapability(cmd *cobra.Command, args []string) error {
-	accountID := GetHistory(args[0])
+	accountID, err := resolveAccountID(args[0])
+	if err != nil {
+		return err
+	}
 	userID, err := acctUserFromFlag()
 	if err != nil {
 		return err
@@ -315,7 +324,10 @@ func runAccountRevokeCapability(cmd *cobra.Command, args []string) error {
 }
 
 func runAccountInvite(cmd *cobra.Command, args []string) error {
-	accountID := GetHistory(args[0])
+	accountID, err := resolveAccountID(args[0])
+	if err != nil {
+		return err
+	}
 	if acctInviteEmail == "" {
 		return fmt.Errorf("please provide the invitee's --email")
 	}
