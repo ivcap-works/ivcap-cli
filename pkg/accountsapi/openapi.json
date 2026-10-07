@@ -3,24 +3,24 @@
     "schemas": {
       "Account": {
         "example": {
-          "id": "Autem dolorem quibusdam et consectetur corrupti aut.",
-          "kind": "Ut mollitia.",
-          "name": "Quis nisi."
+          "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+          "kind": "workspace",
+          "name": "CSIRO Remote Sensing"
         },
         "properties": {
           "id": {
             "description": "Account URN",
-            "example": "Autem dolorem quibusdam et consectetur corrupti aut.",
+            "example": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
             "type": "string"
           },
           "kind": {
             "description": "personal | workspace",
-            "example": "Ut mollitia.",
+            "example": "workspace",
             "type": "string"
           },
           "name": {
             "description": "Display name",
-            "example": "Quis nisi.",
+            "example": "CSIRO Remote Sensing",
             "type": "string"
           }
         },
@@ -120,12 +120,12 @@
       "BadRequestT": {
         "description": "bad request",
         "example": {
-          "message": "Quidem ducimus incidunt atque at."
+          "message": "account_id is required when parent_id is not given"
         },
         "properties": {
           "message": {
             "description": "Error message",
-            "example": "Quidem ducimus incidunt atque at.",
+            "example": "account_id is required when parent_id is not given",
             "type": "string"
           }
         },
@@ -138,34 +138,34 @@
         "example": {
           "account": [
             {
-              "description": "At voluptatum ut expedita commodi.",
-              "name": "Consectetur minima."
+              "description": "Read access to project resources and metadata",
+              "name": "read"
             },
             {
-              "description": "At voluptatum ut expedita commodi.",
-              "name": "Consectetur minima."
+              "description": "Read access to project resources and metadata",
+              "name": "read"
             },
             {
-              "description": "At voluptatum ut expedita commodi.",
-              "name": "Consectetur minima."
+              "description": "Read access to project resources and metadata",
+              "name": "read"
             },
             {
-              "description": "At voluptatum ut expedita commodi.",
-              "name": "Consectetur minima."
+              "description": "Read access to project resources and metadata",
+              "name": "read"
             }
           ],
           "project": [
             {
-              "description": "At voluptatum ut expedita commodi.",
-              "name": "Consectetur minima."
+              "description": "Read access to project resources and metadata",
+              "name": "read"
             },
             {
-              "description": "At voluptatum ut expedita commodi.",
-              "name": "Consectetur minima."
+              "description": "Read access to project resources and metadata",
+              "name": "read"
             },
             {
-              "description": "At voluptatum ut expedita commodi.",
-              "name": "Consectetur minima."
+              "description": "Read access to project resources and metadata",
+              "name": "read"
             }
           ]
         },
@@ -174,20 +174,20 @@
             "description": "Capabilities grantable on an account",
             "example": [
               {
-                "description": "At voluptatum ut expedita commodi.",
-                "name": "Consectetur minima."
+                "description": "Read access to project resources and metadata",
+                "name": "read"
               },
               {
-                "description": "At voluptatum ut expedita commodi.",
-                "name": "Consectetur minima."
+                "description": "Read access to project resources and metadata",
+                "name": "read"
               },
               {
-                "description": "At voluptatum ut expedita commodi.",
-                "name": "Consectetur minima."
+                "description": "Read access to project resources and metadata",
+                "name": "read"
               },
               {
-                "description": "At voluptatum ut expedita commodi.",
-                "name": "Consectetur minima."
+                "description": "Read access to project resources and metadata",
+                "name": "read"
               }
             ],
             "items": {
@@ -199,16 +199,16 @@
             "description": "Capabilities grantable on a project",
             "example": [
               {
-                "description": "At voluptatum ut expedita commodi.",
-                "name": "Consectetur minima."
+                "description": "Read access to project resources and metadata",
+                "name": "read"
               },
               {
-                "description": "At voluptatum ut expedita commodi.",
-                "name": "Consectetur minima."
+                "description": "Read access to project resources and metadata",
+                "name": "read"
               },
               {
-                "description": "At voluptatum ut expedita commodi.",
-                "name": "Consectetur minima."
+                "description": "Read access to project resources and metadata",
+                "name": "read"
               }
             ],
             "items": {
@@ -225,18 +225,18 @@
       },
       "Capability": {
         "example": {
-          "description": "At voluptatum ut expedita commodi.",
-          "name": "Consectetur minima."
+          "description": "Read access to project resources and metadata",
+          "name": "read"
         },
         "properties": {
           "description": {
             "description": "Human-readable description of what the capability allows",
-            "example": "At voluptatum ut expedita commodi.",
+            "example": "Read access to project resources and metadata",
             "type": "string"
           },
           "name": {
             "description": "Capability name as used in grants and invitations",
-            "example": "Consectetur minima.",
+            "example": "read",
             "type": "string"
           }
         },
@@ -248,12 +248,12 @@
       "ConflictT": {
         "description": "conflict",
         "example": {
-          "message": "Natus reiciendis eligendi minima."
+          "message": "a project with this name already exists in the account"
         },
         "properties": {
           "message": {
             "description": "Error message",
-            "example": "Natus reiciendis eligendi minima.",
+            "example": "a project with this name already exists in the account",
             "type": "string"
           }
         },
@@ -309,6 +309,31 @@
           "name": {
             "description": "Display name for the new workspace account",
             "example": "sz3",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "CreateDatasetPayload": {
+        "description": "Request body for create-dataset.",
+        "example": {
+          "description": "zr1",
+          "name": "kti"
+        },
+        "properties": {
+          "description": {
+            "description": "Description",
+            "example": "zr1",
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name",
+            "example": "kti",
             "maxLength": 200,
             "type": "string"
           }
@@ -389,15 +414,204 @@
         ],
         "type": "object"
       },
+      "Dataset": {
+        "example": {
+          "capability": "18378234397864834016",
+          "created_at": "2011-07-10T08:03:41Z",
+          "created_by": "Reiciendis et quaerat.",
+          "default": false,
+          "description": "Quo dicta voluptate aut dolor dolor voluptas.",
+          "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+          "name": "Fugiat non rerum consequatur.",
+          "project_id": "Aut sed est dolor nam nisi."
+        },
+        "properties": {
+          "capability": {
+            "description": "Datafabric capability for this dataset's data, as a decimal uint64; pass it as can-read and can-retract",
+            "example": "18378234397864834016",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "Creation time",
+            "example": "2011-07-10T08:03:41Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "created_by": {
+            "description": "Creator URN (user or principal); absent if created by the platform",
+            "example": "Reiciendis et quaerat.",
+            "type": "string"
+          },
+          "default": {
+            "description": "Whether this is the owning project's default dataset (same id as the project)",
+            "example": false,
+            "type": "boolean"
+          },
+          "description": {
+            "description": "Description",
+            "example": "Quo dicta voluptate aut dolor dolor voluptas.",
+            "type": "string"
+          },
+          "id": {
+            "description": "Dataset URN",
+            "example": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name",
+            "example": "Fugiat non rerum consequatur.",
+            "type": "string"
+          },
+          "project_id": {
+            "description": "Owning project URN. The owner manages the dataset; access is by grant.",
+            "example": "Aut sed est dolor nam nisi.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "description",
+          "default",
+          "created_at",
+          "capability"
+        ],
+        "type": "object"
+      },
+      "DatasetEvent": {
+        "example": {
+          "access": "A assumenda distinctio reiciendis.",
+          "action": "Vero fuga amet tempora facere sit.",
+          "actor": "Doloremque quia.",
+          "at": "1985-02-14T01:03:11Z",
+          "grantee_id": "Ea veritatis tempore quo.",
+          "grantee_kind": "In voluptatem voluptas perspiciatis quis minima."
+        },
+        "properties": {
+          "access": {
+            "description": "For grant and revoke: read | write",
+            "example": "A assumenda distinctio reiciendis.",
+            "type": "string"
+          },
+          "action": {
+            "description": "create | update | delete | grant | revoke",
+            "example": "Vero fuga amet tempora facere sit.",
+            "type": "string"
+          },
+          "actor": {
+            "description": "Who made the change (user or principal URN); absent if the platform did",
+            "example": "Doloremque quia.",
+            "type": "string"
+          },
+          "at": {
+            "description": "When",
+            "example": "1985-02-14T01:03:11Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "grantee_id": {
+            "description": "For grant and revoke: project or principal URN; absent for public",
+            "example": "Ea veritatis tempore quo.",
+            "type": "string"
+          },
+          "grantee_kind": {
+            "description": "For grant and revoke: project | service | public",
+            "example": "In voluptatem voluptas perspiciatis quis minima.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "at"
+        ],
+        "type": "object"
+      },
+      "DatasetGrant": {
+        "example": {
+          "access": "Modi amet veritatis dicta quae.",
+          "granted_at": "1972-06-12T11:39:23Z",
+          "granted_by": "Numquam quidem.",
+          "grantee_id": "Tempore molestiae fugit atque.",
+          "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+        },
+        "properties": {
+          "access": {
+            "description": "read | write",
+            "example": "Modi amet veritatis dicta quae.",
+            "type": "string"
+          },
+          "granted_at": {
+            "description": "Grant time",
+            "example": "1972-06-12T11:39:23Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "granted_by": {
+            "description": "Granter URN (user or principal); absent if granted by the platform",
+            "example": "Numquam quidem.",
+            "type": "string"
+          },
+          "grantee_id": {
+            "description": "Project or principal URN; absent for public",
+            "example": "Tempore molestiae fugit atque.",
+            "type": "string"
+          },
+          "grantee_kind": {
+            "description": "project | service | public",
+            "example": "Quos ut distinctio delectus fuga dicta accusantium.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "grantee_kind",
+          "access",
+          "granted_at"
+        ],
+        "type": "object"
+      },
+      "DatasetGrantPayload": {
+        "description": "Request body for add-dataset-grant.",
+        "example": {
+          "access": "952",
+          "grantee_id": "6xp",
+          "grantee_kind": "bju"
+        },
+        "properties": {
+          "access": {
+            "description": "read | write (public is read only)",
+            "example": "952",
+            "maxLength": 32,
+            "type": "string"
+          },
+          "grantee_id": {
+            "description": "Project URN or principal URN; omitted for public",
+            "example": "6xp",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "grantee_kind": {
+            "description": "project | service | public",
+            "example": "bju",
+            "maxLength": 32,
+            "type": "string"
+          }
+        },
+        "required": [
+          "grantee_kind",
+          "access"
+        ],
+        "type": "object"
+      },
       "ForbiddenT": {
         "description": "forbidden",
         "example": {
-          "message": "Voluptatem atque."
+          "message": "insufficient capabilities on this resource"
         },
         "properties": {
           "message": {
             "description": "Error message",
-            "example": "Voluptatem atque.",
+            "example": "insufficient capabilities on this resource",
             "type": "string"
           }
         },
@@ -408,31 +622,29 @@
       },
       "Invitation": {
         "example": {
-          "account_id": "In repudiandae ut.",
+          "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
           "capabilities": [
-            "Neque in consectetur earum.",
-            "Exercitationem eligendi natus.",
-            "Qui in soluta."
+            "read",
+            "write"
           ],
-          "email": "Rerum est qui ut iusto et.",
-          "expires_at": "Voluptas quis velit quo.",
-          "id": "Aut odit.",
-          "kind": "Saepe mollitia quisquam quia.",
-          "project_id": "Est beatae repellat consequuntur culpa.",
-          "status": "Aut veritatis odio perspiciatis fugiat."
+          "email": "w.riker@csiro.au",
+          "expires_at": "2027-01-15T10:30:00Z",
+          "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+          "kind": "project",
+          "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+          "status": "pending"
         },
         "properties": {
           "account_id": {
             "description": "Account URN (set for account invitations)",
-            "example": "In repudiandae ut.",
+            "example": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
             "type": "string"
           },
           "capabilities": {
             "description": "Capabilities the invite grants (project or account caps per kind)",
             "example": [
-              "Neque in consectetur earum.",
-              "Exercitationem eligendi natus.",
-              "Qui in soluta."
+              "read",
+              "write"
             ],
             "items": {
               "example": "Neque in consectetur earum.",
@@ -442,32 +654,32 @@
           },
           "email": {
             "description": "Invitee email (only on the inviter's create response / project listing)",
-            "example": "Rerum est qui ut iusto et.",
+            "example": "w.riker@csiro.au",
             "type": "string"
           },
           "expires_at": {
             "description": "RFC3339 expiry",
-            "example": "Voluptas quis velit quo.",
+            "example": "2027-01-15T10:30:00Z",
             "type": "string"
           },
           "id": {
             "description": "Invitation URN",
-            "example": "Aut odit.",
+            "example": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
             "type": "string"
           },
           "kind": {
             "description": "Invitation target kind: project | account",
-            "example": "Saepe mollitia quisquam quia.",
+            "example": "project",
             "type": "string"
           },
           "project_id": {
             "description": "Project URN (set for project invitations)",
-            "example": "Est beatae repellat consequuntur culpa.",
+            "example": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
             "type": "string"
           },
           "status": {
             "description": "pending | accepted | declined | revoked",
-            "example": "Aut veritatis odio perspiciatis fugiat.",
+            "example": "pending",
             "type": "string"
           }
         },
@@ -484,24 +696,24 @@
         "example": {
           "accounts": [
             {
-              "id": "Fuga cumque dolorem eum omnis rerum.",
-              "kind": "Sint minus qui quaerat.",
-              "name": "Molestiae iure autem ratione suscipit commodi rerum."
+              "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "kind": "workspace",
+              "name": "CSIRO Remote Sensing"
             },
             {
-              "id": "Fuga cumque dolorem eum omnis rerum.",
-              "kind": "Sint minus qui quaerat.",
-              "name": "Molestiae iure autem ratione suscipit commodi rerum."
+              "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "kind": "workspace",
+              "name": "CSIRO Remote Sensing"
             },
             {
-              "id": "Fuga cumque dolorem eum omnis rerum.",
-              "kind": "Sint minus qui quaerat.",
-              "name": "Molestiae iure autem ratione suscipit commodi rerum."
+              "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "kind": "workspace",
+              "name": "CSIRO Remote Sensing"
             },
             {
-              "id": "Fuga cumque dolorem eum omnis rerum.",
-              "kind": "Sint minus qui quaerat.",
-              "name": "Molestiae iure autem ratione suscipit commodi rerum."
+              "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "kind": "workspace",
+              "name": "CSIRO Remote Sensing"
             }
           ]
         },
@@ -509,24 +721,24 @@
           "accounts": {
             "example": [
               {
-                "id": "Fuga cumque dolorem eum omnis rerum.",
-                "kind": "Sint minus qui quaerat.",
-                "name": "Molestiae iure autem ratione suscipit commodi rerum."
+                "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "kind": "workspace",
+                "name": "CSIRO Remote Sensing"
               },
               {
-                "id": "Fuga cumque dolorem eum omnis rerum.",
-                "kind": "Sint minus qui quaerat.",
-                "name": "Molestiae iure autem ratione suscipit commodi rerum."
+                "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "kind": "workspace",
+                "name": "CSIRO Remote Sensing"
               },
               {
-                "id": "Fuga cumque dolorem eum omnis rerum.",
-                "kind": "Sint minus qui quaerat.",
-                "name": "Molestiae iure autem ratione suscipit commodi rerum."
+                "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "kind": "workspace",
+                "name": "CSIRO Remote Sensing"
               },
               {
-                "id": "Fuga cumque dolorem eum omnis rerum.",
-                "kind": "Sint minus qui quaerat.",
-                "name": "Molestiae iure autem ratione suscipit commodi rerum."
+                "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "kind": "workspace",
+                "name": "CSIRO Remote Sensing"
               }
             ],
             "items": {
@@ -540,38 +752,149 @@
         ],
         "type": "object"
       },
+      "ListDatasetEventsResult": {
+        "example": {
+          "events": [
+            {
+              "access": "A assumenda distinctio reiciendis.",
+              "action": "Vero fuga amet tempora facere sit.",
+              "actor": "Doloremque quia.",
+              "at": "1985-02-14T01:03:11Z",
+              "grantee_id": "Ea veritatis tempore quo.",
+              "grantee_kind": "In voluptatem voluptas perspiciatis quis minima."
+            },
+            {
+              "access": "A assumenda distinctio reiciendis.",
+              "action": "Vero fuga amet tempora facere sit.",
+              "actor": "Doloremque quia.",
+              "at": "1985-02-14T01:03:11Z",
+              "grantee_id": "Ea veritatis tempore quo.",
+              "grantee_kind": "In voluptatem voluptas perspiciatis quis minima."
+            }
+          ]
+        },
+        "properties": {
+          "events": {
+            "description": "Oldest first",
+            "example": [
+              {
+                "access": "A assumenda distinctio reiciendis.",
+                "action": "Vero fuga amet tempora facere sit.",
+                "actor": "Doloremque quia.",
+                "at": "1985-02-14T01:03:11Z",
+                "grantee_id": "Ea veritatis tempore quo.",
+                "grantee_kind": "In voluptatem voluptas perspiciatis quis minima."
+              },
+              {
+                "access": "A assumenda distinctio reiciendis.",
+                "action": "Vero fuga amet tempora facere sit.",
+                "actor": "Doloremque quia.",
+                "at": "1985-02-14T01:03:11Z",
+                "grantee_id": "Ea veritatis tempore quo.",
+                "grantee_kind": "In voluptatem voluptas perspiciatis quis minima."
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/DatasetEvent"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "type": "object"
+      },
+      "ListDatasetGrantsResult": {
+        "example": {
+          "grants": [
+            {
+              "access": "Modi amet veritatis dicta quae.",
+              "granted_at": "1972-06-12T11:39:23Z",
+              "granted_by": "Numquam quidem.",
+              "grantee_id": "Tempore molestiae fugit atque.",
+              "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+            },
+            {
+              "access": "Modi amet veritatis dicta quae.",
+              "granted_at": "1972-06-12T11:39:23Z",
+              "granted_by": "Numquam quidem.",
+              "grantee_id": "Tempore molestiae fugit atque.",
+              "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+            },
+            {
+              "access": "Modi amet veritatis dicta quae.",
+              "granted_at": "1972-06-12T11:39:23Z",
+              "granted_by": "Numquam quidem.",
+              "grantee_id": "Tempore molestiae fugit atque.",
+              "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+            }
+          ]
+        },
+        "properties": {
+          "grants": {
+            "example": [
+              {
+                "access": "Modi amet veritatis dicta quae.",
+                "granted_at": "1972-06-12T11:39:23Z",
+                "granted_by": "Numquam quidem.",
+                "grantee_id": "Tempore molestiae fugit atque.",
+                "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+              },
+              {
+                "access": "Modi amet veritatis dicta quae.",
+                "granted_at": "1972-06-12T11:39:23Z",
+                "granted_by": "Numquam quidem.",
+                "grantee_id": "Tempore molestiae fugit atque.",
+                "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+              },
+              {
+                "access": "Modi amet veritatis dicta quae.",
+                "granted_at": "1972-06-12T11:39:23Z",
+                "granted_by": "Numquam quidem.",
+                "grantee_id": "Tempore molestiae fugit atque.",
+                "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/DatasetGrant"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "grants"
+        ],
+        "type": "object"
+      },
       "ListInvitationsResult": {
         "example": {
           "invitations": [
             {
-              "account_id": "Ab voluptas dolores nihil corporis.",
+              "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
               "capabilities": [
-                "Quae temporibus omnis sit quis perferendis sequi.",
-                "Corporis qui voluptatem aspernatur.",
-                "Aliquid nihil laboriosam ex sunt.",
-                "Aut eum non error."
+                "read",
+                "write"
               ],
-              "email": "Sunt aut quidem qui nemo quis aut.",
-              "expires_at": "Quam impedit officiis qui.",
-              "id": "Perferendis nesciunt molestiae reprehenderit quis.",
-              "kind": "Beatae minima ipsam dolorem totam cum.",
-              "project_id": "Maiores quaerat.",
-              "status": "Atque voluptates qui et dolor nostrum."
+              "email": "w.riker@csiro.au",
+              "expires_at": "2027-01-15T10:30:00Z",
+              "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+              "kind": "project",
+              "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+              "status": "pending"
             },
             {
-              "account_id": "Ab voluptas dolores nihil corporis.",
+              "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
               "capabilities": [
-                "Quae temporibus omnis sit quis perferendis sequi.",
-                "Corporis qui voluptatem aspernatur.",
-                "Aliquid nihil laboriosam ex sunt.",
-                "Aut eum non error."
+                "read",
+                "write"
               ],
-              "email": "Sunt aut quidem qui nemo quis aut.",
-              "expires_at": "Quam impedit officiis qui.",
-              "id": "Perferendis nesciunt molestiae reprehenderit quis.",
-              "kind": "Beatae minima ipsam dolorem totam cum.",
-              "project_id": "Maiores quaerat.",
-              "status": "Atque voluptates qui et dolor nostrum."
+              "email": "w.riker@csiro.au",
+              "expires_at": "2027-01-15T10:30:00Z",
+              "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+              "kind": "project",
+              "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+              "status": "pending"
             }
           ]
         },
@@ -579,34 +902,30 @@
           "invitations": {
             "example": [
               {
-                "account_id": "Ab voluptas dolores nihil corporis.",
+                "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
                 "capabilities": [
-                  "Quae temporibus omnis sit quis perferendis sequi.",
-                  "Corporis qui voluptatem aspernatur.",
-                  "Aliquid nihil laboriosam ex sunt.",
-                  "Aut eum non error."
+                  "read",
+                  "write"
                 ],
-                "email": "Sunt aut quidem qui nemo quis aut.",
-                "expires_at": "Quam impedit officiis qui.",
-                "id": "Perferendis nesciunt molestiae reprehenderit quis.",
-                "kind": "Beatae minima ipsam dolorem totam cum.",
-                "project_id": "Maiores quaerat.",
-                "status": "Atque voluptates qui et dolor nostrum."
+                "email": "w.riker@csiro.au",
+                "expires_at": "2027-01-15T10:30:00Z",
+                "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                "kind": "project",
+                "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                "status": "pending"
               },
               {
-                "account_id": "Ab voluptas dolores nihil corporis.",
+                "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
                 "capabilities": [
-                  "Quae temporibus omnis sit quis perferendis sequi.",
-                  "Corporis qui voluptatem aspernatur.",
-                  "Aliquid nihil laboriosam ex sunt.",
-                  "Aut eum non error."
+                  "read",
+                  "write"
                 ],
-                "email": "Sunt aut quidem qui nemo quis aut.",
-                "expires_at": "Quam impedit officiis qui.",
-                "id": "Perferendis nesciunt molestiae reprehenderit quis.",
-                "kind": "Beatae minima ipsam dolorem totam cum.",
-                "project_id": "Maiores quaerat.",
-                "status": "Atque voluptates qui et dolor nostrum."
+                "email": "w.riker@csiro.au",
+                "expires_at": "2027-01-15T10:30:00Z",
+                "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                "kind": "project",
+                "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                "status": "pending"
               }
             ],
             "items": {
@@ -625,47 +944,43 @@
           "members": [
             {
               "capabilities": [
-                "Dolores qui animi.",
-                "Iste molestias nisi.",
-                "Nobis optio autem omnis cupiditate officia."
+                "read",
+                "write"
               ],
-              "display_name": "Temporibus odit sit officia est explicabo.",
-              "email": "Officiis illo sunt eos repudiandae aliquam.",
-              "kind": "Non eius non et.",
-              "user_id": "Labore vitae fugiat est sed."
+              "display_name": "Dr William Riker",
+              "email": "w.riker@csiro.au",
+              "kind": "user",
+              "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
             },
             {
               "capabilities": [
-                "Dolores qui animi.",
-                "Iste molestias nisi.",
-                "Nobis optio autem omnis cupiditate officia."
+                "read",
+                "write"
               ],
-              "display_name": "Temporibus odit sit officia est explicabo.",
-              "email": "Officiis illo sunt eos repudiandae aliquam.",
-              "kind": "Non eius non et.",
-              "user_id": "Labore vitae fugiat est sed."
+              "display_name": "Dr William Riker",
+              "email": "w.riker@csiro.au",
+              "kind": "user",
+              "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
             },
             {
               "capabilities": [
-                "Dolores qui animi.",
-                "Iste molestias nisi.",
-                "Nobis optio autem omnis cupiditate officia."
+                "read",
+                "write"
               ],
-              "display_name": "Temporibus odit sit officia est explicabo.",
-              "email": "Officiis illo sunt eos repudiandae aliquam.",
-              "kind": "Non eius non et.",
-              "user_id": "Labore vitae fugiat est sed."
+              "display_name": "Dr William Riker",
+              "email": "w.riker@csiro.au",
+              "kind": "user",
+              "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
             },
             {
               "capabilities": [
-                "Dolores qui animi.",
-                "Iste molestias nisi.",
-                "Nobis optio autem omnis cupiditate officia."
+                "read",
+                "write"
               ],
-              "display_name": "Temporibus odit sit officia est explicabo.",
-              "email": "Officiis illo sunt eos repudiandae aliquam.",
-              "kind": "Non eius non et.",
-              "user_id": "Labore vitae fugiat est sed."
+              "display_name": "Dr William Riker",
+              "email": "w.riker@csiro.au",
+              "kind": "user",
+              "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
             }
           ]
         },
@@ -674,47 +989,43 @@
             "example": [
               {
                 "capabilities": [
-                  "Dolores qui animi.",
-                  "Iste molestias nisi.",
-                  "Nobis optio autem omnis cupiditate officia."
+                  "read",
+                  "write"
                 ],
-                "display_name": "Temporibus odit sit officia est explicabo.",
-                "email": "Officiis illo sunt eos repudiandae aliquam.",
-                "kind": "Non eius non et.",
-                "user_id": "Labore vitae fugiat est sed."
+                "display_name": "Dr William Riker",
+                "email": "w.riker@csiro.au",
+                "kind": "user",
+                "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
               },
               {
                 "capabilities": [
-                  "Dolores qui animi.",
-                  "Iste molestias nisi.",
-                  "Nobis optio autem omnis cupiditate officia."
+                  "read",
+                  "write"
                 ],
-                "display_name": "Temporibus odit sit officia est explicabo.",
-                "email": "Officiis illo sunt eos repudiandae aliquam.",
-                "kind": "Non eius non et.",
-                "user_id": "Labore vitae fugiat est sed."
+                "display_name": "Dr William Riker",
+                "email": "w.riker@csiro.au",
+                "kind": "user",
+                "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
               },
               {
                 "capabilities": [
-                  "Dolores qui animi.",
-                  "Iste molestias nisi.",
-                  "Nobis optio autem omnis cupiditate officia."
+                  "read",
+                  "write"
                 ],
-                "display_name": "Temporibus odit sit officia est explicabo.",
-                "email": "Officiis illo sunt eos repudiandae aliquam.",
-                "kind": "Non eius non et.",
-                "user_id": "Labore vitae fugiat est sed."
+                "display_name": "Dr William Riker",
+                "email": "w.riker@csiro.au",
+                "kind": "user",
+                "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
               },
               {
                 "capabilities": [
-                  "Dolores qui animi.",
-                  "Iste molestias nisi.",
-                  "Nobis optio autem omnis cupiditate officia."
+                  "read",
+                  "write"
                 ],
-                "display_name": "Temporibus odit sit officia est explicabo.",
-                "email": "Officiis illo sunt eos repudiandae aliquam.",
-                "kind": "Non eius non et.",
-                "user_id": "Labore vitae fugiat est sed."
+                "display_name": "Dr William Riker",
+                "email": "w.riker@csiro.au",
+                "kind": "user",
+                "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
               }
             ],
             "items": {
@@ -728,32 +1039,112 @@
         ],
         "type": "object"
       },
+      "ListProjectDatasetsResult": {
+        "example": {
+          "datasets": [
+            {
+              "access": [
+                "Mollitia provident ratione veritatis ea qui sed.",
+                "Ipsum blanditiis itaque omnis doloremque amet error."
+              ],
+              "capability": "18378234397864834016",
+              "created_at": "1980-10-08T10:36:03Z",
+              "created_by": "Laboriosam nihil totam placeat quis ex nesciunt.",
+              "default": false,
+              "description": "Exercitationem sunt.",
+              "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+              "name": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+              "owned": true,
+              "project_id": "Illo ut nobis excepturi laboriosam."
+            },
+            {
+              "access": [
+                "Mollitia provident ratione veritatis ea qui sed.",
+                "Ipsum blanditiis itaque omnis doloremque amet error."
+              ],
+              "capability": "18378234397864834016",
+              "created_at": "1980-10-08T10:36:03Z",
+              "created_by": "Laboriosam nihil totam placeat quis ex nesciunt.",
+              "default": false,
+              "description": "Exercitationem sunt.",
+              "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+              "name": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+              "owned": true,
+              "project_id": "Illo ut nobis excepturi laboriosam."
+            }
+          ]
+        },
+        "properties": {
+          "datasets": {
+            "example": [
+              {
+                "access": [
+                  "Mollitia provident ratione veritatis ea qui sed.",
+                  "Ipsum blanditiis itaque omnis doloremque amet error."
+                ],
+                "capability": "18378234397864834016",
+                "created_at": "1980-10-08T10:36:03Z",
+                "created_by": "Laboriosam nihil totam placeat quis ex nesciunt.",
+                "default": false,
+                "description": "Exercitationem sunt.",
+                "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                "name": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+                "owned": true,
+                "project_id": "Illo ut nobis excepturi laboriosam."
+              },
+              {
+                "access": [
+                  "Mollitia provident ratione veritatis ea qui sed.",
+                  "Ipsum blanditiis itaque omnis doloremque amet error."
+                ],
+                "capability": "18378234397864834016",
+                "created_at": "1980-10-08T10:36:03Z",
+                "created_by": "Laboriosam nihil totam placeat quis ex nesciunt.",
+                "default": false,
+                "description": "Exercitationem sunt.",
+                "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                "name": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+                "owned": true,
+                "project_id": "Illo ut nobis excepturi laboriosam."
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ProjectDataset"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "datasets"
+        ],
+        "type": "object"
+      },
       "ListProjectsResult": {
         "example": {
           "projects": [
             {
-              "account_id": "Qui perferendis quam autem aut sit.",
-              "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
-              "kind": "Aperiam et numquam atque dolorum consequuntur et.",
-              "name": "Iure sunt ipsum eius aperiam mollitia.",
-              "owner_user_id": "Est deleniti nihil.",
-              "parent_id": "Deleniti repellendus accusantium quis."
+              "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+              "kind": "workspace",
+              "name": "Great Barrier Reef Survey 2026",
+              "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+              "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
             },
             {
-              "account_id": "Qui perferendis quam autem aut sit.",
-              "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
-              "kind": "Aperiam et numquam atque dolorum consequuntur et.",
-              "name": "Iure sunt ipsum eius aperiam mollitia.",
-              "owner_user_id": "Est deleniti nihil.",
-              "parent_id": "Deleniti repellendus accusantium quis."
+              "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+              "kind": "workspace",
+              "name": "Great Barrier Reef Survey 2026",
+              "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+              "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
             },
             {
-              "account_id": "Qui perferendis quam autem aut sit.",
-              "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
-              "kind": "Aperiam et numquam atque dolorum consequuntur et.",
-              "name": "Iure sunt ipsum eius aperiam mollitia.",
-              "owner_user_id": "Est deleniti nihil.",
-              "parent_id": "Deleniti repellendus accusantium quis."
+              "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+              "kind": "workspace",
+              "name": "Great Barrier Reef Survey 2026",
+              "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+              "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
             }
           ]
         },
@@ -761,28 +1152,28 @@
           "projects": {
             "example": [
               {
-                "account_id": "Qui perferendis quam autem aut sit.",
-                "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
-                "kind": "Aperiam et numquam atque dolorum consequuntur et.",
-                "name": "Iure sunt ipsum eius aperiam mollitia.",
-                "owner_user_id": "Est deleniti nihil.",
-                "parent_id": "Deleniti repellendus accusantium quis."
+                "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                "kind": "workspace",
+                "name": "Great Barrier Reef Survey 2026",
+                "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
               },
               {
-                "account_id": "Qui perferendis quam autem aut sit.",
-                "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
-                "kind": "Aperiam et numquam atque dolorum consequuntur et.",
-                "name": "Iure sunt ipsum eius aperiam mollitia.",
-                "owner_user_id": "Est deleniti nihil.",
-                "parent_id": "Deleniti repellendus accusantium quis."
+                "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                "kind": "workspace",
+                "name": "Great Barrier Reef Survey 2026",
+                "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
               },
               {
-                "account_id": "Qui perferendis quam autem aut sit.",
-                "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
-                "kind": "Aperiam et numquam atque dolorum consequuntur et.",
-                "name": "Iure sunt ipsum eius aperiam mollitia.",
-                "owner_user_id": "Est deleniti nihil.",
-                "parent_id": "Deleniti repellendus accusantium quis."
+                "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                "kind": "workspace",
+                "name": "Great Barrier Reef Survey 2026",
+                "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
               }
             ],
             "items": {
@@ -799,22 +1190,20 @@
       "MemberProfile": {
         "example": {
           "capabilities": [
-            "Dolores qui animi.",
-            "Iste molestias nisi.",
-            "Nobis optio autem omnis cupiditate officia."
+            "read",
+            "write"
           ],
-          "display_name": "Temporibus odit sit officia est explicabo.",
-          "email": "Officiis illo sunt eos repudiandae aliquam.",
-          "kind": "Non eius non et.",
-          "user_id": "Labore vitae fugiat est sed."
+          "display_name": "Dr William Riker",
+          "email": "w.riker@csiro.au",
+          "kind": "user",
+          "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
         },
         "properties": {
           "capabilities": {
             "description": "Granted capabilities on the object (project or account grants)",
             "example": [
-              "Dolores qui animi.",
-              "Iste molestias nisi.",
-              "Nobis optio autem omnis cupiditate officia."
+              "read",
+              "write"
             ],
             "items": {
               "example": "Dolores qui animi.",
@@ -824,22 +1213,22 @@
           },
           "display_name": {
             "description": "Display name (empty if not available)",
-            "example": "Temporibus odit sit officia est explicabo.",
+            "example": "Dr William Riker",
             "type": "string"
           },
           "email": {
             "description": "Email (empty if not available or service principal)",
-            "example": "Officiis illo sunt eos repudiandae aliquam.",
+            "example": "w.riker@csiro.au",
             "type": "string"
           },
           "kind": {
             "description": "user | service",
-            "example": "Non eius non et.",
+            "example": "user",
             "type": "string"
           },
           "user_id": {
             "description": "Principal URN",
-            "example": "Labore vitae fugiat est sed.",
+            "example": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
             "type": "string"
           }
         },
@@ -855,18 +1244,18 @@
       "NotFoundT": {
         "description": "not found",
         "example": {
-          "id": "Non ratione velit.",
-          "message": "Odio nemo rerum ipsum inventore."
+          "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+          "message": "project not found"
         },
         "properties": {
           "id": {
             "description": "Resource identifier",
-            "example": "Non ratione velit.",
+            "example": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
             "type": "string"
           },
           "message": {
             "description": "Error message",
-            "example": "Odio nemo rerum ipsum inventore.",
+            "example": "project not found",
             "type": "string"
           }
         },
@@ -877,42 +1266,42 @@
       },
       "Project": {
         "example": {
-          "account_id": "Qui perferendis quam autem aut sit.",
-          "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
-          "kind": "Aperiam et numquam atque dolorum consequuntur et.",
-          "name": "Iure sunt ipsum eius aperiam mollitia.",
-          "owner_user_id": "Est deleniti nihil.",
-          "parent_id": "Deleniti repellendus accusantium quis."
+          "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+          "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+          "kind": "workspace",
+          "name": "Great Barrier Reef Survey 2026",
+          "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+          "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         },
         "properties": {
           "account_id": {
             "description": "Owning account URN",
-            "example": "Qui perferendis quam autem aut sit.",
+            "example": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
             "type": "string"
           },
           "id": {
             "description": "Project URN",
-            "example": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
+            "example": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
             "type": "string"
           },
           "kind": {
             "description": "personal | workspace",
-            "example": "Aperiam et numquam atque dolorum consequuntur et.",
+            "example": "workspace",
             "type": "string"
           },
           "name": {
             "description": "Display name",
-            "example": "Iure sunt ipsum eius aperiam mollitia.",
+            "example": "Great Barrier Reef Survey 2026",
             "type": "string"
           },
           "owner_user_id": {
             "description": "Owner user URN (record of provenance)",
-            "example": "Est deleniti nihil.",
+            "example": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
             "type": "string"
           },
           "parent_id": {
             "description": "Parent project URN, if any",
-            "example": "Deleniti repellendus accusantium quis.",
+            "example": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
             "type": "string"
           }
         },
@@ -925,21 +1314,132 @@
         ],
         "type": "object"
       },
+      "ProjectDataset": {
+        "example": {
+          "access": [
+            "Mollitia provident ratione veritatis ea qui sed.",
+            "Ipsum blanditiis itaque omnis doloremque amet error."
+          ],
+          "capability": "18378234397864834016",
+          "created_at": "1980-10-08T10:36:03Z",
+          "created_by": "Laboriosam nihil totam placeat quis ex nesciunt.",
+          "default": false,
+          "description": "Exercitationem sunt.",
+          "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+          "name": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+          "owned": true,
+          "project_id": "Illo ut nobis excepturi laboriosam."
+        },
+        "properties": {
+          "access": {
+            "description": "Access granted to the project: read, write",
+            "example": [
+              "Mollitia provident ratione veritatis ea qui sed.",
+              "Ipsum blanditiis itaque omnis doloremque amet error."
+            ],
+            "items": {
+              "example": "Mollitia provident ratione veritatis ea qui sed.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "capability": {
+            "description": "Datafabric capability for this dataset's data, as a decimal uint64; pass it as can-read and can-retract",
+            "example": "18378234397864834016",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "Creation time",
+            "example": "1980-10-08T10:36:03Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "created_by": {
+            "description": "Creator URN (user or principal); absent if created by the platform",
+            "example": "Laboriosam nihil totam placeat quis ex nesciunt.",
+            "type": "string"
+          },
+          "default": {
+            "description": "Whether this is the owning project's default dataset (same id as the project)",
+            "example": false,
+            "type": "boolean"
+          },
+          "description": {
+            "description": "Description",
+            "example": "Exercitationem sunt.",
+            "type": "string"
+          },
+          "id": {
+            "description": "Dataset URN",
+            "example": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name",
+            "example": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+            "type": "string"
+          },
+          "owned": {
+            "description": "Whether the project owns the dataset",
+            "example": true,
+            "type": "boolean"
+          },
+          "project_id": {
+            "description": "Owning project URN. The owner manages the dataset; access is by grant.",
+            "example": "Illo ut nobis excepturi laboriosam.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "owned",
+          "access",
+          "id",
+          "project_id",
+          "name",
+          "description",
+          "default",
+          "created_at",
+          "capability"
+        ],
+        "type": "object"
+      },
       "UnauthorizedT": {
         "description": "not authorized",
         "example": {
-          "message": "Enim aliquid eveniet facere cupiditate."
+          "message": "missing or expired token"
         },
         "properties": {
           "message": {
             "description": "Error message",
-            "example": "Enim aliquid eveniet facere cupiditate.",
+            "example": "missing or expired token",
             "type": "string"
           }
         },
         "required": [
           "message"
         ],
+        "type": "object"
+      },
+      "UpdateDatasetPayload": {
+        "description": "Request body for update-dataset.",
+        "example": {
+          "description": "14c",
+          "name": "u3y"
+        },
+        "properties": {
+          "description": {
+            "description": "New description",
+            "example": "14c",
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "name": {
+            "description": "New display name",
+            "example": "u3y",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
         "type": "object"
       },
       "UpdateProjectPayload": {
@@ -962,46 +1462,17 @@
       }
     },
     "securitySchemes": {
-      "bearer": {
-        "bearerFormat": "opaque",
-        "description": "An opaque ivcap_at_… access token issued by ivcap-id's /oauth2/token. It is not a JWT and carries no readable claims.",
+      "jwt_header_Authorization": {
+        "bearerFormat": "JWT",
+        "description": "ivcap-id-issued JWT whose sub is the caller's pseudonym (and, when project-scoped, project_id and the project's owning account)",
         "scheme": "bearer",
         "type": "http"
-      },
-      "oauth2": {
-        "description": "Obtain an access token from ivcap-id. Browser apps use the authorization code flow with PKCE (S256); the IVCAP CLI uses the device authorization flow.",
-        "flows": {
-          "authorizationCode": {
-            "authorizationUrl": "https://id.develop.ivcap.net/oauth2/auth",
-            "refreshUrl": "https://id.develop.ivcap.net/oauth2/token",
-            "scopes": {
-              "email": "Email claim in the ID token",
-              "offline_access": "Issue a refresh token",
-              "openid": "OpenID Connect sign-in",
-              "profile": "Basic profile claims in the ID token"
-            },
-            "tokenUrl": "https://id.develop.ivcap.net/oauth2/token"
-          },
-          "deviceAuthorization": {
-            "deviceAuthorizationUrl": "https://id.develop.ivcap.net/oauth2/device/auth",
-            "refreshUrl": "https://id.develop.ivcap.net/oauth2/token",
-            "scopes": {
-              "email": "Email claim in the ID token",
-              "offline_access": "Issue a refresh token",
-              "openid": "OpenID Connect sign-in",
-              "profile": "Basic profile claims in the ID token"
-            },
-            "tokenUrl": "https://id.develop.ivcap.net/oauth2/token"
-          }
-        },
-        "oauth2MetadataUrl": "https://id.develop.ivcap.net/.well-known/openid-configuration",
-        "type": "oauth2"
       }
     }
   },
   "info": {
-    "description": "Identity and account management for IVCAP: accounts, projects, membership, invitations and capabilities.\n\n## Authentication\n\nEvery endpoint except the JWKS and the capability vocabulary takes an access token in\nthe Authorization header:\n\n    Authorization: Bearer ivcap_at_…\n\nAccess tokens are opaque and short-lived. Obtain one, with a refresh token, from `/oauth2/token`:\n\n- **Browser apps**: the authorization code flow with PKCE, starting at `/oauth2/auth`.\n- **The IVCAP CLI and other headless tools**: the device authorization flow, starting at `/oauth2/device/auth`.\n\nThe OpenID Connect discovery document at `/.well-known/openid-configuration` lists every endpoint.",
-    "title": "IVCAP Identity \u0026 Accounts API",
+    "description": "Authentication and identity management for IVCAP",
+    "title": "IVCAP Identity Service",
     "version": "1.0.0"
   },
   "openapi": "3.2.0",
@@ -1023,9 +1494,9 @@
             "description": "OK response."
           }
         },
-        "summary": "list jwks",
+        "summary": "Get JSON Web Key Set",
         "tags": [
-          "jwks"
+          "Keys"
         ]
       }
     },
@@ -1040,24 +1511,24 @@
                 "example": {
                   "accounts": [
                     {
-                      "id": "Fuga cumque dolorem eum omnis rerum.",
-                      "kind": "Sint minus qui quaerat.",
-                      "name": "Molestiae iure autem ratione suscipit commodi rerum."
+                      "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "kind": "workspace",
+                      "name": "CSIRO Remote Sensing"
                     },
                     {
-                      "id": "Fuga cumque dolorem eum omnis rerum.",
-                      "kind": "Sint minus qui quaerat.",
-                      "name": "Molestiae iure autem ratione suscipit commodi rerum."
+                      "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "kind": "workspace",
+                      "name": "CSIRO Remote Sensing"
                     },
                     {
-                      "id": "Fuga cumque dolorem eum omnis rerum.",
-                      "kind": "Sint minus qui quaerat.",
-                      "name": "Molestiae iure autem ratione suscipit commodi rerum."
+                      "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "kind": "workspace",
+                      "name": "CSIRO Remote Sensing"
                     },
                     {
-                      "id": "Fuga cumque dolorem eum omnis rerum.",
-                      "kind": "Sint minus qui quaerat.",
-                      "name": "Molestiae iure autem ratione suscipit commodi rerum."
+                      "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "kind": "workspace",
+                      "name": "CSIRO Remote Sensing"
                     }
                   ]
                 },
@@ -1072,7 +1543,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Iusto ea facere in doloremque reiciendis sit."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -1085,7 +1556,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Sed cupiditate ut."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -1098,7 +1569,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Et ipsum asperiores sit eveniet laborum."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -1111,8 +1582,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Asperiores alias non.",
-                  "message": "Harum tempora velit ut repudiandae qui."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -1125,7 +1596,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Doloribus reprehenderit vero blanditiis perferendis at ut."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -1137,15 +1608,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "list-accounts accounts",
+        "summary": "List accounts",
         "tags": [
-          "accounts"
+          "Accounts"
         ]
       },
       "post": {
@@ -1170,9 +1638,9 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Autem dolorem quibusdam et consectetur corrupti aut.",
-                  "kind": "Ut mollitia.",
-                  "name": "Quis nisi."
+                  "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                  "kind": "workspace",
+                  "name": "CSIRO Remote Sensing"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Account"
@@ -1185,7 +1653,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Quidem ducimus incidunt atque at."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -1198,7 +1666,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Enim aliquid eveniet facere cupiditate."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -1211,7 +1679,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Voluptatem atque."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -1224,8 +1692,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Non ratione velit.",
-                  "message": "Odio nemo rerum ipsum inventore."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -1238,7 +1706,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Natus reiciendis eligendi minima."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -1250,15 +1718,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "create-account accounts",
+        "summary": "Create account",
         "tags": [
-          "accounts"
+          "Accounts"
         ]
       }
     },
@@ -1288,49 +1753,43 @@
                 "example": {
                   "invitations": [
                     {
-                      "account_id": "Ab voluptas dolores nihil corporis.",
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
                       "capabilities": [
-                        "Quae temporibus omnis sit quis perferendis sequi.",
-                        "Corporis qui voluptatem aspernatur.",
-                        "Aliquid nihil laboriosam ex sunt.",
-                        "Aut eum non error."
+                        "read",
+                        "write"
                       ],
-                      "email": "Sunt aut quidem qui nemo quis aut.",
-                      "expires_at": "Quam impedit officiis qui.",
-                      "id": "Perferendis nesciunt molestiae reprehenderit quis.",
-                      "kind": "Beatae minima ipsam dolorem totam cum.",
-                      "project_id": "Maiores quaerat.",
-                      "status": "Atque voluptates qui et dolor nostrum."
+                      "email": "w.riker@csiro.au",
+                      "expires_at": "2027-01-15T10:30:00Z",
+                      "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                      "kind": "project",
+                      "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "status": "pending"
                     },
                     {
-                      "account_id": "Ab voluptas dolores nihil corporis.",
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
                       "capabilities": [
-                        "Quae temporibus omnis sit quis perferendis sequi.",
-                        "Corporis qui voluptatem aspernatur.",
-                        "Aliquid nihil laboriosam ex sunt.",
-                        "Aut eum non error."
+                        "read",
+                        "write"
                       ],
-                      "email": "Sunt aut quidem qui nemo quis aut.",
-                      "expires_at": "Quam impedit officiis qui.",
-                      "id": "Perferendis nesciunt molestiae reprehenderit quis.",
-                      "kind": "Beatae minima ipsam dolorem totam cum.",
-                      "project_id": "Maiores quaerat.",
-                      "status": "Atque voluptates qui et dolor nostrum."
+                      "email": "w.riker@csiro.au",
+                      "expires_at": "2027-01-15T10:30:00Z",
+                      "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                      "kind": "project",
+                      "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "status": "pending"
                     },
                     {
-                      "account_id": "Ab voluptas dolores nihil corporis.",
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
                       "capabilities": [
-                        "Quae temporibus omnis sit quis perferendis sequi.",
-                        "Corporis qui voluptatem aspernatur.",
-                        "Aliquid nihil laboriosam ex sunt.",
-                        "Aut eum non error."
+                        "read",
+                        "write"
                       ],
-                      "email": "Sunt aut quidem qui nemo quis aut.",
-                      "expires_at": "Quam impedit officiis qui.",
-                      "id": "Perferendis nesciunt molestiae reprehenderit quis.",
-                      "kind": "Beatae minima ipsam dolorem totam cum.",
-                      "project_id": "Maiores quaerat.",
-                      "status": "Atque voluptates qui et dolor nostrum."
+                      "email": "w.riker@csiro.au",
+                      "expires_at": "2027-01-15T10:30:00Z",
+                      "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                      "kind": "project",
+                      "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "status": "pending"
                     }
                   ]
                 },
@@ -1345,7 +1804,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Est maxime perferendis facere rem."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -1358,7 +1817,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Suscipit possimus laudantium temporibus placeat."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -1371,7 +1830,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Voluptatibus et."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -1384,8 +1843,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Earum consectetur incidunt.",
-                  "message": "Sint atque omnis qui ea cumque provident."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -1398,7 +1857,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Id et aut ullam consectetur voluptas quos."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -1410,15 +1869,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "list-account-invitations accounts",
+        "summary": "List account invitations",
         "tags": [
-          "accounts"
+          "Invitations"
         ]
       },
       "post": {
@@ -1463,18 +1919,17 @@
             "content": {
               "application/json": {
                 "example": {
-                  "account_id": "In nesciunt ut molestiae qui dolorum voluptatem.",
+                  "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
                   "capabilities": [
-                    "Qui aliquam fugit tenetur qui dolores dicta.",
-                    "Alias provident expedita doloremque sit laudantium.",
-                    "Tempore excepturi et omnis numquam magnam."
+                    "read",
+                    "write"
                   ],
-                  "email": "Est totam id illo.",
-                  "expires_at": "Aperiam quod aut impedit.",
-                  "id": "At doloremque dolorum reiciendis corporis totam eos.",
-                  "kind": "Aut nemo maxime.",
-                  "project_id": "Quia quis nihil voluptatem quam dolores est.",
-                  "status": "Rem distinctio tempore aperiam veniam."
+                  "email": "w.riker@csiro.au",
+                  "expires_at": "2027-01-15T10:30:00Z",
+                  "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                  "kind": "project",
+                  "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "status": "pending"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Invitation"
@@ -1487,7 +1942,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Iste ipsum labore inventore saepe qui."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -1500,7 +1955,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Et laborum."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -1513,7 +1968,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Assumenda dolor veniam natus cum corrupti voluptatem."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -1526,8 +1981,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Sit alias quisquam iure.",
-                  "message": "Sunt beatae quis enim sint."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -1540,7 +1995,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Architecto quo ea soluta."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -1552,15 +2007,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "create-account-invitation accounts",
+        "summary": "Create account invitation",
         "tags": [
-          "accounts"
+          "Invitations"
         ]
       }
     },
@@ -1588,9 +2040,9 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Ut distinctio nihil odit repellendus placeat cum.",
-                  "kind": "Est modi nam.",
-                  "name": "Veniam unde."
+                  "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                  "kind": "workspace",
+                  "name": "CSIRO Remote Sensing"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Account"
@@ -1603,7 +2055,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Consequatur dolorem dolorem."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -1616,7 +2068,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Autem quis quidem asperiores nulla eum voluptate."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -1629,7 +2081,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Deleniti tenetur quia."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -1642,8 +2094,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Ut rerum.",
-                  "message": "Voluptas iusto sint delectus qui ducimus."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -1656,7 +2108,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Qui dolores nihil veritatis laudantium."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -1668,15 +2120,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "get-account accounts",
+        "summary": "Get account",
         "tags": [
-          "accounts"
+          "Accounts"
         ]
       }
     },
@@ -1726,7 +2175,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Eos itaque ut corporis omnis nisi ad."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -1739,7 +2188,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Et autem rerum."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -1752,7 +2201,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Architecto ratione itaque."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -1765,8 +2214,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Et id ut inventore.",
-                  "message": "Rerum non autem qui."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -1779,7 +2228,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Ipsa facilis corrupti est."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -1791,15 +2240,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "add-account-grant accounts",
+        "summary": "Add account grant",
         "tags": [
-          "accounts"
+          "Accounts"
         ]
       }
     },
@@ -1857,7 +2303,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Adipisci ut."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -1870,7 +2316,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Aliquid sit."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -1883,7 +2329,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Nemo maiores qui eum quis magnam."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -1896,8 +2342,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Et delectus qui sit.",
-                  "message": "Quibusdam nulla ipsa blanditiis minima aliquid qui."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -1910,7 +2356,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Quas aspernatur laboriosam laudantium molestias nobis vero."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -1922,15 +2368,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "remove-account-grant accounts",
+        "summary": "Remove account grant",
         "tags": [
-          "accounts"
+          "Accounts"
         ]
       }
     },
@@ -1961,25 +2404,23 @@
                   "members": [
                     {
                       "capabilities": [
-                        "Dolores qui animi.",
-                        "Iste molestias nisi.",
-                        "Nobis optio autem omnis cupiditate officia."
+                        "read",
+                        "write"
                       ],
-                      "display_name": "Temporibus odit sit officia est explicabo.",
-                      "email": "Officiis illo sunt eos repudiandae aliquam.",
-                      "kind": "Non eius non et.",
-                      "user_id": "Labore vitae fugiat est sed."
+                      "display_name": "Dr William Riker",
+                      "email": "w.riker@csiro.au",
+                      "kind": "user",
+                      "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
                     },
                     {
                       "capabilities": [
-                        "Dolores qui animi.",
-                        "Iste molestias nisi.",
-                        "Nobis optio autem omnis cupiditate officia."
+                        "read",
+                        "write"
                       ],
-                      "display_name": "Temporibus odit sit officia est explicabo.",
-                      "email": "Officiis illo sunt eos repudiandae aliquam.",
-                      "kind": "Non eius non et.",
-                      "user_id": "Labore vitae fugiat est sed."
+                      "display_name": "Dr William Riker",
+                      "email": "w.riker@csiro.au",
+                      "kind": "user",
+                      "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
                     }
                   ]
                 },
@@ -1994,7 +2435,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Similique at nobis quas error eius quia."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -2007,7 +2448,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Laboriosam quod dicta."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -2020,7 +2461,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Voluptas ut praesentium."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -2033,8 +2474,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Pariatur laboriosam excepturi accusantium dignissimos est.",
-                  "message": "Enim assumenda magni sed qui eaque."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -2047,7 +2488,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Et debitis."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -2059,15 +2500,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "list-account-members accounts",
+        "summary": "List account members",
         "tags": [
-          "accounts"
+          "Accounts"
         ]
       }
     },
@@ -2111,7 +2549,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Nihil voluptatem."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -2124,7 +2562,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Aliquid modi tenetur pariatur eos aliquid ipsam."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -2137,7 +2575,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Sit eos ullam necessitatibus."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -2150,8 +2588,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Eum vel consectetur quas ab.",
-                  "message": "Occaecati ut suscipit et minus eum hic."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -2164,7 +2602,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Nam aliquid voluptatem nemo."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -2176,15 +2614,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "remove-account-member accounts",
+        "summary": "Remove account member",
         "tags": [
-          "accounts"
+          "Accounts"
         ]
       }
     },
@@ -2214,28 +2649,28 @@
                 "example": {
                   "projects": [
                     {
-                      "account_id": "Qui perferendis quam autem aut sit.",
-                      "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
-                      "kind": "Aperiam et numquam atque dolorum consequuntur et.",
-                      "name": "Iure sunt ipsum eius aperiam mollitia.",
-                      "owner_user_id": "Est deleniti nihil.",
-                      "parent_id": "Deleniti repellendus accusantium quis."
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "kind": "workspace",
+                      "name": "Great Barrier Reef Survey 2026",
+                      "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                      "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                     },
                     {
-                      "account_id": "Qui perferendis quam autem aut sit.",
-                      "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
-                      "kind": "Aperiam et numquam atque dolorum consequuntur et.",
-                      "name": "Iure sunt ipsum eius aperiam mollitia.",
-                      "owner_user_id": "Est deleniti nihil.",
-                      "parent_id": "Deleniti repellendus accusantium quis."
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "kind": "workspace",
+                      "name": "Great Barrier Reef Survey 2026",
+                      "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                      "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                     },
                     {
-                      "account_id": "Qui perferendis quam autem aut sit.",
-                      "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
-                      "kind": "Aperiam et numquam atque dolorum consequuntur et.",
-                      "name": "Iure sunt ipsum eius aperiam mollitia.",
-                      "owner_user_id": "Est deleniti nihil.",
-                      "parent_id": "Deleniti repellendus accusantium quis."
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "kind": "workspace",
+                      "name": "Great Barrier Reef Survey 2026",
+                      "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                      "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                     }
                   ]
                 },
@@ -2250,7 +2685,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Et qui."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -2263,7 +2698,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Quo et voluptatem eum molestiae alias."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -2276,7 +2711,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Dicta amet sint tempore iure."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -2289,8 +2724,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Nemo nemo totam nam asperiores suscipit qui.",
-                  "message": "Ab odio laudantium temporibus in occaecati nostrum."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -2303,7 +2738,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Libero provident officia aut iusto assumenda."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -2315,15 +2750,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "list-account-projects accounts",
+        "summary": "List account projects",
         "tags": [
-          "accounts"
+          "Accounts"
         ]
       }
     },
@@ -2338,34 +2770,34 @@
                 "example": {
                   "account": [
                     {
-                      "description": "At voluptatum ut expedita commodi.",
-                      "name": "Consectetur minima."
+                      "description": "Read access to project resources and metadata",
+                      "name": "read"
                     },
                     {
-                      "description": "At voluptatum ut expedita commodi.",
-                      "name": "Consectetur minima."
+                      "description": "Read access to project resources and metadata",
+                      "name": "read"
                     },
                     {
-                      "description": "At voluptatum ut expedita commodi.",
-                      "name": "Consectetur minima."
+                      "description": "Read access to project resources and metadata",
+                      "name": "read"
                     },
                     {
-                      "description": "At voluptatum ut expedita commodi.",
-                      "name": "Consectetur minima."
+                      "description": "Read access to project resources and metadata",
+                      "name": "read"
                     }
                   ],
                   "project": [
                     {
-                      "description": "At voluptatum ut expedita commodi.",
-                      "name": "Consectetur minima."
+                      "description": "Read access to project resources and metadata",
+                      "name": "read"
                     },
                     {
-                      "description": "At voluptatum ut expedita commodi.",
-                      "name": "Consectetur minima."
+                      "description": "Read access to project resources and metadata",
+                      "name": "read"
                     },
                     {
-                      "description": "At voluptatum ut expedita commodi.",
-                      "name": "Consectetur minima."
+                      "description": "Read access to project resources and metadata",
+                      "name": "read"
                     }
                   ]
                 },
@@ -2377,9 +2809,873 @@
             "description": "OK response."
           }
         },
-        "summary": "list-capabilities accounts",
+        "summary": "List capabilities",
         "tags": [
-          "accounts"
+          "Capabilities"
+        ]
+      }
+    },
+    "/datasets/{id}": {
+      "delete": {
+        "description": "Soft-delete a dataset and revoke all access to it (gated on can_delete). A project's default dataset is deleted only with the project.",
+        "operationId": "accounts#delete-dataset",
+        "parameters": [
+          {
+            "description": "Dataset URN",
+            "example": "pz9",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Dataset URN",
+              "example": "pz9",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Delete dataset",
+        "tags": [
+          "Datasets"
+        ]
+      },
+      "get": {
+        "description": "Get a dataset (gated on can_read on the dataset or its owning project)",
+        "operationId": "accounts#get-dataset",
+        "parameters": [
+          {
+            "description": "Dataset URN",
+            "example": "pz9",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Dataset URN",
+              "example": "pz9",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "capability": "18378234397864834016",
+                  "created_at": "2012-10-12T23:42:17Z",
+                  "created_by": "Aliquid quod voluptas voluptas aut laudantium.",
+                  "default": false,
+                  "description": "Rerum ab molestiae.",
+                  "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "name": "Corrupti vel qui rerum facere et voluptas.",
+                  "project_id": "Quibusdam recusandae sapiente placeat vero exercitationem."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Dataset"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Get dataset",
+        "tags": [
+          "Datasets"
+        ]
+      },
+      "patch": {
+        "description": "Update a dataset's name or description (gated on can_share)",
+        "operationId": "accounts#update-dataset",
+        "parameters": [
+          {
+            "description": "Dataset URN",
+            "example": "z5n",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Dataset URN",
+              "example": "z5n",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "description": "14c",
+                "name": "u3y"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDatasetPayload"
+              }
+            }
+          },
+          "description": "Request body for update-dataset.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "capability": "18378234397864834016",
+                  "created_at": "1998-05-26T11:56:33Z",
+                  "created_by": "Dolorum ipsa molestiae earum placeat itaque.",
+                  "default": true,
+                  "description": "Recusandae reprehenderit et consequatur tempora accusantium in.",
+                  "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "name": "Quis aut aut excepturi sed.",
+                  "project_id": "Quia ad neque et perferendis nam."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Dataset"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Update dataset",
+        "tags": [
+          "Datasets"
+        ]
+      }
+    },
+    "/datasets/{id}/events": {
+      "get": {
+        "description": "A dataset's audit history: creation, changes and every grant and revoke, with who made them (gated on can_share)",
+        "operationId": "accounts#list-dataset-events",
+        "parameters": [
+          {
+            "description": "Dataset URN",
+            "example": "pz9",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Dataset URN",
+              "example": "pz9",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "events": [
+                    {
+                      "access": "A assumenda distinctio reiciendis.",
+                      "action": "Vero fuga amet tempora facere sit.",
+                      "actor": "Doloremque quia.",
+                      "at": "1985-02-14T01:03:11Z",
+                      "grantee_id": "Ea veritatis tempore quo.",
+                      "grantee_kind": "In voluptatem voluptas perspiciatis quis minima."
+                    },
+                    {
+                      "access": "A assumenda distinctio reiciendis.",
+                      "action": "Vero fuga amet tempora facere sit.",
+                      "actor": "Doloremque quia.",
+                      "at": "1985-02-14T01:03:11Z",
+                      "grantee_id": "Ea veritatis tempore quo.",
+                      "grantee_kind": "In voluptatem voluptas perspiciatis quis minima."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListDatasetEventsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "List dataset events",
+        "tags": [
+          "Datasets"
+        ]
+      }
+    },
+    "/datasets/{id}/grants": {
+      "delete": {
+        "description": "Revoke a dataset grant. Either side may revoke: can_share on the dataset, or can_write on the grantee project.",
+        "operationId": "accounts#remove-dataset-grant",
+        "parameters": [
+          {
+            "allowEmptyValue": true,
+            "description": "project | service | public",
+            "example": "cum",
+            "in": "query",
+            "name": "grantee_kind",
+            "required": true,
+            "schema": {
+              "description": "project | service | public",
+              "example": "cum",
+              "maxLength": 32,
+              "type": "string"
+            }
+          },
+          {
+            "allowEmptyValue": true,
+            "description": "Project URN or principal URN; omitted for public",
+            "example": "c49",
+            "in": "query",
+            "name": "grantee_id",
+            "schema": {
+              "description": "Project URN or principal URN; omitted for public",
+              "example": "c49",
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "allowEmptyValue": true,
+            "description": "read | write (public is read only)",
+            "example": "duc",
+            "in": "query",
+            "name": "access",
+            "required": true,
+            "schema": {
+              "description": "read | write (public is read only)",
+              "example": "duc",
+              "maxLength": 32,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Dataset URN",
+            "example": "0md",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Dataset URN",
+              "example": "0md",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Remove dataset grant",
+        "tags": [
+          "Datasets"
+        ]
+      },
+      "get": {
+        "description": "List who may read or write a dataset (gated on can_share)",
+        "operationId": "accounts#list-dataset-grants",
+        "parameters": [
+          {
+            "description": "Dataset URN",
+            "example": "pz9",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Dataset URN",
+              "example": "pz9",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "grants": [
+                    {
+                      "access": "Modi amet veritatis dicta quae.",
+                      "granted_at": "1972-06-12T11:39:23Z",
+                      "granted_by": "Numquam quidem.",
+                      "grantee_id": "Tempore molestiae fugit atque.",
+                      "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+                    },
+                    {
+                      "access": "Modi amet veritatis dicta quae.",
+                      "granted_at": "1972-06-12T11:39:23Z",
+                      "granted_by": "Numquam quidem.",
+                      "grantee_id": "Tempore molestiae fugit atque.",
+                      "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+                    },
+                    {
+                      "access": "Modi amet veritatis dicta quae.",
+                      "granted_at": "1972-06-12T11:39:23Z",
+                      "granted_by": "Numquam quidem.",
+                      "grantee_id": "Tempore molestiae fugit atque.",
+                      "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListDatasetGrantsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "List dataset grants",
+        "tags": [
+          "Datasets"
+        ]
+      },
+      "post": {
+        "description": "Grant read or write on a dataset to a project, a service principal or everyone (read only). Needs can_share on the dataset and the access being granted; granting to a project also needs can_write on that project, so both sides consent.",
+        "operationId": "accounts#add-dataset-grant",
+        "parameters": [
+          {
+            "description": "Dataset URN",
+            "example": "0md",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Dataset URN",
+              "example": "0md",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "access": "952",
+                "grantee_id": "6xp",
+                "grantee_kind": "bju"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DatasetGrantPayload"
+              }
+            }
+          },
+          "description": "Request body for add-dataset-grant.",
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Add dataset grant",
+        "tags": [
+          "Datasets"
         ]
       }
     },
@@ -2394,34 +3690,30 @@
                 "example": {
                   "invitations": [
                     {
-                      "account_id": "Ab voluptas dolores nihil corporis.",
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
                       "capabilities": [
-                        "Quae temporibus omnis sit quis perferendis sequi.",
-                        "Corporis qui voluptatem aspernatur.",
-                        "Aliquid nihil laboriosam ex sunt.",
-                        "Aut eum non error."
+                        "read",
+                        "write"
                       ],
-                      "email": "Sunt aut quidem qui nemo quis aut.",
-                      "expires_at": "Quam impedit officiis qui.",
-                      "id": "Perferendis nesciunt molestiae reprehenderit quis.",
-                      "kind": "Beatae minima ipsam dolorem totam cum.",
-                      "project_id": "Maiores quaerat.",
-                      "status": "Atque voluptates qui et dolor nostrum."
+                      "email": "w.riker@csiro.au",
+                      "expires_at": "2027-01-15T10:30:00Z",
+                      "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                      "kind": "project",
+                      "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "status": "pending"
                     },
                     {
-                      "account_id": "Ab voluptas dolores nihil corporis.",
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
                       "capabilities": [
-                        "Quae temporibus omnis sit quis perferendis sequi.",
-                        "Corporis qui voluptatem aspernatur.",
-                        "Aliquid nihil laboriosam ex sunt.",
-                        "Aut eum non error."
+                        "read",
+                        "write"
                       ],
-                      "email": "Sunt aut quidem qui nemo quis aut.",
-                      "expires_at": "Quam impedit officiis qui.",
-                      "id": "Perferendis nesciunt molestiae reprehenderit quis.",
-                      "kind": "Beatae minima ipsam dolorem totam cum.",
-                      "project_id": "Maiores quaerat.",
-                      "status": "Atque voluptates qui et dolor nostrum."
+                      "email": "w.riker@csiro.au",
+                      "expires_at": "2027-01-15T10:30:00Z",
+                      "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                      "kind": "project",
+                      "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "status": "pending"
                     }
                   ]
                 },
@@ -2436,7 +3728,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Dolorem minus libero est ratione dolorem."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -2449,7 +3741,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Delectus sed consequatur et iure."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -2462,7 +3754,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Sit quibusdam commodi molestias et modi."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -2475,8 +3767,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Laboriosam quas rerum.",
-                  "message": "Necessitatibus doloremque consequatur qui enim illo."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -2489,7 +3781,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Non sint explicabo quis et iure."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -2501,15 +3793,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "list-my-invitations accounts",
+        "summary": "List my invitations",
         "tags": [
-          "accounts"
+          "Invitations"
         ]
       }
     },
@@ -2540,7 +3829,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Minima est soluta."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -2553,7 +3842,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Numquam non velit aut quaerat quaerat."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -2566,7 +3855,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Commodi harum quia."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -2579,8 +3868,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Suscipit omnis eum quisquam voluptas illo.",
-                  "message": "Sunt sed aspernatur accusantium illum."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -2593,7 +3882,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Accusantium quia voluptate."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -2605,15 +3894,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "revoke-invitation accounts",
+        "summary": "Revoke invitation",
         "tags": [
-          "accounts"
+          "Invitations"
         ]
       }
     },
@@ -2644,7 +3930,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Aspernatur architecto nobis."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -2657,7 +3943,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Rerum minus odio ex sequi."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -2670,7 +3956,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Laudantium reprehenderit eaque est voluptas."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -2683,8 +3969,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Beatae omnis nisi.",
-                  "message": "Laudantium est blanditiis qui ut et."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -2697,7 +3983,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Libero nihil voluptas placeat adipisci libero dicta."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -2709,15 +3995,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "accept-invitation accounts",
+        "summary": "Accept invitation",
         "tags": [
-          "accounts"
+          "Invitations"
         ]
       }
     },
@@ -2748,7 +4031,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Amet a ut occaecati commodi."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -2761,7 +4044,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Et fuga eligendi est facere."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -2774,7 +4057,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Enim quos."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -2787,8 +4070,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Nobis laboriosam quo ut voluptatibus ipsa aut.",
-                  "message": "Eos consequatur ut molestiae autem."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -2801,7 +4084,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Dolorem voluptas eveniet natus molestias laboriosam."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -2813,15 +4096,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "decline-invitation accounts",
+        "summary": "Decline invitation",
         "tags": [
-          "accounts"
+          "Invitations"
         ]
       }
     },
@@ -2836,20 +4116,20 @@
                 "example": {
                   "projects": [
                     {
-                      "account_id": "Qui perferendis quam autem aut sit.",
-                      "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
-                      "kind": "Aperiam et numquam atque dolorum consequuntur et.",
-                      "name": "Iure sunt ipsum eius aperiam mollitia.",
-                      "owner_user_id": "Est deleniti nihil.",
-                      "parent_id": "Deleniti repellendus accusantium quis."
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "kind": "workspace",
+                      "name": "Great Barrier Reef Survey 2026",
+                      "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                      "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                     },
                     {
-                      "account_id": "Qui perferendis quam autem aut sit.",
-                      "id": "Nesciunt blanditiis voluptas assumenda architecto explicabo doloribus.",
-                      "kind": "Aperiam et numquam atque dolorum consequuntur et.",
-                      "name": "Iure sunt ipsum eius aperiam mollitia.",
-                      "owner_user_id": "Est deleniti nihil.",
-                      "parent_id": "Deleniti repellendus accusantium quis."
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "kind": "workspace",
+                      "name": "Great Barrier Reef Survey 2026",
+                      "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                      "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                     }
                   ]
                 },
@@ -2864,7 +4144,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Necessitatibus quisquam non."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -2877,7 +4157,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Minus voluptatibus molestiae officiis optio dignissimos."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -2890,7 +4170,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "At delectus nulla est quo eos totam."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -2903,8 +4183,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Officiis rem quod neque sunt assumenda.",
-                  "message": "Vel amet non."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -2917,7 +4197,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Doloribus nesciunt quam quo laudantium."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -2929,15 +4209,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "list-my-projects accounts",
+        "summary": "List my projects",
         "tags": [
-          "accounts"
+          "Projects"
         ]
       },
       "post": {
@@ -2964,12 +4241,12 @@
             "content": {
               "application/json": {
                 "example": {
-                  "account_id": "Vitae temporibus nostrum deleniti quasi.",
-                  "id": "Soluta rerum enim rem voluptas rem.",
-                  "kind": "Dolorum qui rem.",
-                  "name": "Delectus provident possimus hic dolorem incidunt.",
-                  "owner_user_id": "Harum eius ut molestiae ratione consequatur.",
-                  "parent_id": "Et nam est voluptatem facere perspiciatis qui."
+                  "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "kind": "workspace",
+                  "name": "Great Barrier Reef Survey 2026",
+                  "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                  "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Project"
@@ -2982,7 +4259,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Qui perspiciatis ut repellat qui ut."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -2995,7 +4272,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Eum perferendis voluptas nostrum."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -3008,7 +4285,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Voluptas ut delectus rem cumque."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -3021,8 +4298,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Molestias alias possimus in.",
-                  "message": "Laudantium sed reiciendis error."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -3035,7 +4312,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Voluptatem officiis est."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -3047,15 +4324,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "create-project accounts",
+        "summary": "Create project",
         "tags": [
-          "accounts"
+          "Projects"
         ]
       }
     },
@@ -3086,7 +4360,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Et delectus ea ut consequatur."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -3099,7 +4373,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Ipsa velit provident repudiandae consectetur vel nihil."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -3112,7 +4386,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Ut deleniti."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -3125,8 +4399,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Nobis hic explicabo esse.",
-                  "message": "Dolore architecto."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -3139,7 +4413,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Ut quia."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -3151,15 +4425,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "delete-project accounts",
+        "summary": "Delete project",
         "tags": [
-          "accounts"
+          "Projects"
         ]
       },
       "get": {
@@ -3185,12 +4456,12 @@
             "content": {
               "application/json": {
                 "example": {
-                  "account_id": "Qui sit aut saepe eaque accusamus.",
-                  "id": "Quia nisi accusantium ab enim et laudantium.",
-                  "kind": "Sapiente voluptas quia aliquam facere unde sint.",
-                  "name": "Excepturi reiciendis veritatis odio voluptatibus.",
-                  "owner_user_id": "Qui iure omnis.",
-                  "parent_id": "Aliquid cum qui voluptas enim minima sit."
+                  "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "kind": "workspace",
+                  "name": "Great Barrier Reef Survey 2026",
+                  "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                  "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Project"
@@ -3203,7 +4474,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Voluptate natus explicabo maxime voluptas molestias."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -3216,7 +4487,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Consectetur repellat voluptatem soluta maiores beatae."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -3229,7 +4500,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Ipsum quis consequuntur atque."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -3242,8 +4513,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Saepe quos unde repudiandae.",
-                  "message": "Corrupti quam in molestiae."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -3256,7 +4527,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Reiciendis eum minima saepe voluptatibus quaerat."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -3268,15 +4539,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "get-project accounts",
+        "summary": "Get project",
         "tags": [
-          "accounts"
+          "Projects"
         ]
       },
       "patch": {
@@ -3316,12 +4584,12 @@
             "content": {
               "application/json": {
                 "example": {
-                  "account_id": "Nam et omnis dolor perspiciatis.",
-                  "id": "Dolores et occaecati.",
-                  "kind": "Odio qui repudiandae.",
-                  "name": "Officia quo fugit et totam quaerat.",
-                  "owner_user_id": "Et dolorem harum quia.",
-                  "parent_id": "Sed doloribus ut."
+                  "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "kind": "workspace",
+                  "name": "Great Barrier Reef Survey 2026",
+                  "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                  "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Project"
@@ -3334,7 +4602,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Commodi ipsam dolores."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -3347,7 +4615,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Dicta dolorem quam reiciendis ad ut."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -3360,7 +4628,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Deserunt aliquam corrupti."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -3373,8 +4641,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Maxime perspiciatis consequatur quibusdam vero excepturi minus.",
-                  "message": "Debitis dolorem quidem aut qui illo accusantium."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -3387,7 +4655,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Aliquid saepe."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -3399,15 +4667,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "update-project accounts",
+        "summary": "Update project",
         "tags": [
-          "accounts"
+          "Projects"
         ]
       }
     },
@@ -3438,7 +4703,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Quia nostrum ut odit."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -3451,7 +4716,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Laborum nesciunt sunt et."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -3464,7 +4729,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Est consectetur quo."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -3477,8 +4742,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Aperiam fugiat quia qui.",
-                  "message": "Facilis sit laborum delectus et repellat."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -3491,7 +4756,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Ea esse fuga."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -3503,15 +4768,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "leave-project accounts",
+        "summary": "Leave project",
         "tags": [
-          "accounts"
+          "Projects"
         ]
       }
     },
@@ -3542,47 +4804,43 @@
                   "members": [
                     {
                       "capabilities": [
-                        "Dolores qui animi.",
-                        "Iste molestias nisi.",
-                        "Nobis optio autem omnis cupiditate officia."
+                        "read",
+                        "write"
                       ],
-                      "display_name": "Temporibus odit sit officia est explicabo.",
-                      "email": "Officiis illo sunt eos repudiandae aliquam.",
-                      "kind": "Non eius non et.",
-                      "user_id": "Labore vitae fugiat est sed."
+                      "display_name": "Dr William Riker",
+                      "email": "w.riker@csiro.au",
+                      "kind": "user",
+                      "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
                     },
                     {
                       "capabilities": [
-                        "Dolores qui animi.",
-                        "Iste molestias nisi.",
-                        "Nobis optio autem omnis cupiditate officia."
+                        "read",
+                        "write"
                       ],
-                      "display_name": "Temporibus odit sit officia est explicabo.",
-                      "email": "Officiis illo sunt eos repudiandae aliquam.",
-                      "kind": "Non eius non et.",
-                      "user_id": "Labore vitae fugiat est sed."
+                      "display_name": "Dr William Riker",
+                      "email": "w.riker@csiro.au",
+                      "kind": "user",
+                      "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
                     },
                     {
                       "capabilities": [
-                        "Dolores qui animi.",
-                        "Iste molestias nisi.",
-                        "Nobis optio autem omnis cupiditate officia."
+                        "read",
+                        "write"
                       ],
-                      "display_name": "Temporibus odit sit officia est explicabo.",
-                      "email": "Officiis illo sunt eos repudiandae aliquam.",
-                      "kind": "Non eius non et.",
-                      "user_id": "Labore vitae fugiat est sed."
+                      "display_name": "Dr William Riker",
+                      "email": "w.riker@csiro.au",
+                      "kind": "user",
+                      "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
                     },
                     {
                       "capabilities": [
-                        "Dolores qui animi.",
-                        "Iste molestias nisi.",
-                        "Nobis optio autem omnis cupiditate officia."
+                        "read",
+                        "write"
                       ],
-                      "display_name": "Temporibus odit sit officia est explicabo.",
-                      "email": "Officiis illo sunt eos repudiandae aliquam.",
-                      "kind": "Non eius non et.",
-                      "user_id": "Labore vitae fugiat est sed."
+                      "display_name": "Dr William Riker",
+                      "email": "w.riker@csiro.au",
+                      "kind": "user",
+                      "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
                     }
                   ]
                 },
@@ -3597,7 +4855,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "In cum quia rerum doloribus."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -3610,7 +4868,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Est quia assumenda aut itaque."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -3623,7 +4881,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Neque enim nam sunt assumenda reiciendis maiores."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -3636,8 +4894,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Consequuntur similique explicabo numquam magni nulla nostrum.",
-                  "message": "Occaecati vel dolorem adipisci asperiores voluptates."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -3650,7 +4908,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Alias dolorem iste et nesciunt provident aut."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -3662,15 +4920,285 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "list-project-members accounts",
+        "summary": "List project members",
         "tags": [
-          "accounts"
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{project_id}/datasets": {
+      "get": {
+        "description": "List the datasets a project owns or has been granted, with the access granted to it (gated on can_read on the project)",
+        "operationId": "accounts#list-project-datasets",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "zg9",
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "zg9",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "datasets": [
+                    {
+                      "access": [
+                        "Mollitia provident ratione veritatis ea qui sed.",
+                        "Ipsum blanditiis itaque omnis doloremque amet error."
+                      ],
+                      "capability": "18378234397864834016",
+                      "created_at": "1980-10-08T10:36:03Z",
+                      "created_by": "Laboriosam nihil totam placeat quis ex nesciunt.",
+                      "default": false,
+                      "description": "Exercitationem sunt.",
+                      "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "name": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+                      "owned": true,
+                      "project_id": "Illo ut nobis excepturi laboriosam."
+                    },
+                    {
+                      "access": [
+                        "Mollitia provident ratione veritatis ea qui sed.",
+                        "Ipsum blanditiis itaque omnis doloremque amet error."
+                      ],
+                      "capability": "18378234397864834016",
+                      "created_at": "1980-10-08T10:36:03Z",
+                      "created_by": "Laboriosam nihil totam placeat quis ex nesciunt.",
+                      "default": false,
+                      "description": "Exercitationem sunt.",
+                      "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "name": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+                      "owned": true,
+                      "project_id": "Illo ut nobis excepturi laboriosam."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListProjectDatasetsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "List project datasets",
+        "tags": [
+          "Datasets"
+        ]
+      },
+      "post": {
+        "description": "Create a dataset owned by a project (gated on can_write on the project). The project's readers can read it and its writers can write it.",
+        "operationId": "accounts#create-dataset",
+        "parameters": [
+          {
+            "description": "Owning project URN",
+            "example": "aff",
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "description": "Owning project URN",
+              "example": "aff",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "description": "zr1",
+                "name": "kti"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateDatasetPayload"
+              }
+            }
+          },
+          "description": "Request body for create-dataset.",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "capability": "18378234397864834016",
+                  "created_at": "2011-07-10T08:03:41Z",
+                  "created_by": "Reiciendis et quaerat.",
+                  "default": false,
+                  "description": "Quo dicta voluptate aut dolor dolor voluptas.",
+                  "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "name": "Fugiat non rerum consequatur.",
+                  "project_id": "Aut sed est dolor nam nisi."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Dataset"
+                }
+              }
+            },
+            "description": "Created response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Create dataset",
+        "tags": [
+          "Datasets"
         ]
       }
     },
@@ -3721,7 +5249,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Voluptatibus pariatur ipsa dolor rem."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -3734,7 +5262,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Sunt consequuntur in."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -3747,7 +5275,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Omnis pariatur quia eos facilis tenetur."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -3760,8 +5288,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Omnis nemo dolor ut similique repudiandae.",
-                  "message": "Minus similique fugit et eos."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -3774,7 +5302,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Aut sunt ea."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -3786,15 +5314,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "add-project-grant accounts",
+        "summary": "Add project grant",
         "tags": [
-          "accounts"
+          "Projects"
         ]
       }
     },
@@ -3866,7 +5391,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Molestiae et eius rerum."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -3879,7 +5404,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Assumenda fuga cum ducimus qui."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -3892,7 +5417,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Rerum in quia."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -3905,8 +5430,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Sit beatae officia.",
-                  "message": "Esse facere et."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -3919,7 +5444,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Dolor vero labore rerum dignissimos non aut."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -3931,15 +5456,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "remove-project-grant accounts",
+        "summary": "Remove project grant",
         "tags": [
-          "accounts"
+          "Projects"
         ]
       }
     },
@@ -3969,34 +5491,30 @@
                 "example": {
                   "invitations": [
                     {
-                      "account_id": "Ab voluptas dolores nihil corporis.",
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
                       "capabilities": [
-                        "Quae temporibus omnis sit quis perferendis sequi.",
-                        "Corporis qui voluptatem aspernatur.",
-                        "Aliquid nihil laboriosam ex sunt.",
-                        "Aut eum non error."
+                        "read",
+                        "write"
                       ],
-                      "email": "Sunt aut quidem qui nemo quis aut.",
-                      "expires_at": "Quam impedit officiis qui.",
-                      "id": "Perferendis nesciunt molestiae reprehenderit quis.",
-                      "kind": "Beatae minima ipsam dolorem totam cum.",
-                      "project_id": "Maiores quaerat.",
-                      "status": "Atque voluptates qui et dolor nostrum."
+                      "email": "w.riker@csiro.au",
+                      "expires_at": "2027-01-15T10:30:00Z",
+                      "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                      "kind": "project",
+                      "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "status": "pending"
                     },
                     {
-                      "account_id": "Ab voluptas dolores nihil corporis.",
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
                       "capabilities": [
-                        "Quae temporibus omnis sit quis perferendis sequi.",
-                        "Corporis qui voluptatem aspernatur.",
-                        "Aliquid nihil laboriosam ex sunt.",
-                        "Aut eum non error."
+                        "read",
+                        "write"
                       ],
-                      "email": "Sunt aut quidem qui nemo quis aut.",
-                      "expires_at": "Quam impedit officiis qui.",
-                      "id": "Perferendis nesciunt molestiae reprehenderit quis.",
-                      "kind": "Beatae minima ipsam dolorem totam cum.",
-                      "project_id": "Maiores quaerat.",
-                      "status": "Atque voluptates qui et dolor nostrum."
+                      "email": "w.riker@csiro.au",
+                      "expires_at": "2027-01-15T10:30:00Z",
+                      "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                      "kind": "project",
+                      "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "status": "pending"
                     }
                   ]
                 },
@@ -4011,7 +5529,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Quis quisquam perspiciatis facere quod."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -4024,7 +5542,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Eos aut aut ea est."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -4037,7 +5555,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Magni voluptatem saepe id a voluptates."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -4050,8 +5568,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Impedit esse quo dolor quis non.",
-                  "message": "Sit voluptatem mollitia quia aliquam magnam amet."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -4064,7 +5582,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Error eos esse quisquam facilis officia."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -4076,15 +5594,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "list-project-invitations accounts",
+        "summary": "List project invitations",
         "tags": [
-          "accounts"
+          "Invitations"
         ]
       },
       "post": {
@@ -4129,18 +5644,17 @@
             "content": {
               "application/json": {
                 "example": {
-                  "account_id": "In repudiandae ut.",
+                  "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
                   "capabilities": [
-                    "Neque in consectetur earum.",
-                    "Exercitationem eligendi natus.",
-                    "Qui in soluta."
+                    "read",
+                    "write"
                   ],
-                  "email": "Rerum est qui ut iusto et.",
-                  "expires_at": "Voluptas quis velit quo.",
-                  "id": "Aut odit.",
-                  "kind": "Saepe mollitia quisquam quia.",
-                  "project_id": "Est beatae repellat consequuntur culpa.",
-                  "status": "Aut veritatis odio perspiciatis fugiat."
+                  "email": "w.riker@csiro.au",
+                  "expires_at": "2027-01-15T10:30:00Z",
+                  "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                  "kind": "project",
+                  "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "status": "pending"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/Invitation"
@@ -4153,7 +5667,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Reiciendis et nemo."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -4166,7 +5680,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Veniam consequatur excepturi."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -4179,7 +5693,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Fugit delectus."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -4192,8 +5706,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Neque aut nihil dolorum neque error.",
-                  "message": "Est nam."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -4206,7 +5720,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Voluptatibus omnis aut iusto."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -4218,15 +5732,12 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "create-invitation accounts",
+        "summary": "Create project invitation",
         "tags": [
-          "accounts"
+          "Invitations"
         ]
       }
     },
@@ -4284,7 +5795,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Ipsa enim."
+                  "message": "account_id is required when parent_id is not given"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/BadRequestT"
@@ -4297,7 +5808,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Commodi ea odit placeat fugiat vero."
+                  "message": "missing or expired token"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/UnauthorizedT"
@@ -4310,7 +5821,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Eveniet provident amet omnis."
+                  "message": "insufficient capabilities on this resource"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ForbiddenT"
@@ -4323,8 +5834,8 @@
             "content": {
               "application/json": {
                 "example": {
-                  "id": "Voluptatum accusamus ut.",
-                  "message": "Quo et."
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/NotFoundT"
@@ -4337,7 +5848,7 @@
             "content": {
               "application/json": {
                 "example": {
-                  "message": "Molestias sed maxime."
+                  "message": "a project with this name already exists in the account"
                 },
                 "schema": {
                   "$ref": "#/components/schemas/ConflictT"
@@ -4349,33 +5860,43 @@
         },
         "security": [
           {
-            "oauth2": []
-          },
-          {
-            "bearer": []
+            "jwt_header_Authorization": []
           }
         ],
-        "summary": "remove-project-member accounts",
+        "summary": "Remove project member",
         "tags": [
-          "accounts"
+          "Projects"
         ]
       }
     }
   },
   "servers": [
     {
-      "description": "IVCAP identity service",
-      "url": "https://id.develop.ivcap.net"
+      "description": "Public listener — ingress-reachable",
+      "name": "public",
+      "url": "http://localhost:8002"
     }
   ],
   "tags": [
     {
-      "description": "JWKS public key endpoint",
-      "name": "jwks"
+      "description": "Public keys for verifying the tokens ivcap-id signs.",
+      "name": "Keys"
     },
     {
-      "description": "Account, project and invitation lifecycle management",
-      "name": "accounts"
+      "description": "Workspace accounts, which own projects: membership and account-level capability grants.",
+      "name": "Accounts"
+    },
+    {
+      "description": "The capabilities that can be granted on each kind of object. No authentication required.",
+      "name": "Capabilities"
+    },
+    {
+      "description": "Invite people by email to an account or project, and answer the invitations sent to you.",
+      "name": "Invitations"
+    },
+    {
+      "description": "Projects within an account: lifecycle, members and project-level capability grants.",
+      "name": "Projects"
     }
   ]
 }

@@ -1,16 +1,19 @@
-## ivcap context get
+## ivcap context dataset list
 
-Display the current context
+List the datasets a project owns or has been granted access to
+
+### Synopsis
+
+Lists the datasets of the given project, or of the current project if none is given.
 
 ```
-ivcap context get [all|name|account-id|project-id|url|access-token] [flags]
+ivcap context dataset list [project_id] [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help            help for get
-      --refresh-token   if set, refresh access token if expired
+  -h, --help   help for list
 ```
 
 ### Options inherited from parent commands
@@ -27,5 +30,5 @@ ivcap context get [all|name|account-id|project-id|url|access-token] [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
+* [ivcap context dataset](ivcap_context_dataset.md)	 - Manage datasets and who can access them
 

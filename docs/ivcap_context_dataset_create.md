@@ -1,16 +1,18 @@
-## ivcap context get
+## ivcap context dataset create
 
-Display the current context
+Create a dataset owned by a project
 
 ```
-ivcap context get [all|name|account-id|project-id|url|access-token] [flags]
+ivcap context dataset create --name <name> [--description <text>] [--project <urn>] [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help            help for get
-      --refresh-token   if set, refresh access token if expired
+  -d, --description string   Description
+  -h, --help                 help for create
+  -n, --name string          Display name for the new dataset
+      --project string       Owning project URN (default: the current project)
 ```
 
 ### Options inherited from parent commands
@@ -27,5 +29,5 @@ ivcap context get [all|name|account-id|project-id|url|access-token] [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
+* [ivcap context dataset](ivcap_context_dataset.md)	 - Manage datasets and who can access them
 

@@ -2,6 +2,14 @@
 
 Create a new project
 
+### Synopsis
+
+Create a new project under a workspace account.
+
+If --account-id is omitted on an interactive terminal, you will be prompted to
+select from your workspace accounts or create a new one. In non-interactive mode
+(CI, --access-token flag, piped stdin) --account-id is required.
+
 ```
 ivcap context project create --name <name> [--account-id <urn>] [flags]
 ```

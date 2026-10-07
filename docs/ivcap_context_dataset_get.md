@@ -1,16 +1,15 @@
-## ivcap context get
+## ivcap context dataset get
 
-Display the current context
+Fetch details about a single dataset
 
 ```
-ivcap context get [all|name|account-id|project-id|url|access-token] [flags]
+ivcap context dataset get dataset_urn [flags]
 ```
 
 ### Options
 
 ```
-  -h, --help            help for get
-      --refresh-token   if set, refresh access token if expired
+  -h, --help   help for get
 ```
 
 ### Options inherited from parent commands
@@ -27,5 +26,5 @@ ivcap context get [all|name|account-id|project-id|url|access-token] [flags]
 
 ### SEE ALSO
 
-* [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
+* [ivcap context dataset](ivcap_context_dataset.md)	 - Manage datasets and who can access them
 

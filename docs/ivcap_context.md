@@ -26,6 +26,7 @@ Manage deployment access, projects, and accounts
 * [ivcap context account](ivcap_context_account.md)	 - Manage accounts you belong to
 * [ivcap context capabilities](ivcap_context_capabilities.md)	 - List the capabilities grantable on projects and accounts
 * [ivcap context create](ivcap_context_create.md)	 - Create a new context
+* [ivcap context dataset](ivcap_context_dataset.md)	 - Manage datasets and who can access them
 * [ivcap context get](ivcap_context_get.md)	 - Display the current context
 * [ivcap context invitation](ivcap_context_invitation.md)	 - Respond to invitations addressed to you
 * [ivcap context list](ivcap_context_list.md)	 - List all context
