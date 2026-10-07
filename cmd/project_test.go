@@ -319,3 +319,23 @@ func TestResolveProjectName(t *testing.T) {
 		t.Errorf("non-interactive: %v", err)
 	}
 }
+
+func TestSetCurrentProjectSavesNames(t *testing.T) {
+	srv, _ := recordingServer(t, `{"id":"urn:ivcap:account:a1","kind":"workspace","name":"ACME Corp"}`)
+	defer srv.Close()
+	setTestContext(t, srv.URL, "")
+
+	ctxt := GetActiveContext()
+	p := &accountsapi.Project{Id: "urn:ivcap:project:p1", Name: "Apollo", AccountId: "urn:ivcap:account:a1"}
+	silentOrig := silent
+	silent = true
+	defer func() { silent = silentOrig }()
+	if err := setCurrentProject(ctxt, p); err != nil {
+		t.Fatal(err)
+	}
+
+	got := GetActiveContext()
+	if got.CurrentProjectName != "Apollo" || got.CurrentAccountName != "ACME Corp" {
+		t.Errorf("saved names = %q / %q, want Apollo / ACME Corp", got.CurrentProjectName, got.CurrentAccountName)
+	}
+}

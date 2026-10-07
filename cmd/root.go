@@ -108,6 +108,10 @@ type Context struct {
 
 	// CurrentProject is forwarded to the server-side resolver via PROJECT_HEADER.
 	CurrentProject string `yaml:"current-project,omitempty"`
+	// Display names saved by `project use`, so `context current` can show them
+	// without a network call. They can go stale if renamed elsewhere.
+	CurrentProjectName string `yaml:"current-project-name,omitempty"`
+	CurrentAccountName string `yaml:"current-account-name,omitempty"`
 
 	// User Information
 	AccountName     string `yaml:"account-name"`

@@ -202,6 +202,14 @@ var useContextCmd = &cobra.Command{
 	},
 }
 
+// currentOrHint renders "name  id (@N)", or the hint if the id is unset.
+func currentOrHint(name, id, hint string) string {
+	if id == "" {
+		return hint
+	}
+	return whoamiTarget(name, id)
+}
+
 var getContextCmd = &cobra.Command{
 	Use:     "get [all|name|account-id|project-id|url|access-token]",
 	Short:   "Display the current context",
@@ -234,18 +242,24 @@ var getContextCmd = &cobra.Command{
 		case "all":
 			t := table.NewWriter()
 			t.SetOutputMirror(os.Stdout)
-			t.AppendRow(table.Row{"Name", context.Name})
-			t.AppendRow(table.Row{"URL", context.URL})
-			t.AppendRow(table.Row{"Account ID", context.AccountID})
-			if context.CurrentProject != "" {
-				t.AppendRow(table.Row{"Current Project", context.CurrentProject})
+			t.AppendRow(table.Row{"Context", context.Name})
+			t.AppendRow(table.Row{"API URL", context.URL})
+			if context.IdentityURL != "" {
+				t.AppendRow(table.Row{"Identity URL", context.IdentityURL})
 			}
-			isAuth := "no"
+			if context.Email != "" {
+				t.AppendRow(table.Row{"User", context.Email})
+			}
+			t.AppendRow(table.Row{"Current Account", currentOrHint(context.CurrentAccountName, context.AccountID,
+				"none (selected along with a project)")})
+			t.AppendRow(table.Row{"Current Project", currentOrHint(context.CurrentProjectName, context.CurrentProject,
+				"none (run 'ivcap context project use')")})
+			isAuth := "no (run 'ivcap context login')"
 			if IsAuthorised() {
 				if accessTokenProvided {
 					isAuth = fmt.Sprintf("unknown, token provided via '--access-token' flag or environment variable '%s'", ACCESS_TOKEN_ENV)
 				} else {
-					isAuth = fmt.Sprintf("yes, refreshing after %s", context.AccessTokenExpiry.Format(time.RFC822))
+					isAuth = fmt.Sprintf("yes (access token refreshes after %s)", context.AccessTokenExpiry.Format(time.RFC822))
 				}
 			}
 			t.AppendRow(table.Row{"Authorised", isAuth})

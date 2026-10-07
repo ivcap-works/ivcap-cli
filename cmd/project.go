@@ -468,11 +468,30 @@ func runProjectInvite(cmd *cobra.Command, args []string) error {
 	return a.ReplyPrinter(res, outputFormat == "yaml")
 }
 
+// lookupAccountName returns the display name of an account, or "" if it cannot
+// be read (the name is only a convenience, so failure is not an error).
+func lookupAccountName(id string) string {
+	if id == "" {
+		return ""
+	}
+	res, err := sdk.ReadAccountRaw(context.Background(), id, GetIdentityAdapter(true), logger)
+	if err != nil {
+		return ""
+	}
+	var acc accountsapi.Account
+	if err = res.AsType(&acc); err != nil {
+		return ""
+	}
+	return acc.Name
+}
+
 // setCurrentProject persists the selected project (and its account) to the active
 // context so subsequent authenticated requests carry the Ivcap-Project header.
 func setCurrentProject(ctxt *Context, p *accountsapi.Project) error {
 	ctxt.CurrentProject = p.Id
+	ctxt.CurrentProjectName = p.Name
 	ctxt.AccountID = p.AccountId
+	ctxt.CurrentAccountName = lookupAccountName(p.AccountId)
 	SetContext(ctxt, true)
 	if !silent {
 		id := p.Id

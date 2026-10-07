@@ -67,8 +67,10 @@ var whoamiCmd = &cobra.Command{
 				Name:     ctxt.AccountName,
 				Nickname: ctxt.AccountNickName,
 			},
-			CurrentProject: ctxt.CurrentProject,
-			AccountID:      ctxt.AccountID,
+			CurrentProject:     ctxt.CurrentProject,
+			CurrentProjectName: ctxt.CurrentProjectName, // saved by 'project use'; refreshed below
+			AccountID:          ctxt.AccountID,
+			AccountName:        ctxt.CurrentAccountName,
 		}
 
 		// Best-effort: add the names of the current project and account. If the

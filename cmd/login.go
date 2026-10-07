@@ -71,7 +71,9 @@ var logoutCmd = &cobra.Command{
 		ctxt.IDToken = ""
 		ctxt.AuthMode = ""
 		ctxt.CurrentProject = ""
+		ctxt.CurrentProjectName = ""
 		ctxt.AccountID = ""
+		ctxt.CurrentAccountName = ""
 		SetContext(ctxt, true)
 		return
 	},
