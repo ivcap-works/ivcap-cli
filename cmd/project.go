@@ -17,10 +17,13 @@ package cmd
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	"github.com/ivcap-works/ivcap-cli/pkg/accountsapi"
@@ -179,15 +182,17 @@ var (
 		Short: "Create a new project",
 		Long: `Create a new project under a workspace account.
 
+If --name is omitted on an interactive terminal, you will be prompted for it.
 If --account-id is omitted on an interactive terminal, you will be prompted to
 select from your workspace accounts or create a new one. In non-interactive mode
-(CI, --access-token flag, piped stdin) --account-id is required.`,
+(CI, --access-token flag, piped stdin) --name and --account-id are required.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if projectName == "" {
-				return fmt.Errorf("please provide a name via --name")
+			name, err := resolveProjectName(projectName, isInteractive())
+			if err != nil {
+				return err
 			}
 			adpt := GetIdentityAdapter(true)
-			req := &accountsapi.CreateProjectPayload{Name: projectName}
+			req := &accountsapi.CreateProjectPayload{Name: name}
 			if projectAccountID != "" {
 				req.AccountId = &projectAccountID
 			} else {
@@ -197,7 +202,7 @@ select from your workspace accounts or create a new one. In non-interactive mode
 				}
 				req.AccountId = &accountID
 			}
-			res, err := sdk.CreateProjectRaw(context.Background(), req, adpt, logger)
+			res, err := createProjectAwaitingGrants(context.Background(), req, adpt)
 			if err != nil {
 				return err
 			}
@@ -516,6 +521,75 @@ func selectProjectInteractive(ctxt *Context) error {
 	return setCurrentProject(ctxt, &projects[n-1])
 }
 
+// resolveProjectName returns name, or prompts for one when it is empty and the
+// terminal is interactive.
+func resolveProjectName(name string, interactive bool) (string, error) {
+	if name != "" {
+		return name, nil
+	}
+	if !interactive {
+		return "", fmt.Errorf("please provide a name via --name")
+	}
+	fmt.Print("Enter a name for the new project: ")
+	line, _ := stdinReader.ReadString('\n')
+	name = strings.TrimSpace(line)
+	if name == "" {
+		return "", fmt.Errorf("project name cannot be empty")
+	}
+	return name, nil
+}
+
+// accountCreatedThisRun is the id of a workspace account this invocation has
+// just created, if any. Its creator grants reach the authorisation service
+// asynchronously (transactional outbox), so project creation under it may be
+// denied for a moment.
+var accountCreatedThisRun string
+
+// Variables so tests can shorten them.
+var (
+	grantPropagationTimeout  = 20 * time.Second
+	grantPropagationInterval = 1 * time.Second
+)
+
+// createProjectAwaitingGrants creates the project. If the target account was
+// created moments ago by this invocation, a can_create_project denial is
+// expected until the account's grants propagate, so retry for a short while
+// instead of surfacing it. Any other failure, or a denial on an account we did
+// not just create, is returned immediately.
+func createProjectAwaitingGrants(ctx context.Context, req *accountsapi.CreateProjectPayload, adpt *a.Adapter) (a.Payload, error) {
+	fresh := req.AccountId != nil && *req.AccountId == accountCreatedThisRun
+	deadline := time.Now().Add(grantPropagationTimeout)
+	announced := false
+	for {
+		res, err := sdk.CreateProjectRaw(ctx, req, adpt, logger)
+		if err == nil || !fresh || !isCreateProjectDenied(err) {
+			return res, err
+		}
+		if time.Now().Add(grantPropagationInterval).After(deadline) {
+			return nil, fmt.Errorf("account setup is still in progress after %s; "+
+				"try again shortly with 'ivcap context project create --name %s --account-id %s': %w",
+				grantPropagationTimeout, req.Name, *req.AccountId, err)
+		}
+		if !announced && !silent {
+			fmt.Fprintln(os.Stderr, "Waiting for account setup to complete...")
+			announced = true
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(grantPropagationInterval):
+		}
+	}
+}
+
+// isCreateProjectDenied reports whether err is the accounts service's 403 for
+// the can_create_project check.
+func isCreateProjectDenied(err error) bool {
+	var apiErr *a.ApiError
+	return errors.As(err, &apiErr) && apiErr.StatusCode == http.StatusForbidden &&
+		strings.Contains(err.Error(), "can_create_project")
+}
+
 // resolveAccountForProject returns the workspace account URN to assign to a new
 // project. On an interactive terminal it presents a picker; otherwise it fails
 // with a helpful error listing available workspace account URNs.
@@ -598,6 +672,7 @@ func createWorkspaceAccountInteractive(ctx context.Context, adpt *a.Adapter) (st
 	if err = pyl.AsType(&acc); err != nil {
 		return "", fmt.Errorf("failed to parse created account: %w", err)
 	}
+	accountCreatedThisRun = acc.Id
 	if !silent {
 		fmt.Printf("Created workspace account %q (%s)\n", acc.Name, acc.Id)
 	}

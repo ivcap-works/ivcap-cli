@@ -21,7 +21,9 @@ import (
 	"net/http/httptest"
 	"os"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/ivcap-works/ivcap-cli/pkg/accountsapi"
 )
@@ -220,5 +222,100 @@ func TestProjectCreateFlagSkipsResolution(t *testing.T) {
 	}
 	if req.body["account_id"] != "urn:ivcap:account:explicit" {
 		t.Errorf("POST /projects body: account_id = %v, want urn:ivcap:account:explicit", req.body["account_id"])
+	}
+}
+
+// deniedThenOK serves POST /projects with a can_create_project 403 for the
+// first `denials` calls, then 200. It returns the number of calls made.
+func deniedThenOK(t *testing.T, denials int) (*httptest.Server, func() int) {
+	t.Helper()
+	var mu sync.Mutex
+	calls := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		calls++
+		n := calls
+		mu.Unlock()
+		w.Header().Set("Content-Type", "application/json")
+		if n <= denials {
+			w.WriteHeader(http.StatusForbidden)
+			_, _ = w.Write([]byte(`{"message":"can_create_project on account:abc denied"}`))
+			return
+		}
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	return srv, func() int { mu.Lock(); defer mu.Unlock(); return calls }
+}
+
+func withFastGrantRetry(t *testing.T, account string) {
+	t.Helper()
+	oldT, oldI, oldA := grantPropagationTimeout, grantPropagationInterval, accountCreatedThisRun
+	grantPropagationTimeout, grantPropagationInterval = 300*time.Millisecond, 10*time.Millisecond
+	accountCreatedThisRun = account
+	t.Cleanup(func() {
+		grantPropagationTimeout, grantPropagationInterval, accountCreatedThisRun = oldT, oldI, oldA
+	})
+}
+
+func TestCreateProjectRetriesOnFreshAccount(t *testing.T) {
+	srv, calls := deniedThenOK(t, 2)
+	defer srv.Close()
+	setTestContext(t, srv.URL, "")
+	withFastGrantRetry(t, "urn:ivcap:account:new")
+
+	acct := "urn:ivcap:account:new"
+	if _, err := createProjectAwaitingGrants(context.Background(), &accountsapi.CreateProjectPayload{Name: "p", AccountId: &acct}, CreateAdapter(true)); err != nil {
+		t.Fatalf("expected success after retries, got %v", err)
+	}
+	if calls() != 3 {
+		t.Errorf("calls = %d, want 3", calls())
+	}
+}
+
+func TestCreateProjectGivesUpWithClearError(t *testing.T) {
+	srv, _ := deniedThenOK(t, 1000)
+	defer srv.Close()
+	setTestContext(t, srv.URL, "")
+	withFastGrantRetry(t, "urn:ivcap:account:new")
+
+	acct := "urn:ivcap:account:new"
+	_, err := createProjectAwaitingGrants(context.Background(), &accountsapi.CreateProjectPayload{Name: "p", AccountId: &acct}, CreateAdapter(true))
+	if err == nil || !strings.Contains(err.Error(), "account setup is still in progress") || !strings.Contains(err.Error(), "--account-id urn:ivcap:account:new") {
+		t.Errorf("expected propagation error, got %v", err)
+	}
+}
+
+func TestCreateProjectDoesNotRetryExistingAccount(t *testing.T) {
+	srv, calls := deniedThenOK(t, 1000)
+	defer srv.Close()
+	setTestContext(t, srv.URL, "")
+	withFastGrantRetry(t, "urn:ivcap:account:new")
+
+	acct := "urn:ivcap:account:other"
+	if _, err := createProjectAwaitingGrants(context.Background(), &accountsapi.CreateProjectPayload{Name: "p", AccountId: &acct}, CreateAdapter(true)); err == nil {
+		t.Fatal("expected the denial to be returned")
+	}
+	if calls() != 1 {
+		t.Errorf("calls = %d, want 1 (no retry for an account we didn't just create)", calls())
+	}
+}
+
+func TestResolveProjectName(t *testing.T) {
+	if got, err := resolveProjectName("given", true); err != nil || got != "given" {
+		t.Errorf("flag value: %q, %v", got, err)
+	}
+
+	useInput(t, "  typed  \n")
+	if got, err := resolveProjectName("", true); err != nil || got != "typed" {
+		t.Errorf("prompted: %q, %v", got, err)
+	}
+
+	useInput(t, "\n")
+	if _, err := resolveProjectName("", true); err == nil || !strings.Contains(err.Error(), "cannot be empty") {
+		t.Errorf("empty answer: %v", err)
+	}
+
+	if _, err := resolveProjectName("", false); err == nil || !strings.Contains(err.Error(), "--name") {
+		t.Errorf("non-interactive: %v", err)
 	}
 }
