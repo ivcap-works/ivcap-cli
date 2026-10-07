@@ -626,12 +626,13 @@ func resolveAccountForProject(ctx context.Context, adpt *a.Adapter) (string, err
 // final option.
 func selectAccountInteractive(ctx context.Context, adpt *a.Adapter, workspaces []accountsapi.Account) (string, error) {
 	if len(workspaces) == 0 {
-		fmt.Println("You don't have a workspace account yet.")
+		fmt.Println("You don't have a workspace account yet. Projects belong to workspace accounts\n(not personal ones), so let's create one.")
 		return createWorkspaceAccountInteractive(ctx, adpt)
 	}
 
 	createIdx := len(workspaces) + 1
-	fmt.Println("Select an account for this project:")
+	fmt.Println("Select an account for this project.")
+	fmt.Println("(Only workspace accounts are listed: projects can't be added to personal accounts.)")
 	for i, acc := range workspaces {
 		fmt.Printf("  [%d] %-30s  (%s)\n", i+1, acc.Name, acc.Id)
 	}
