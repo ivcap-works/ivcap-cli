@@ -147,12 +147,15 @@ var (
 	}
 
 	readProjectCmd = &cobra.Command{
-		Use:     "get [flags] project_id",
+		Use:     "get [flags] [project_id]",
 		Aliases: []string{"read"},
 		Short:   "Fetch details about a single project",
-		Args:    cobra.ExactArgs(1),
+		Args:    optionalArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id := GetHistory(args[0])
+			id, err := projectArg(args)
+			if err != nil {
+				return err
+			}
 			res, err := sdk.ReadProjectRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
@@ -223,7 +226,7 @@ select from your workspace accounts or create a new one. In non-interactive mode
 	leaveProjectCmd = &cobra.Command{
 		Use:   "leave project_id",
 		Short: "Leave a project (relinquish your grants)",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
 			_, err := sdk.LeaveProjectRaw(context.Background(), id, GetIdentityAdapter(true), logger)
@@ -241,7 +244,7 @@ select from your workspace accounts or create a new one. In non-interactive mode
 		Use:     "delete project_id",
 		Aliases: []string{"remove"},
 		Short:   "Delete a project",
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
 			_, err := sdk.DeleteProjectRaw(context.Background(), id, GetIdentityAdapter(true), logger)
@@ -256,11 +259,14 @@ select from your workspace accounts or create a new one. In non-interactive mode
 	}
 
 	membersProjectCmd = &cobra.Command{
-		Use:   "members project_id",
+		Use:   "members [project_id]",
 		Short: "List a project's members and their capabilities",
-		Args:  cobra.ExactArgs(1),
+		Args:  optionalArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id := GetHistory(args[0])
+			id, err := projectArg(args)
+			if err != nil {
+				return err
+			}
 			res, err := sdk.ListProjectMembersRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
@@ -286,7 +292,7 @@ select from your workspace accounts or create a new one. In non-interactive mode
 		Short: "Grant project capabilities to a user or service principal",
 		Long: `Grant one or more project capabilities to an existing member (user or service
 principal). List the grantable capabilities with 'ivcap context capabilities --kind project'.`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		RunE: runProjectGrant,
 	}
 
@@ -297,14 +303,14 @@ principal). List the grantable capabilities with 'ivcap context capabilities --k
 		Long: `Revoke individual project capabilities from a principal, leaving their remaining
 capabilities intact. To remove a principal from the project entirely, use
 'ivcap context project remove-member'.`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		RunE: runProjectRevokeCapability,
 	}
 
 	removeProjectMemberCmd = &cobra.Command{
 		Use:   "remove-member project_id (--user <urn> | --service <urn>)",
 		Short: "Remove a principal from a project entirely (revokes all their capabilities)",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			projectID := GetHistory(args[0])
 			kind, principalID, err := principalFromFlags()
@@ -327,16 +333,19 @@ capabilities intact. To remove a principal from the project entirely, use
 		Long: `Invite a user (by email) to a project, granting the given capabilities when they
 accept. If no capabilities are given and you are on an interactive terminal, you
 will be prompted to choose from the valid set.`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		RunE: runProjectInvite,
 	}
 
 	invitationsProjectCmd = &cobra.Command{
-		Use:   "invitations project_id",
+		Use:   "invitations [project_id]",
 		Short: "List the pending invitations on a project",
-		Args:  cobra.ExactArgs(1),
+		Args:  optionalArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id := GetHistory(args[0])
+			id, err := projectArg(args)
+			if err != nil {
+				return err
+			}
 			res, err := sdk.ListProjectInvitationsRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err

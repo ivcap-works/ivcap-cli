@@ -95,7 +95,7 @@ var (
 		Use:   "search <query>",
 		Short: "Search existing services",
 		Long:  "Convenience helper around 'service list --search'. The <query> is formed by joining all remaining arguments with spaces.",
-		Args:  cobra.MinimumNArgs(1),
+		Args:  minimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			q := strings.Join(args, " ")
 			req := &sdk.ListRequest{Limit: DEF_LIMIT, Search: &q}
@@ -126,7 +126,7 @@ var (
 		Use:     "get [flags] service_id",
 		Aliases: []string{"read"},
 		Short:   "Fetch details about a single service",
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := GetHistory(args[0])
 			req := &sdk.ReadServiceRequest{Id: recordID}
@@ -155,7 +155,7 @@ var (
 		Long: `Define a new service to available on the platform. The service is
 described in a service definition file. If the service definition is provided
 through 'stdin' use '-' as the file name and also include the --format flag`,
-		Args: cobra.ExactArgs(0),
+		Args: exactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
 

@@ -151,7 +151,7 @@ var (
 		Use:     "get [flags] artifact_id",
 		Aliases: []string{"read"},
 		Short:   "Fetch details about a single artifact",
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := GetHistory(args[0])
 			req := &sdk.ReadArtifactRequest{Id: recordID}
@@ -183,7 +183,7 @@ var (
 	downloadArtifactCmd = &cobra.Command{
 		Use:   "download artifact_id [flags] [-f file|-]",
 		Short: "Download the content associated with this artifact",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE:  downloadArtifact,
 	}
 
@@ -221,7 +221,7 @@ unavailable) pass -t tgz or -t application/x-compressed-tar explicitly.`,
 		Use:     "upload artifactID -f file|-",
 		Short:   "Resume uploading artifact content",
 		Aliases: []string{"resume"},
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 
 		Run: func(cmd *cobra.Command, args []string) {
 			artifactID := args[0]
@@ -276,7 +276,7 @@ unavailable) pass -t tgz or -t application/x-compressed-tar explicitly.`,
 	// 	Use:     "add-to-collection artifactID collectionName",
 	// 	Short:   "Add artifact to a collection",
 	// 	Aliases: []string{"add-collection"},
-	// 	Args:    cobra.ExactArgs(2),
+	// 	Args:    exactArgs(2),
 
 	// 	Run: func(cmd *cobra.Command, args []string) {
 	// 		artifactID := args[0]
@@ -314,7 +314,7 @@ unavailable) pass -t tgz or -t application/x-compressed-tar explicitly.`,
 	// 	Use:     "remove-from-collection artifactID collectionName",
 	// 	Short:   "Remove artifact from a collection",
 	// 	Aliases: []string{"remove-collection", "rm-collection"},
-	// 	Args:    cobra.ExactArgs(2),
+	// 	Args:    exactArgs(2),
 
 	// 	Run: func(cmd *cobra.Command, args []string) {
 	// 		artifactID := args[0]
@@ -334,7 +334,7 @@ unavailable) pass -t tgz or -t application/x-compressed-tar explicitly.`,
 // 		Use:     "add-metadata artifactID schemaName -f meta.json",
 // 		Short:   "Add artifact to a comma separated list of collections",
 // 		Aliases: []string{"add-meta"},
-// 		Args:    cobra.ExactArgs(2),
+// 		Args:    exactArgs(2),
 
 // 		Run: func(cmd *cobra.Command, args []string) {
 // 			artifactID := args[0]
@@ -357,7 +357,7 @@ unavailable) pass -t tgz or -t application/x-compressed-tar explicitly.`,
 // 		Use:     "remove-metadata artifactID schemaName",
 // 		Short:   "Remove artifact from a comma separated list of collections",
 // 		Aliases: []string{"remove-collection", "rm-collection"},
-// 		Args:    cobra.ExactArgs(2),
+// 		Args:    exactArgs(2),
 
 //		Run: func(cmd *cobra.Command, args []string) {
 //			artifactID := args[0]

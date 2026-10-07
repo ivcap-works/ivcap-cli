@@ -123,7 +123,7 @@ Datasets are addressed by URN (urn:ivcap:dataset:<uuid>).`,
 		Use:     "get dataset_urn",
 		Aliases: []string{"read"},
 		Short:   "Fetch details about a single dataset",
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := datasetArg(args[0])
 			if err != nil {
@@ -172,7 +172,7 @@ Datasets are addressed by URN (urn:ivcap:dataset:<uuid>).`,
 	updateDatasetCmd = &cobra.Command{
 		Use:   "update dataset_urn [--name <name>] [--description <text>]",
 		Short: "Change a dataset's name or description",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := datasetArg(args[0])
 			if err != nil {
@@ -200,7 +200,7 @@ Datasets are addressed by URN (urn:ivcap:dataset:<uuid>).`,
 		Use:     "delete dataset_urn",
 		Aliases: []string{"remove"},
 		Short:   "Delete a dataset (not yet supported)",
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Deliberately makes no request: it is not yet settled whether deleting
 			// a dataset deletes its data or only withdraws visibility of it.
@@ -211,7 +211,7 @@ Datasets are addressed by URN (urn:ivcap:dataset:<uuid>).`,
 	grantsDatasetCmd = &cobra.Command{
 		Use:   "grants dataset_urn",
 		Short: "List who can read or write a dataset",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := datasetArg(args[0])
 			if err != nil {
@@ -239,7 +239,7 @@ Datasets are addressed by URN (urn:ivcap:dataset:<uuid>).`,
 		Long: `Grant a project, a service principal or everyone access to a dataset. Granting
 to everyone is read-only. Granting to a project needs share rights on the
 dataset and write access on that project.`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, req, err := datasetGrantRequest(args[0])
 			if err != nil {
@@ -260,7 +260,7 @@ dataset and write access on that project.`,
 		Short: "Revoke a dataset grant",
 		Long: `Revoke one access level from a grantee. Either side may revoke: share rights on
 the dataset, or write access on the granted project.`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, req, err := datasetGrantRequest(args[0])
 			if err != nil {
@@ -279,7 +279,7 @@ the dataset, or write access on the granted project.`,
 	eventsDatasetCmd = &cobra.Command{
 		Use:   "events dataset_urn",
 		Short: "Show a dataset's audit history",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id, err := datasetArg(args[0])
 			if err != nil {

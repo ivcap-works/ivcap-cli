@@ -76,7 +76,7 @@ To invite someone into a project or account, use 'ivcap context project invite' 
 	acceptInvitationCmd = &cobra.Command{
 		Use:   "accept invitation_id",
 		Short: "Accept an invitation addressed to you",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
 			if _, err := sdk.AcceptInvitationRaw(context.Background(), id, GetIdentityAdapter(true), logger); err != nil {
@@ -92,7 +92,7 @@ To invite someone into a project or account, use 'ivcap context project invite' 
 	declineInvitationCmd = &cobra.Command{
 		Use:   "decline invitation_id",
 		Short: "Decline an invitation addressed to you",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
 			if _, err := sdk.DeclineInvitationRaw(context.Background(), id, GetIdentityAdapter(true), logger); err != nil {
@@ -111,7 +111,7 @@ To invite someone into a project or account, use 'ivcap context project invite' 
 		Long: `Cancel a pending invitation you issued to a project or account. List the
 outstanding invitations on a target with 'ivcap context project invitations <project>' or
 'ivcap context account invitations <account>' to find the id.`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			id := GetHistory(args[0])
 			if _, err := sdk.RevokeInvitationRaw(context.Background(), id, GetIdentityAdapter(true), logger); err != nil {

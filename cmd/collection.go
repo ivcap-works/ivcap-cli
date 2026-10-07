@@ -150,7 +150,7 @@ for example:
 The collectionURN must be a well-formed URN that will serve as the entity
 identifier for all collection-item records. After creating the collection,
 use 'collection add' to add artifact (or other entity) URNs to it.`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			id := GetHistory(args[0])
 			if !URN_CHECK.Match([]byte(id)) {
@@ -205,7 +205,7 @@ Items can be specified in two ways (both may be combined):
 
 A 'collection-item' aspect (` + CollectionItemSchema + `) is created for
 each new item. Duplicates (same collection + item) are detected and skipped.`,
-		Args: cobra.MinimumNArgs(1),
+		Args: minimumNArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			collectionID := GetHistory(args[0])
 			if !URN_CHECK.Match([]byte(collectionID)) {
@@ -294,7 +294,7 @@ each new item. Duplicates (same collection + item) are detected and skipped.`,
 		Use:     "get collectionURN",
 		Short:   "Get a specific collection record",
 		Aliases: []string{"g"},
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			return getCollection(GetHistory(args[0]))
 		},
@@ -313,7 +313,7 @@ collection are retracted first, then the collection definition aspect
 (` + CollectionSchema + `) itself is retracted.
 
 This operation cannot be undone.`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			collectionID := GetHistory(args[0])
 			if !URN_CHECK.Match([]byte(collectionID)) {
@@ -374,7 +374,7 @@ For each item URN provided, the corresponding collection-item aspect
 (` + CollectionItemSchema + `) is retracted from the DataFabric.
 
 Items that are not currently members of the collection are silently skipped.`,
-		Args: cobra.MinimumNArgs(2),
+		Args: minimumNArgs(2),
 		Run: func(cmd *cobra.Command, args []string) {
 			collectionID := GetHistory(args[0])
 			if !URN_CHECK.Match([]byte(collectionID)) {

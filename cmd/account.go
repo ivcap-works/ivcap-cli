@@ -111,12 +111,15 @@ var (
 	}
 
 	readAccountCmd = &cobra.Command{
-		Use:     "get [flags] account_id",
+		Use:     "get [flags] [account_id]",
 		Aliases: []string{"read"},
 		Short:   "Fetch details about a single account",
-		Args:    cobra.ExactArgs(1),
+		Args:    optionalArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id := GetHistory(args[0])
+			id, err := accountArg(args)
+			if err != nil {
+				return err
+			}
 			res, err := sdk.ReadAccountRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
@@ -151,11 +154,14 @@ var (
 	}
 
 	membersAccountCmd = &cobra.Command{
-		Use:   "members account_id",
+		Use:   "members [account_id]",
 		Short: "List an account's members and their capabilities",
-		Args:  cobra.ExactArgs(1),
+		Args:  optionalArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id := GetHistory(args[0])
+			id, err := accountArg(args)
+			if err != nil {
+				return err
+			}
 			res, err := sdk.ListAccountMembersRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err
@@ -181,7 +187,7 @@ var (
 		Short: "Grant account capabilities to a user",
 		Long: `Grant one or more account-admin capabilities to an existing member. List the
 grantable capabilities with 'ivcap context capabilities --kind account'.`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		RunE: runAccountGrant,
 	}
 
@@ -192,14 +198,14 @@ grantable capabilities with 'ivcap context capabilities --kind account'.`,
 		Long: `Revoke individual account capabilities from a user, leaving their remaining
 capabilities intact. To remove a member from the account entirely, use
 'ivcap context account remove-member'.`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		RunE: runAccountRevokeCapability,
 	}
 
 	removeAccountMemberCmd = &cobra.Command{
 		Use:   "remove-member account_id --user <urn>",
 		Short: "Remove a user from an account entirely (revokes all their grants)",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			accountID := GetHistory(args[0])
 			userID, err := acctUserFromFlag()
@@ -222,16 +228,19 @@ capabilities intact. To remove a member from the account entirely, use
 		Long: `Invite a user (by email) to an account, granting the given capabilities when they
 accept. Omit --capability for a read-only member. If no capabilities are given and
 you are on an interactive terminal, you will be prompted to choose.`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		RunE: runAccountInvite,
 	}
 
 	invitationsAccountCmd = &cobra.Command{
-		Use:   "invitations account_id",
+		Use:   "invitations [account_id]",
 		Short: "List the pending invitations on an account",
-		Args:  cobra.ExactArgs(1),
+		Args:  optionalArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			id := GetHistory(args[0])
+			id, err := accountArg(args)
+			if err != nil {
+				return err
+			}
 			res, err := sdk.ListAccountInvitationsRaw(context.Background(), id, GetIdentityAdapter(true), logger)
 			if err != nil {
 				return err

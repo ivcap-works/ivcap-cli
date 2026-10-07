@@ -96,7 +96,7 @@ Examples:
   ivcap --output json --agent-context
   ivcap agent-context
 `,
-	Args: cobra.ExactArgs(0),
+	Args: exactArgs(0),
 	RunE: func(cmd *cobra.Command, _ []string) error {
 		return runAgentContext(cmd)
 	},

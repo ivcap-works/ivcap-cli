@@ -48,14 +48,14 @@ var (
 		Use:     "list artifact_id [--cache]",
 		Short:   "List files in a tar/tar.gz artifact",
 		Aliases: []string{"ls"},
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE:    tarListFunc,
 	}
 
 	tarDownloadCmd = &cobra.Command{
 		Use:   "download artifact_id file_path [-f output_file] [--cache]",
 		Short: "Download a specific file from a tar/tar.gz artifact",
-		Args:  cobra.ExactArgs(2),
+		Args:  exactArgs(2),
 		RunE:  tarDownloadFunc,
 	}
 

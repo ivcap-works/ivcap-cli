@@ -210,7 +210,7 @@ func validateReadCommandArgs(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("please provide the ID of the queue to read. Example: ivcap queue %s urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167", cmd.Name())
 	}
-	return cobra.ExactArgs(1)(cmd, args)
+	return exactArgs(1)(cmd, args)
 }
 
 func runReadQueueCmd(cmd *cobra.Command, args []string) error {
@@ -239,7 +239,7 @@ func validateCreateQueueArgs(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("please provide a name for the queue. Example: ivcap queue %s my-queue-name", cmd.Name())
 	}
-	return cobra.ExactArgs(1)(cmd, args)
+	return exactArgs(1)(cmd, args)
 }
 
 func runCreateQueueCmd(cmd *cobra.Command, args []string) error {
@@ -305,7 +305,7 @@ func validateEnqueueArgs(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("%s\n\n%s", errMsg, exampleUsage)
 	}
 
-	return cobra.ExactArgs(3)(cmd, args)
+	return exactArgs(3)(cmd, args)
 }
 
 func runEnqueueCmd(cmd *cobra.Command, args []string) error {
@@ -352,7 +352,7 @@ func validateDequeueArgs(cmd *cobra.Command, args []string) error {
 
 		return fmt.Errorf("%s\n\n%s", errMsg, exampleUsage)
 	}
-	return cobra.ExactArgs(2)(cmd, args)
+	return exactArgs(2)(cmd, args)
 }
 
 func runDequeueCmd(cmd *cobra.Command, args []string) error {
@@ -383,7 +383,7 @@ func validateDeleteCommandArgs(cmd *cobra.Command, args []string) error {
 	if len(args) < 1 {
 		return fmt.Errorf("please provide the ID of the queue to delete. Example: ivcap queue %s urn:ivcap:queue:714e549b-ebab-5dd8-8ebd-2e4b0af76167", cmd.Name())
 	}
-	return cobra.ExactArgs(1)(cmd, args)
+	return exactArgs(1)(cmd, args)
 }
 
 func runDeleteQueueCmd(cmd *cobra.Command, args []string) error {

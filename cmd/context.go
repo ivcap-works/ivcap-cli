@@ -106,7 +106,7 @@ Pass a full URL for non-standard deployments (localhost, minikube, SSH tunnels).
 The identity URL is derived by stripping any api. prefix and prepending id.;
 use --identity-url to override when the convention does not apply:
   ivcap context create local http://localhost:8080 --identity-url http://localhost:8002`,
-	Args: cobra.ExactArgs(2),
+	Args: exactArgs(2),
 	Run: func(_ *cobra.Command, args []string) {
 		ctxtName = args[0]
 		arg := strings.TrimRight(args[1], "/")

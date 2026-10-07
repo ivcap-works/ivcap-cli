@@ -47,7 +47,7 @@ Each skill file must start with YAML front-matter. Expected head-matter schema:
 var skillsListCmd = &cobra.Command{
 	Use:   "list",
 	Short: "List available skills",
-	Args:  cobra.ExactArgs(0),
+	Args:  exactArgs(0),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		docs, err := skillsdoc.LoadAllSkillDocs(asset.FS)
 		if err != nil {
@@ -85,7 +85,7 @@ var skillsListCmd = &cobra.Command{
 var skillsShowCmd = &cobra.Command{
 	Use:   "show <skill-name>",
 	Short: "Show a skill doc (prints exact embedded SKILL.md content)",
-	Args:  cobra.ExactArgs(1),
+	Args:  exactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		ref := args[0]
 		// support either a skill name (resolved from embedded *.SKILL.md docs)
