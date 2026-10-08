@@ -967,6 +967,17 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
+  <a href="#synopsis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synopsis
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#options" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1033,12 +1044,23 @@
 
 <h2 id="ivcap-context-create">ivcap context create<a class="headerlink" href="#ivcap-context-create" title="Permanent link">&para;</a></h2>
 <p>Create a new context</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ivcap context create ctxtName https://ivcap.net [flags]
+<h3 id="synopsis">Synopsis<a class="headerlink" href="#synopsis" title="Permanent link">&para;</a></h3>
+<p>Create a named context pointing at an IVCAP deployment.</p>
+<p>Pass a bare domain to let the CLI derive both URLs by convention:
+  ivcap context create prod develop.ivcap.net
+  → API: https://api.develop.ivcap.net
+  → Identity: https://id.develop.ivcap.net</p>
+<p>Pass a full URL for non-standard deployments (localhost, minikube, SSH tunnels).
+The identity URL is derived by stripping any api. prefix and prepending id.;
+use --identity-url to override when the convention does not apply:
+  ivcap context create local http://localhost:8080 --identity-url http://localhost:8002</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ivcap context create ctxtName &lt;domain-or-url&gt; [flags]
 </code></pre></div>
 <h3 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>  -h, --help               help for create
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>      --host-name string   optional host name if accessing API through SSH tunnel
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>      --version int        define API version (default 1)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>  -h, --help                  help for create
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>      --host-name string      optional host name if accessing API through SSH tunnel
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>      --identity-url string   identity server URL (required when the second arg is a full URL, e.g. http://localhost:8002)
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>      --version int           define API version (default 1)
 </code></pre></div>
 <h3 id="options-inherited-from-parent-commands">Options inherited from parent commands<a class="headerlink" href="#options-inherited-from-parent-commands" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>      --access-token string   Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]
@@ -1051,7 +1073,7 @@
 </code></pre></div>
 <h3 id="see-also">SEE ALSO<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h3>
 <ul>
-<li><a href="../ivcap_context/">ivcap context</a>  - Manage and set access to various IVCAP deployments</li>
+<li><a href="../ivcap_context/">ivcap context</a>  - Manage deployment access, projects, and accounts</li>
 </ul>
 
 

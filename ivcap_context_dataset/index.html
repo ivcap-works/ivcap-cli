@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://ivcap-works.github.io/ivcap-cli/ivcap_context_list/">
+        <link rel="canonical" href="https://ivcap-works.github.io/ivcap-cli/ivcap_context_dataset/">
       
       
       
@@ -23,7 +23,7 @@
     
     
       
-        <title>Ivcap context list - IVCAP CLI</title>
+        <title>Ivcap context dataset - IVCAP CLI</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#ivcap-context-list" class="md-skip">
+        <a href="#ivcap-context-dataset" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Ivcap context list
+              Ivcap context dataset
             
           </span>
         </div>
@@ -955,16 +955,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#ivcap-context-list" class="md-nav__link">
+  <a href="#ivcap-context-dataset" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ivcap context list
+        ivcap context dataset
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="ivcap context list">
+    <nav class="md-nav" aria-label="ivcap context dataset">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#synopsis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synopsis
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#options" class="md-nav__link">
@@ -1029,27 +1040,39 @@
 
 
 
-  <h1>Ivcap context list</h1>
+  <h1>Ivcap context dataset</h1>
 
-<h2 id="ivcap-context-list">ivcap context list<a class="headerlink" href="#ivcap-context-list" title="Permanent link">&para;</a></h2>
-<p>List all context</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ivcap context list [flags]
-</code></pre></div>
+<h2 id="ivcap-context-dataset">ivcap context dataset<a class="headerlink" href="#ivcap-context-dataset" title="Permanent link">&para;</a></h2>
+<p>Manage datasets and who can access them</p>
+<h3 id="synopsis">Synopsis<a class="headerlink" href="#synopsis" title="Permanent link">&para;</a></h3>
+<p>Manage datasets. A dataset belongs to one project, which manages it; other
+projects, service principals or everyone can be granted read or write access.
+Every project has a default dataset that shares the project's id.</p>
+<p>Datasets are addressed by URN (urn:ivcap:dataset:<uuid>).</p>
 <h3 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>  -h, --help   help for list
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>  -h, --help   help for dataset
 </code></pre></div>
 <h3 id="options-inherited-from-parent-commands">Options inherited from parent commands<a class="headerlink" href="#options-inherited-from-parent-commands" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>      --access-token string   Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>      --context string        Context (deployment) to use
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a>      --debug                 Set logging level to DEBUG
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a>      --no-history            Do not store history
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>  -o, --output string         Set format for displaying output [json, yaml]
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a>      --silent                Do not show any progress information
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>      --timeout int           Max. number of seconds to wait for completion (default 30)
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>      --access-token string   Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>      --context string        Context (deployment) to use
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>      --debug                 Set logging level to DEBUG
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>      --no-history            Do not store history
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>  -o, --output string         Set format for displaying output [json, yaml]
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>      --silent                Do not show any progress information
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>      --timeout int           Max. number of seconds to wait for completion (default 30)
 </code></pre></div>
 <h3 id="see-also">SEE ALSO<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h3>
 <ul>
 <li><a href="../ivcap_context/">ivcap context</a>  - Manage deployment access, projects, and accounts</li>
+<li><a href="../ivcap_context_dataset_create/">ivcap context dataset create</a>    - Create a dataset owned by a project</li>
+<li><a href="../ivcap_context_dataset_delete/">ivcap context dataset delete</a>    - Delete a dataset (not yet supported)</li>
+<li><a href="../ivcap_context_dataset_events/">ivcap context dataset events</a>    - Show a dataset's audit history</li>
+<li><a href="../ivcap_context_dataset_get/">ivcap context dataset get</a>  - Fetch details about a single dataset</li>
+<li><a href="../ivcap_context_dataset_grant/">ivcap context dataset grant</a>  - Grant read or write access to a dataset</li>
+<li><a href="../ivcap_context_dataset_grants/">ivcap context dataset grants</a>    - List who can read or write a dataset</li>
+<li><a href="../ivcap_context_dataset_list/">ivcap context dataset list</a>    - List the datasets a project owns or has been granted access to</li>
+<li><a href="../ivcap_context_dataset_revoke/">ivcap context dataset revoke</a>    - Revoke a dataset grant</li>
+<li><a href="../ivcap_context_dataset_update/">ivcap context dataset update</a>    - Change a dataset's name or description</li>
 </ul>
 
 

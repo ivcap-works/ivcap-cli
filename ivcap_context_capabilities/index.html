@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://ivcap-works.github.io/ivcap-cli/ivcap_context_list/">
+        <link rel="canonical" href="https://ivcap-works.github.io/ivcap-cli/ivcap_context_capabilities/">
       
       
       
@@ -23,7 +23,7 @@
     
     
       
-        <title>Ivcap context list - IVCAP CLI</title>
+        <title>Ivcap context capabilities - IVCAP CLI</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#ivcap-context-list" class="md-skip">
+        <a href="#ivcap-context-capabilities" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Ivcap context list
+              Ivcap context capabilities
             
           </span>
         </div>
@@ -955,16 +955,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#ivcap-context-list" class="md-nav__link">
+  <a href="#ivcap-context-capabilities" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ivcap context list
+        ivcap context capabilities
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="ivcap context list">
+    <nav class="md-nav" aria-label="ivcap context capabilities">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#synopsis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synopsis
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#options" class="md-nav__link">
@@ -1029,14 +1040,19 @@
 
 
 
-  <h1>Ivcap context list</h1>
+  <h1>Ivcap context capabilities</h1>
 
-<h2 id="ivcap-context-list">ivcap context list<a class="headerlink" href="#ivcap-context-list" title="Permanent link">&para;</a></h2>
-<p>List all context</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ivcap context list [flags]
+<h2 id="ivcap-context-capabilities">ivcap context capabilities<a class="headerlink" href="#ivcap-context-capabilities" title="Permanent link">&para;</a></h2>
+<p>List the capabilities grantable on projects and accounts</p>
+<h3 id="synopsis">Synopsis<a class="headerlink" href="#synopsis" title="Permanent link">&para;</a></h3>
+<p>List the grantable capabilities per target kind (project, account), as defined by
+the platform authorization model. These are the values accepted by the --capability
+flag of 'ivcap context project grant', 'ivcap context account grant', and the 'invite' commands.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ivcap context capabilities [flags]
 </code></pre></div>
 <h3 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>  -h, --help   help for list
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>  -h, --help          help for capabilities
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>      --kind string   Limit to a single kind: project | account
 </code></pre></div>
 <h3 id="options-inherited-from-parent-commands">Options inherited from parent commands<a class="headerlink" href="#options-inherited-from-parent-commands" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>      --access-token string   Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]

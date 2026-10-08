@@ -10,7 +10,7 @@
       
       
       
-        <link rel="canonical" href="https://ivcap-works.github.io/ivcap-cli/ivcap_context_list/">
+        <link rel="canonical" href="https://ivcap-works.github.io/ivcap-cli/ivcap_context_project_grant/">
       
       
       
@@ -23,7 +23,7 @@
     
     
       
-        <title>Ivcap context list - IVCAP CLI</title>
+        <title>Ivcap context project grant - IVCAP CLI</title>
       
     
     
@@ -74,7 +74,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#ivcap-context-list" class="md-skip">
+        <a href="#ivcap-context-project-grant" class="md-skip">
           Skip to content
         </a>
       
@@ -109,7 +109,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Ivcap context list
+              Ivcap context project grant
             
           </span>
         </div>
@@ -955,16 +955,27 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#ivcap-context-list" class="md-nav__link">
+  <a href="#ivcap-context-project-grant" class="md-nav__link">
     <span class="md-ellipsis">
       
-        ivcap context list
+        ivcap context project grant
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="ivcap context list">
+    <nav class="md-nav" aria-label="ivcap context project grant">
       <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#synopsis" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Synopsis
+      
+    </span>
+  </a>
+  
+</li>
         
           <li class="md-nav__item">
   <a href="#options" class="md-nav__link">
@@ -1029,14 +1040,20 @@
 
 
 
-  <h1>Ivcap context list</h1>
+  <h1>Ivcap context project grant</h1>
 
-<h2 id="ivcap-context-list">ivcap context list<a class="headerlink" href="#ivcap-context-list" title="Permanent link">&para;</a></h2>
-<p>List all context</p>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ivcap context list [flags]
+<h2 id="ivcap-context-project-grant">ivcap context project grant<a class="headerlink" href="#ivcap-context-project-grant" title="Permanent link">&para;</a></h2>
+<p>Grant project capabilities to a user or service principal</p>
+<h3 id="synopsis">Synopsis<a class="headerlink" href="#synopsis" title="Permanent link">&para;</a></h3>
+<p>Grant one or more project capabilities to an existing member (user or service
+principal). List the grantable capabilities with 'ivcap context capabilities --kind project'.</p>
+<div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ivcap context project grant project_id (--user &lt;urn&gt; | --service &lt;urn&gt;) --capability &lt;cap&gt; ... [flags]
 </code></pre></div>
 <h3 id="options">Options<a class="headerlink" href="#options" title="Permanent link">&para;</a></h3>
-<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>  -h, --help   help for list
+<div class="highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>  -c, --capability strings   Capability to grant (repeatable). Run &#39;ivcap context capabilities --kind project&#39; to list valid values
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>  -h, --help                 help for grant
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>      --service string       Service principal URN to target
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>      --user string          User URN to target
 </code></pre></div>
 <h3 id="options-inherited-from-parent-commands">Options inherited from parent commands<a class="headerlink" href="#options-inherited-from-parent-commands" title="Permanent link">&para;</a></h3>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>      --access-token string   Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]
@@ -1049,7 +1066,7 @@
 </code></pre></div>
 <h3 id="see-also">SEE ALSO<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h3>
 <ul>
-<li><a href="../ivcap_context/">ivcap context</a>  - Manage deployment access, projects, and accounts</li>
+<li><a href="../ivcap_context_project/">ivcap context project</a>  - Manage projects and select the current one</li>
 </ul>
 
 
