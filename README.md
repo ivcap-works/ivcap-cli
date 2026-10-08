@@ -7,6 +7,11 @@ __IVCAP__ has an extensive REST API which is usually called directly from applic
 * [Install released binaries](#install)
 * [Usage](#usage)
   * [Context](#context)
+    * [Projects](#project)
+    * [Accounts](#account)
+    * [Capabilities](#capabilities)
+    * [Invitations](#invitation)
+  * [Who am I](#whoami)
   * [Service](#service)
   * [Job](#job)
   * [Artifact](#artifact)
@@ -58,7 +63,7 @@ Usage:
 Commands:
   artifact      Create and manage artifacts
   collection    Create and manage collections
-  context       Manage and set access to various IVCAP deployments
+  context       Manage deployment access, projects, and accounts
   datafabric    Query the datafabric and create and manage aspects within
   job           Create and manage jobs
   nextflow      Commands for working with Nextflow-based services
@@ -66,6 +71,7 @@ Commands:
   queue         Create and manage queues
   secret        Set and list secrets
   service       Create and manage services
+  whoami        Show the currently authenticated identity and accessible accounts/projects
 
 Agent support commands:
   agent-context Print embedded agent context guidance (markdown)
@@ -135,7 +141,117 @@ or scan the QR Code to be taken to the login page
 Waiting for authorisation...
 ```
 
+The `context` command also serves as the home for all identity and access management (IAM) operations. Running `ivcap context --help` shows two groups:
+
+```
+Deployment management:
+  create    Create a new named context
+  list      List all saved contexts
+  set       Switch active context
+  get       Show current context details
+  login     Authenticate via OIDC
+  logout    Clear stored tokens
+
+Access management:
+  project      Manage projects and select the current one
+  account      Manage accounts you belong to
+  invitation   Respond to invitations addressed to you
+  capabilities List capabilities grantable on projects and accounts
+```
+
+All subcommands carry short aliases so common operations stay concise:
+- `ivcap c login` — authenticate
+- `ivcap c p use` — switch active project (interactive picker)
+- `ivcap c a list` — list your accounts
+
 Follow this [link](./docs/ivcap_context.md) for more details about the `context` command.
+
+### Projects <a name="project"></a>
+
+Projects scope the resources (artifacts, jobs, services) you work with. The active project is recorded in the context and forwarded to the platform on every request.
+
+```
+% ivcap context project list
+% ivcap context project use          # interactive picker
+% ivcap context project use <id>     # set directly
+% ivcap context project create --name "My Project"
+```
+
+Member management:
+
+```
+% ivcap context project members <project-id>
+% ivcap context project invite <project-id> --email user@example.com --capability write
+% ivcap context project grant <project-id> --user <urn> --capability write
+% ivcap context project revoke-capability <project-id> --user <urn> --capability write
+% ivcap context project remove-member <project-id> --user <urn>
+```
+
+Follow this [link](./docs/ivcap_context_project.md) for more details about the `project` command.
+
+### Accounts <a name="account"></a>
+
+Accounts are the top-level organisational unit. A project always belongs to an account.
+
+```
+% ivcap context account list
+% ivcap context account get <account-id>
+% ivcap context account create --name "My Org"
+```
+
+Member management:
+
+```
+% ivcap context account members <account-id>
+% ivcap context account invite <account-id> --email user@example.com --capability create_project
+% ivcap context account grant <account-id> --user <urn> --capability manage_members
+% ivcap context account revoke-capability <account-id> --user <urn> --capability manage_members
+% ivcap context account remove-member <account-id> --user <urn>
+```
+
+Follow this [link](./docs/ivcap_context_account.md) for more details about the `account` command.
+
+### Capabilities <a name="capabilities"></a>
+
+Lists the capability vocabulary accepted by `grant` and `invite` commands:
+
+```
+% ivcap context capabilities                    # show all
+% ivcap context capabilities --kind project     # project capabilities only
+% ivcap context capabilities --kind account     # account capabilities only
+```
+
+Follow this [link](./docs/ivcap_context_capabilities.md) for more details.
+
+### Invitations <a name="invitation"></a>
+
+Invitations you have received (from any project or account):
+
+```
+% ivcap context invitation list
+% ivcap context invitation accept <invitation-id>
+% ivcap context invitation decline <invitation-id>
+% ivcap context invitation revoke <invitation-id>   # cancel one you issued
+```
+
+Follow this [link](./docs/ivcap_context_invitation.md) for more details.
+
+### Who am I <a name="whoami"></a>
+
+Displays the currently authenticated identity along with the active project and all accessible accounts and projects:
+
+```
+% ivcap whoami
+
+         Email  user@example.com
+          Name  Alex Smith
+  Current Proj  urn:ivcap:project:abc123 (My Project)
+       Account  urn:ivcap:account:def456 (My Org)
+```
+
+Supports `--output json` / `--output yaml` for programmatic use.
+
+Follow this [link](./docs/ivcap_whoami.md) for more details.
 
 ### Service <a name="service"></a>
 

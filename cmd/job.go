@@ -126,7 +126,7 @@ var (
 		Use:     "get [flags] job_id",
 		Aliases: []string{"read", "g"},
 		Short:   "Fetch details about a single job",
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := GetHistory(args[0])
 			ctxt := context.Background()
@@ -144,7 +144,7 @@ Examples:
   ivcap job events urn:ivcap:job:456
   ivcap job events --max-messages 10 job-id
   ivcap job events --last-event-id abc123 job-id`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			jobID := GetHistory(args[0])
 			ctxt := context.Background()
@@ -168,7 +168,7 @@ Examples:
 input paramters defined in either a provided (json) file or a reference
 to an aspect containing the parameter definitions. If the job definition is
 provided through 'stdin' use '-' as the file name and also include the --format flag`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
 

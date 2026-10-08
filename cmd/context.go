@@ -1,4 +1,4 @@
-// Copyright 2023 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
+// Copyright 2026 Commonwealth Scientific and Industrial Research Organisation (CSIRO) ABN 41 687 119 230
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,8 +25,37 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const contextDeploymentGroupID = "deployment"
+const contextAccessGroupID = "access"
+
 func init() {
 	rootCmd.AddCommand(contextCmd)
+
+	contextCmd.AddGroup(
+		&cobra.Group{ID: contextDeploymentGroupID, Title: "Deployment management:"},
+		&cobra.Group{ID: contextAccessGroupID, Title: "Access management:"},
+	)
+
+	// Assign group IDs lazily so that login/logout (registered in login.go) and
+	// account/project/etc. (registered in their own files) are all picked up after
+	// all init() functions have run.
+	defaultHelpFunc := contextCmd.HelpFunc()
+	contextCmd.SetHelpFunc(func(cmd *cobra.Command, args []string) {
+		if cmd == contextCmd {
+			deploymentCmds := map[string]bool{
+				"create": true, "list": true, "set": true, "get": true,
+				"login": true, "logout": true,
+			}
+			for _, c := range contextCmd.Commands() {
+				if deploymentCmds[c.Name()] {
+					c.GroupID = contextDeploymentGroupID
+				} else if c.Name() != "help" && c.Name() != "completion" {
+					c.GroupID = contextAccessGroupID
+				}
+			}
+		}
+		defaultHelpFunc(cmd, args)
+	})
 
 	// LIST
 	contextCmd.AddCommand(listContextCmd)
@@ -38,6 +67,7 @@ func init() {
 	// createContextCmd.Flags().StringVar(&providerID, "provider-id", "", "The account ID to use. Will most likely be set on login")
 	createContextCmd.Flags().StringVar(&hostName, "host-name", "", "optional host name if accessing API through SSH tunnel")
 	createContextCmd.Flags().IntVar(&ctxtApiVersion, "version", 1, "define API version")
+	createContextCmd.Flags().StringVar(&identityURLFlag, "identity-url", "", "identity server URL (required when the second arg is a full URL, e.g. http://localhost:8002)")
 
 	// SET/USE
 	contextCmd.AddCommand(useContextCmd)
@@ -48,37 +78,74 @@ func init() {
 }
 
 var (
-	ctxtName       string
-	ctxtApiVersion int
-	hostName       string
-	refreshToken   bool
+	ctxtName        string
+	ctxtApiVersion  int
+	hostName        string
+	identityURLFlag string
+	refreshToken    bool
 )
 
 // contextCmd represents the config command
 var contextCmd = &cobra.Command{
 	Use:     "context",
-	Short:   "Manage and set access to various IVCAP deployments",
+	Short:   "Manage deployment access, projects, and accounts",
 	Aliases: []string{"c"},
 }
 
 var createContextCmd = &cobra.Command{
-	Use:   "create ctxtName https://ivcap.net",
+	Use:   "create ctxtName <domain-or-url>",
 	Short: "Create a new context",
-	Args:  cobra.ExactArgs(2),
-	// Aliases: []string{"create"},
+	Long: `Create a named context pointing at an IVCAP deployment.
+
+Pass a bare domain to let the CLI derive both URLs by convention:
+  ivcap context create prod develop.ivcap.net
+  → API: https://api.develop.ivcap.net
+  → Identity: https://id.develop.ivcap.net
+
+Pass a full URL for non-standard deployments (localhost, minikube, SSH tunnels).
+The identity URL is derived by stripping any api. prefix and prepending id.;
+use --identity-url to override when the convention does not apply:
+  ivcap context create local http://localhost:8080 --identity-url http://localhost:8002`,
+	Args: exactArgs(2),
 	Run: func(_ *cobra.Command, args []string) {
 		ctxtName = args[0]
-		ctxtUrl := strings.TrimRight(args[1], "/")
-		url, err := url.ParseRequestURI(ctxtUrl)
-		if err != nil || url.Host == "" {
-			cobra.CheckErr(fmt.Sprintf("url '%s' is not a valid URL", ctxtUrl))
+		arg := strings.TrimRight(args[1], "/")
+
+		var apiURL, idURL string
+		if strings.Contains(arg, "://") {
+			// Full URL — validate and derive identity URL from the host.
+			parsed, err := url.ParseRequestURI(arg)
+			if err != nil {
+				cobra.CheckErr(fmt.Sprintf("'%s' is not a valid URL: %s", arg, err))
+			}
+			apiURL = arg
+			if identityURLFlag != "" {
+				idURL = identityURLFlag
+			} else {
+				// Strip api. prefix (if any), prepend id. — works for both
+				// https://api.<domain> and https://<domain>.
+				base := strings.TrimPrefix(parsed.Hostname(), "api.")
+				idURL = parsed.Scheme + "://id." + base
+			}
+		} else {
+			// Bare domain — derive both URLs by convention.
+			if strings.Contains(arg, "/") {
+				cobra.CheckErr(fmt.Sprintf("'%s' is not a valid domain; omit the path", arg))
+			}
+			apiURL = "https://api." + arg
+			if identityURLFlag != "" {
+				idURL = identityURLFlag
+			} else {
+				idURL = "https://id." + arg
+			}
 		}
 
 		ctxt := &Context{
-			ApiVersion: ctxtApiVersion,
-			Name:       ctxtName,
-			URL:        ctxtUrl,
-			Host:       hostName,
+			ApiVersion:  ctxtApiVersion,
+			Name:        ctxtName,
+			URL:         apiURL,
+			IdentityURL: idURL,
+			Host:        hostName,
 		}
 		SetContext(ctxt, false)
 		fmt.Printf("Context '%s' created.\n", ctxtName)
@@ -135,8 +202,16 @@ var useContextCmd = &cobra.Command{
 	},
 }
 
+// currentOrHint renders "name  id (@N)", or the hint if the id is unset.
+func currentOrHint(name, id, hint string) string {
+	if id == "" {
+		return hint
+	}
+	return whoamiTarget(name, id)
+}
+
 var getContextCmd = &cobra.Command{
-	Use:     "get [all|name|account-id|provider-id|url|access-token]",
+	Use:     "get [all|name|account-id|project-id|url|access-token]",
 	Short:   "Display the current context",
 	Aliases: []string{"current", "show"},
 	Run: func(_ *cobra.Command, args []string) {
@@ -160,25 +235,31 @@ var getContextCmd = &cobra.Command{
 			}
 		case "account-id":
 			fmt.Println(context.AccountID)
-		case "provider-id":
-			fmt.Println(context.ProviderID)
+		case "project-id":
+			fmt.Println(context.CurrentProject)
 		case "url":
 			fmt.Println(context.URL)
 		case "all":
 			t := table.NewWriter()
 			t.SetOutputMirror(os.Stdout)
-			t.AppendRow(table.Row{"Name", context.Name})
-			t.AppendRow(table.Row{"URL", context.URL})
-			t.AppendRow(table.Row{"Account ID", context.AccountID})
-			if context.ProviderID != "" {
-				t.AppendRow(table.Row{"Provider ID", context.ProviderID})
+			t.AppendRow(table.Row{"Context", context.Name})
+			t.AppendRow(table.Row{"API URL", context.URL})
+			if context.IdentityURL != "" {
+				t.AppendRow(table.Row{"Identity URL", context.IdentityURL})
 			}
-			isAuth := "no"
+			if context.Email != "" {
+				t.AppendRow(table.Row{"User", context.Email})
+			}
+			t.AppendRow(table.Row{"Current Account", currentOrHint(context.CurrentAccountName, context.AccountID,
+				"none (selected along with a project)")})
+			t.AppendRow(table.Row{"Current Project", currentOrHint(context.CurrentProjectName, context.CurrentProject,
+				"none (run 'ivcap context project use')")})
+			isAuth := "no (run 'ivcap context login')"
 			if IsAuthorised() {
 				if accessTokenProvided {
 					isAuth = fmt.Sprintf("unknown, token provided via '--access-token' flag or environment variable '%s'", ACCESS_TOKEN_ENV)
 				} else {
-					isAuth = fmt.Sprintf("yes, refreshing after %s", context.AccessTokenExpiry.Format(time.RFC822))
+					isAuth = fmt.Sprintf("yes (access token refreshes after %s)", context.AccessTokenExpiry.Format(time.RFC822))
 				}
 			}
 			t.AppendRow(table.Row{"Authorised", isAuth})

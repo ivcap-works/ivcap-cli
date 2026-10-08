@@ -97,7 +97,7 @@ var (
 		Use:     "get [flags] order-id",
 		Aliases: []string{"read", "r", "g"},
 		Short:   "Fetch details about a single order",
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := GetHistory(args[0])
 			req := &sdk.ReadOrderRequest{Id: recordID}
@@ -140,7 +140,7 @@ An example:
   ivcap order create --name "test order" ivcap:service:d939b74d-0070-59a4-a832-36c5c07e657d msg="Hello World"
 
 `,
-		Args: cobra.MinimumNArgs(1),
+		Args: minimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
 			serviceId := GetHistory(args[0])
@@ -200,7 +200,7 @@ An example:
 	downloadLogCmd = &cobra.Command{
 		Use:   "logs [flags] order-id",
 		Short: "Download order logs for specific order",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := GetHistory(args[0])
 			req := &sdk.LogsRequestBody{
@@ -231,7 +231,7 @@ An example:
 	topCmd = &cobra.Command{
 		Use:   "top [flags] order-id",
 		Short: "check container resources for specific order",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := GetHistory(args[0])
 

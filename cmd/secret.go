@@ -108,7 +108,7 @@ var (
 		Use:     "get [flags] secret-name",
 		Aliases: []string{"g"},
 		Short:   "Get single secret, show its expiry time and sha1 value",
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reqHost, err := getSecretHost()
 			if err != nil {

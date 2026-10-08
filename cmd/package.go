@@ -47,7 +47,7 @@ var (
 		Aliases: []string{"ls"},
 		Short:   "list service packages",
 		Long:    `List the service packages by image or image:tag under current account, image can have other account-id as prefix, if you have the permission to read.`,
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
 			var tag string
@@ -71,7 +71,7 @@ var (
 		Use:   "push [flags] tag",
 		Short: "Push service package(docker image) to repository",
 		Long:  `Before/After creating service, push the service package to a docker registry that the service can reference.`,
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			srcPackageTag := args[0]
 			_, err = sdk.PushPackage(context.Background(), srcPackageTag, forcePush, localImage, *CreateAdapter(true), logger)
@@ -86,7 +86,7 @@ var (
 		Use:   "pull tag",
 		Short: "pull service package by tag",
 		Long:  `Pull the service package by tag, from the ivcap service repository`,
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
 			tag := args[0]
@@ -103,7 +103,7 @@ var (
 		Aliases: []string{"rm", "delete"},
 		Short:   "remove service package by tag",
 		Long:    `Remove the service package by tag, from the ivcap service repository`,
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
 			tag := args[0]

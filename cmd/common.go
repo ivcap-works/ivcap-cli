@@ -35,7 +35,13 @@ import (
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 )
 
+// CONFIG_DIR_ENV overrides the directory holding config.yaml and history. It is
+// used as-is (no "ivcap-cli" suffix is appended). Unlike XDG_CONFIG_HOME it is
+// honoured on every OS, so tests and CI can reliably isolate the config.
+const CONFIG_DIR_ENV = "IVCAP_CONFIG_DIR"
+
 // Names for config dir and file - stored in the os.UserConfigDir() directory
+// unless CONFIG_DIR_ENV is set
 const CONFIG_FILE_DIR = "ivcap-cli"
 const CONFIG_FILE_NAME = "config.yaml"
 const HISTORY_FILE_NAME = "history.yaml"
@@ -410,15 +416,17 @@ func WriteConfigFile(config *Config) {
 }
 
 func GetConfigDir(createIfNoExist bool) (configDir string) {
-	userConfigDir, err := os.UserConfigDir()
-	if err != nil {
-		cobra.CheckErr(fmt.Sprintf("Cannot find the user configuration directory - %v", err))
-		return
+	if configDir = filepath.Clean(os.Getenv(CONFIG_DIR_ENV)); configDir == "." {
+		userConfigDir, err := os.UserConfigDir()
+		if err != nil {
+			cobra.CheckErr(fmt.Sprintf("Cannot find the user configuration directory - %v", err))
+			return
+		}
+		configDir = userConfigDir + string(os.PathSeparator) + CONFIG_FILE_DIR
 	}
-	configDir = userConfigDir + string(os.PathSeparator) + CONFIG_FILE_DIR
 	// Create it if it doesn't exist
 	if createIfNoExist {
-		err = os.MkdirAll(configDir, 0750)
+		err := os.MkdirAll(configDir, 0750) // #nosec G703 -- path is the user's own config dir (CONFIG_DIR_ENV is set by the user running the CLI)
 		if err != nil && !os.IsExist(err) {
 			cobra.CheckErr(fmt.Sprintf("Could not create configuration directory %s - %v", configDir, err))
 			return

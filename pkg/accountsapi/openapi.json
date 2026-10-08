@@ -1,0 +1,5902 @@
+{
+  "components": {
+    "schemas": {
+      "Account": {
+        "example": {
+          "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+          "kind": "workspace",
+          "name": "CSIRO Remote Sensing"
+        },
+        "properties": {
+          "id": {
+            "description": "Account URN",
+            "example": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+            "type": "string"
+          },
+          "kind": {
+            "description": "personal | workspace",
+            "example": "workspace",
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name",
+            "example": "CSIRO Remote Sensing",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "name"
+        ],
+        "type": "object"
+      },
+      "AddAccountGrantPayload": {
+        "description": "Request body for add-account-grant.",
+        "example": {
+          "capabilities": [
+            "b4q",
+            "qgw",
+            "8rh"
+          ],
+          "user_id": "twn"
+        },
+        "properties": {
+          "capabilities": {
+            "description": "Account capabilities: read, create_project, manage_members. The caller must hold each capability they grant.",
+            "example": [
+              "b4q",
+              "qgw",
+              "8rh"
+            ],
+            "items": {
+              "example": "b4q",
+              "maxLength": 64,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "user_id": {
+            "description": "User URN to grant capabilities to",
+            "example": "twn",
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "capabilities"
+        ],
+        "type": "object"
+      },
+      "AddProjectGrantPayload": {
+        "description": "Request body for add-project-grant.",
+        "example": {
+          "capabilities": [
+            "w3r",
+            "myr",
+            "h0i"
+          ],
+          "principal_id": "0af",
+          "principal_kind": "rqu"
+        },
+        "properties": {
+          "capabilities": {
+            "description": "Project capabilities: read, write, delete, add_user, remove_user, add_child_project. The caller must hold each capability they grant.",
+            "example": [
+              "w3r",
+              "myr",
+              "h0i"
+            ],
+            "items": {
+              "example": "w3r",
+              "maxLength": 64,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "principal_id": {
+            "description": "Principal URN (for service: the m2m_clients.id, i.e. the session pseudonym)",
+            "example": "0af",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "principal_kind": {
+            "description": "user | service",
+            "example": "rqu",
+            "maxLength": 32,
+            "type": "string"
+          }
+        },
+        "required": [
+          "principal_kind",
+          "principal_id",
+          "capabilities"
+        ],
+        "type": "object"
+      },
+      "BadRequestT": {
+        "description": "bad request",
+        "example": {
+          "message": "account_id is required when parent_id is not given"
+        },
+        "properties": {
+          "message": {
+            "description": "Error message",
+            "example": "account_id is required when parent_id is not given",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "CapabilitiesResult": {
+        "example": {
+          "account": [
+            {
+              "description": "Read access to project resources and metadata",
+              "name": "read"
+            },
+            {
+              "description": "Read access to project resources and metadata",
+              "name": "read"
+            },
+            {
+              "description": "Read access to project resources and metadata",
+              "name": "read"
+            },
+            {
+              "description": "Read access to project resources and metadata",
+              "name": "read"
+            }
+          ],
+          "project": [
+            {
+              "description": "Read access to project resources and metadata",
+              "name": "read"
+            },
+            {
+              "description": "Read access to project resources and metadata",
+              "name": "read"
+            },
+            {
+              "description": "Read access to project resources and metadata",
+              "name": "read"
+            }
+          ]
+        },
+        "properties": {
+          "account": {
+            "description": "Capabilities grantable on an account",
+            "example": [
+              {
+                "description": "Read access to project resources and metadata",
+                "name": "read"
+              },
+              {
+                "description": "Read access to project resources and metadata",
+                "name": "read"
+              },
+              {
+                "description": "Read access to project resources and metadata",
+                "name": "read"
+              },
+              {
+                "description": "Read access to project resources and metadata",
+                "name": "read"
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            },
+            "type": "array"
+          },
+          "project": {
+            "description": "Capabilities grantable on a project",
+            "example": [
+              {
+                "description": "Read access to project resources and metadata",
+                "name": "read"
+              },
+              {
+                "description": "Read access to project resources and metadata",
+                "name": "read"
+              },
+              {
+                "description": "Read access to project resources and metadata",
+                "name": "read"
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Capability"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "project",
+          "account"
+        ],
+        "type": "object"
+      },
+      "Capability": {
+        "example": {
+          "description": "Read access to project resources and metadata",
+          "name": "read"
+        },
+        "properties": {
+          "description": {
+            "description": "Human-readable description of what the capability allows",
+            "example": "Read access to project resources and metadata",
+            "type": "string"
+          },
+          "name": {
+            "description": "Capability name as used in grants and invitations",
+            "example": "read",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "ConflictT": {
+        "description": "conflict",
+        "example": {
+          "message": "a project with this name already exists in the account"
+        },
+        "properties": {
+          "message": {
+            "description": "Error message",
+            "example": "a project with this name already exists in the account",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "CreateAccountInvitationPayload": {
+        "description": "Request body for create-account-invitation.",
+        "example": {
+          "capabilities": [
+            "gd8",
+            "zzq",
+            "mte"
+          ],
+          "email": "xbj"
+        },
+        "properties": {
+          "capabilities": {
+            "description": "Elevated account capabilities to grant on accept (create_project, manage_members); omit for a read-only member. The inviter must hold each capability the invitation carries.",
+            "example": [
+              "gd8",
+              "zzq",
+              "mte"
+            ],
+            "items": {
+              "example": "gd8",
+              "maxLength": 64,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "email": {
+            "description": "Invitee email address",
+            "example": "xbj",
+            "maxLength": 254,
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "type": "object"
+      },
+      "CreateAccountPayload": {
+        "description": "Request body for create-account.",
+        "example": {
+          "name": "sz3"
+        },
+        "properties": {
+          "name": {
+            "description": "Display name for the new workspace account",
+            "example": "sz3",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "CreateDatasetPayload": {
+        "description": "Request body for create-dataset.",
+        "example": {
+          "description": "zr1",
+          "name": "kti"
+        },
+        "properties": {
+          "description": {
+            "description": "Description",
+            "example": "zr1",
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name",
+            "example": "kti",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "CreateInvitationPayload": {
+        "description": "Request body for create-invitation.",
+        "example": {
+          "capabilities": [
+            "2ee",
+            "men",
+            "2xx"
+          ],
+          "email": "bjv"
+        },
+        "properties": {
+          "capabilities": {
+            "description": "Project capabilities to grant on accept. The inviter must hold each capability the invitation carries.",
+            "example": [
+              "2ee",
+              "men",
+              "2xx"
+            ],
+            "items": {
+              "example": "2ee",
+              "maxLength": 64,
+              "type": "string"
+            },
+            "maxItems": 16,
+            "type": "array"
+          },
+          "email": {
+            "description": "Invitee email address",
+            "example": "bjv",
+            "maxLength": 254,
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "capabilities"
+        ],
+        "type": "object"
+      },
+      "CreateProjectPayload": {
+        "description": "Request body for create-project.",
+        "example": {
+          "account_id": "mt0",
+          "name": "wdl",
+          "parent_id": "kp6"
+        },
+        "properties": {
+          "account_id": {
+            "description": "Owning account URN. Optional when parent_id is given (defaults to the parent's account); required otherwise. When supplied it overrides the inherited account, and the caller must have can_create_project on it.",
+            "example": "mt0",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name for the new project",
+            "example": "wdl",
+            "maxLength": 200,
+            "type": "string"
+          },
+          "parent_id": {
+            "description": "Optional parent project URN. The new project inherits this parent's account unless account_id overrides it. The caller must have can_add_child_project on the parent.",
+            "example": "kp6",
+            "maxLength": 128,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      },
+      "Dataset": {
+        "example": {
+          "capability": "18378234397864834016",
+          "created_at": "2011-07-10T08:03:41Z",
+          "created_by": "Reiciendis et quaerat.",
+          "default": false,
+          "description": "Quo dicta voluptate aut dolor dolor voluptas.",
+          "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+          "name": "Fugiat non rerum consequatur.",
+          "project_id": "Aut sed est dolor nam nisi."
+        },
+        "properties": {
+          "capability": {
+            "description": "Datafabric capability for this dataset's data, as a decimal uint64; pass it as can-read and can-retract",
+            "example": "18378234397864834016",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "Creation time",
+            "example": "2011-07-10T08:03:41Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "created_by": {
+            "description": "Creator URN (user or principal); absent if created by the platform",
+            "example": "Reiciendis et quaerat.",
+            "type": "string"
+          },
+          "default": {
+            "description": "Whether this is the owning project's default dataset (same id as the project)",
+            "example": false,
+            "type": "boolean"
+          },
+          "description": {
+            "description": "Description",
+            "example": "Quo dicta voluptate aut dolor dolor voluptas.",
+            "type": "string"
+          },
+          "id": {
+            "description": "Dataset URN",
+            "example": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name",
+            "example": "Fugiat non rerum consequatur.",
+            "type": "string"
+          },
+          "project_id": {
+            "description": "Owning project URN. The owner manages the dataset; access is by grant.",
+            "example": "Aut sed est dolor nam nisi.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "description",
+          "default",
+          "created_at",
+          "capability"
+        ],
+        "type": "object"
+      },
+      "DatasetEvent": {
+        "example": {
+          "access": "A assumenda distinctio reiciendis.",
+          "action": "Vero fuga amet tempora facere sit.",
+          "actor": "Doloremque quia.",
+          "at": "1985-02-14T01:03:11Z",
+          "grantee_id": "Ea veritatis tempore quo.",
+          "grantee_kind": "In voluptatem voluptas perspiciatis quis minima."
+        },
+        "properties": {
+          "access": {
+            "description": "For grant and revoke: read | write",
+            "example": "A assumenda distinctio reiciendis.",
+            "type": "string"
+          },
+          "action": {
+            "description": "create | update | delete | grant | revoke",
+            "example": "Vero fuga amet tempora facere sit.",
+            "type": "string"
+          },
+          "actor": {
+            "description": "Who made the change (user or principal URN); absent if the platform did",
+            "example": "Doloremque quia.",
+            "type": "string"
+          },
+          "at": {
+            "description": "When",
+            "example": "1985-02-14T01:03:11Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "grantee_id": {
+            "description": "For grant and revoke: project or principal URN; absent for public",
+            "example": "Ea veritatis tempore quo.",
+            "type": "string"
+          },
+          "grantee_kind": {
+            "description": "For grant and revoke: project | service | public",
+            "example": "In voluptatem voluptas perspiciatis quis minima.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "at"
+        ],
+        "type": "object"
+      },
+      "DatasetGrant": {
+        "example": {
+          "access": "Modi amet veritatis dicta quae.",
+          "granted_at": "1972-06-12T11:39:23Z",
+          "granted_by": "Numquam quidem.",
+          "grantee_id": "Tempore molestiae fugit atque.",
+          "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+        },
+        "properties": {
+          "access": {
+            "description": "read | write",
+            "example": "Modi amet veritatis dicta quae.",
+            "type": "string"
+          },
+          "granted_at": {
+            "description": "Grant time",
+            "example": "1972-06-12T11:39:23Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "granted_by": {
+            "description": "Granter URN (user or principal); absent if granted by the platform",
+            "example": "Numquam quidem.",
+            "type": "string"
+          },
+          "grantee_id": {
+            "description": "Project or principal URN; absent for public",
+            "example": "Tempore molestiae fugit atque.",
+            "type": "string"
+          },
+          "grantee_kind": {
+            "description": "project | service | public",
+            "example": "Quos ut distinctio delectus fuga dicta accusantium.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "grantee_kind",
+          "access",
+          "granted_at"
+        ],
+        "type": "object"
+      },
+      "DatasetGrantPayload": {
+        "description": "Request body for add-dataset-grant.",
+        "example": {
+          "access": "952",
+          "grantee_id": "6xp",
+          "grantee_kind": "bju"
+        },
+        "properties": {
+          "access": {
+            "description": "read | write (public is read only)",
+            "example": "952",
+            "maxLength": 32,
+            "type": "string"
+          },
+          "grantee_id": {
+            "description": "Project URN or principal URN; omitted for public",
+            "example": "6xp",
+            "maxLength": 128,
+            "type": "string"
+          },
+          "grantee_kind": {
+            "description": "project | service | public",
+            "example": "bju",
+            "maxLength": 32,
+            "type": "string"
+          }
+        },
+        "required": [
+          "grantee_kind",
+          "access"
+        ],
+        "type": "object"
+      },
+      "ForbiddenT": {
+        "description": "forbidden",
+        "example": {
+          "message": "insufficient capabilities on this resource"
+        },
+        "properties": {
+          "message": {
+            "description": "Error message",
+            "example": "insufficient capabilities on this resource",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "Invitation": {
+        "example": {
+          "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+          "capabilities": [
+            "read",
+            "write"
+          ],
+          "email": "w.riker@csiro.au",
+          "expires_at": "2027-01-15T10:30:00Z",
+          "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+          "kind": "project",
+          "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+          "status": "pending"
+        },
+        "properties": {
+          "account_id": {
+            "description": "Account URN (set for account invitations)",
+            "example": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+            "type": "string"
+          },
+          "capabilities": {
+            "description": "Capabilities the invite grants (project or account caps per kind)",
+            "example": [
+              "read",
+              "write"
+            ],
+            "items": {
+              "example": "Neque in consectetur earum.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "email": {
+            "description": "Invitee email (only on the inviter's create response / project listing)",
+            "example": "w.riker@csiro.au",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "RFC3339 expiry",
+            "example": "2027-01-15T10:30:00Z",
+            "type": "string"
+          },
+          "id": {
+            "description": "Invitation URN",
+            "example": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+            "type": "string"
+          },
+          "kind": {
+            "description": "Invitation target kind: project | account",
+            "example": "project",
+            "type": "string"
+          },
+          "project_id": {
+            "description": "Project URN (set for project invitations)",
+            "example": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+            "type": "string"
+          },
+          "status": {
+            "description": "pending | accepted | declined | revoked",
+            "example": "pending",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "capabilities",
+          "kind",
+          "status",
+          "expires_at"
+        ],
+        "type": "object"
+      },
+      "ListAccountsResult": {
+        "example": {
+          "accounts": [
+            {
+              "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "kind": "workspace",
+              "name": "CSIRO Remote Sensing"
+            },
+            {
+              "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "kind": "workspace",
+              "name": "CSIRO Remote Sensing"
+            },
+            {
+              "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "kind": "workspace",
+              "name": "CSIRO Remote Sensing"
+            },
+            {
+              "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "kind": "workspace",
+              "name": "CSIRO Remote Sensing"
+            }
+          ]
+        },
+        "properties": {
+          "accounts": {
+            "example": [
+              {
+                "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "kind": "workspace",
+                "name": "CSIRO Remote Sensing"
+              },
+              {
+                "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "kind": "workspace",
+                "name": "CSIRO Remote Sensing"
+              },
+              {
+                "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "kind": "workspace",
+                "name": "CSIRO Remote Sensing"
+              },
+              {
+                "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "kind": "workspace",
+                "name": "CSIRO Remote Sensing"
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Account"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "accounts"
+        ],
+        "type": "object"
+      },
+      "ListDatasetEventsResult": {
+        "example": {
+          "events": [
+            {
+              "access": "A assumenda distinctio reiciendis.",
+              "action": "Vero fuga amet tempora facere sit.",
+              "actor": "Doloremque quia.",
+              "at": "1985-02-14T01:03:11Z",
+              "grantee_id": "Ea veritatis tempore quo.",
+              "grantee_kind": "In voluptatem voluptas perspiciatis quis minima."
+            },
+            {
+              "access": "A assumenda distinctio reiciendis.",
+              "action": "Vero fuga amet tempora facere sit.",
+              "actor": "Doloremque quia.",
+              "at": "1985-02-14T01:03:11Z",
+              "grantee_id": "Ea veritatis tempore quo.",
+              "grantee_kind": "In voluptatem voluptas perspiciatis quis minima."
+            }
+          ]
+        },
+        "properties": {
+          "events": {
+            "description": "Oldest first",
+            "example": [
+              {
+                "access": "A assumenda distinctio reiciendis.",
+                "action": "Vero fuga amet tempora facere sit.",
+                "actor": "Doloremque quia.",
+                "at": "1985-02-14T01:03:11Z",
+                "grantee_id": "Ea veritatis tempore quo.",
+                "grantee_kind": "In voluptatem voluptas perspiciatis quis minima."
+              },
+              {
+                "access": "A assumenda distinctio reiciendis.",
+                "action": "Vero fuga amet tempora facere sit.",
+                "actor": "Doloremque quia.",
+                "at": "1985-02-14T01:03:11Z",
+                "grantee_id": "Ea veritatis tempore quo.",
+                "grantee_kind": "In voluptatem voluptas perspiciatis quis minima."
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/DatasetEvent"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "type": "object"
+      },
+      "ListDatasetGrantsResult": {
+        "example": {
+          "grants": [
+            {
+              "access": "Modi amet veritatis dicta quae.",
+              "granted_at": "1972-06-12T11:39:23Z",
+              "granted_by": "Numquam quidem.",
+              "grantee_id": "Tempore molestiae fugit atque.",
+              "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+            },
+            {
+              "access": "Modi amet veritatis dicta quae.",
+              "granted_at": "1972-06-12T11:39:23Z",
+              "granted_by": "Numquam quidem.",
+              "grantee_id": "Tempore molestiae fugit atque.",
+              "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+            },
+            {
+              "access": "Modi amet veritatis dicta quae.",
+              "granted_at": "1972-06-12T11:39:23Z",
+              "granted_by": "Numquam quidem.",
+              "grantee_id": "Tempore molestiae fugit atque.",
+              "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+            }
+          ]
+        },
+        "properties": {
+          "grants": {
+            "example": [
+              {
+                "access": "Modi amet veritatis dicta quae.",
+                "granted_at": "1972-06-12T11:39:23Z",
+                "granted_by": "Numquam quidem.",
+                "grantee_id": "Tempore molestiae fugit atque.",
+                "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+              },
+              {
+                "access": "Modi amet veritatis dicta quae.",
+                "granted_at": "1972-06-12T11:39:23Z",
+                "granted_by": "Numquam quidem.",
+                "grantee_id": "Tempore molestiae fugit atque.",
+                "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+              },
+              {
+                "access": "Modi amet veritatis dicta quae.",
+                "granted_at": "1972-06-12T11:39:23Z",
+                "granted_by": "Numquam quidem.",
+                "grantee_id": "Tempore molestiae fugit atque.",
+                "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/DatasetGrant"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "grants"
+        ],
+        "type": "object"
+      },
+      "ListInvitationsResult": {
+        "example": {
+          "invitations": [
+            {
+              "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "capabilities": [
+                "read",
+                "write"
+              ],
+              "email": "w.riker@csiro.au",
+              "expires_at": "2027-01-15T10:30:00Z",
+              "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+              "kind": "project",
+              "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+              "status": "pending"
+            },
+            {
+              "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "capabilities": [
+                "read",
+                "write"
+              ],
+              "email": "w.riker@csiro.au",
+              "expires_at": "2027-01-15T10:30:00Z",
+              "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+              "kind": "project",
+              "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+              "status": "pending"
+            }
+          ]
+        },
+        "properties": {
+          "invitations": {
+            "example": [
+              {
+                "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "capabilities": [
+                  "read",
+                  "write"
+                ],
+                "email": "w.riker@csiro.au",
+                "expires_at": "2027-01-15T10:30:00Z",
+                "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                "kind": "project",
+                "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                "status": "pending"
+              },
+              {
+                "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "capabilities": [
+                  "read",
+                  "write"
+                ],
+                "email": "w.riker@csiro.au",
+                "expires_at": "2027-01-15T10:30:00Z",
+                "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                "kind": "project",
+                "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                "status": "pending"
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Invitation"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "invitations"
+        ],
+        "type": "object"
+      },
+      "ListMembersResult": {
+        "example": {
+          "members": [
+            {
+              "capabilities": [
+                "read",
+                "write"
+              ],
+              "display_name": "Dr William Riker",
+              "email": "w.riker@csiro.au",
+              "kind": "user",
+              "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+            },
+            {
+              "capabilities": [
+                "read",
+                "write"
+              ],
+              "display_name": "Dr William Riker",
+              "email": "w.riker@csiro.au",
+              "kind": "user",
+              "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+            },
+            {
+              "capabilities": [
+                "read",
+                "write"
+              ],
+              "display_name": "Dr William Riker",
+              "email": "w.riker@csiro.au",
+              "kind": "user",
+              "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+            },
+            {
+              "capabilities": [
+                "read",
+                "write"
+              ],
+              "display_name": "Dr William Riker",
+              "email": "w.riker@csiro.au",
+              "kind": "user",
+              "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+            }
+          ]
+        },
+        "properties": {
+          "members": {
+            "example": [
+              {
+                "capabilities": [
+                  "read",
+                  "write"
+                ],
+                "display_name": "Dr William Riker",
+                "email": "w.riker@csiro.au",
+                "kind": "user",
+                "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+              },
+              {
+                "capabilities": [
+                  "read",
+                  "write"
+                ],
+                "display_name": "Dr William Riker",
+                "email": "w.riker@csiro.au",
+                "kind": "user",
+                "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+              },
+              {
+                "capabilities": [
+                  "read",
+                  "write"
+                ],
+                "display_name": "Dr William Riker",
+                "email": "w.riker@csiro.au",
+                "kind": "user",
+                "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+              },
+              {
+                "capabilities": [
+                  "read",
+                  "write"
+                ],
+                "display_name": "Dr William Riker",
+                "email": "w.riker@csiro.au",
+                "kind": "user",
+                "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/MemberProfile"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "members"
+        ],
+        "type": "object"
+      },
+      "ListProjectDatasetsResult": {
+        "example": {
+          "datasets": [
+            {
+              "access": [
+                "Mollitia provident ratione veritatis ea qui sed.",
+                "Ipsum blanditiis itaque omnis doloremque amet error."
+              ],
+              "capability": "18378234397864834016",
+              "created_at": "1980-10-08T10:36:03Z",
+              "created_by": "Laboriosam nihil totam placeat quis ex nesciunt.",
+              "default": false,
+              "description": "Exercitationem sunt.",
+              "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+              "name": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+              "owned": true,
+              "project_id": "Illo ut nobis excepturi laboriosam."
+            },
+            {
+              "access": [
+                "Mollitia provident ratione veritatis ea qui sed.",
+                "Ipsum blanditiis itaque omnis doloremque amet error."
+              ],
+              "capability": "18378234397864834016",
+              "created_at": "1980-10-08T10:36:03Z",
+              "created_by": "Laboriosam nihil totam placeat quis ex nesciunt.",
+              "default": false,
+              "description": "Exercitationem sunt.",
+              "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+              "name": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+              "owned": true,
+              "project_id": "Illo ut nobis excepturi laboriosam."
+            }
+          ]
+        },
+        "properties": {
+          "datasets": {
+            "example": [
+              {
+                "access": [
+                  "Mollitia provident ratione veritatis ea qui sed.",
+                  "Ipsum blanditiis itaque omnis doloremque amet error."
+                ],
+                "capability": "18378234397864834016",
+                "created_at": "1980-10-08T10:36:03Z",
+                "created_by": "Laboriosam nihil totam placeat quis ex nesciunt.",
+                "default": false,
+                "description": "Exercitationem sunt.",
+                "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                "name": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+                "owned": true,
+                "project_id": "Illo ut nobis excepturi laboriosam."
+              },
+              {
+                "access": [
+                  "Mollitia provident ratione veritatis ea qui sed.",
+                  "Ipsum blanditiis itaque omnis doloremque amet error."
+                ],
+                "capability": "18378234397864834016",
+                "created_at": "1980-10-08T10:36:03Z",
+                "created_by": "Laboriosam nihil totam placeat quis ex nesciunt.",
+                "default": false,
+                "description": "Exercitationem sunt.",
+                "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                "name": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+                "owned": true,
+                "project_id": "Illo ut nobis excepturi laboriosam."
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/ProjectDataset"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "datasets"
+        ],
+        "type": "object"
+      },
+      "ListProjectsResult": {
+        "example": {
+          "projects": [
+            {
+              "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+              "kind": "workspace",
+              "name": "Great Barrier Reef Survey 2026",
+              "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+              "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            },
+            {
+              "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+              "kind": "workspace",
+              "name": "Great Barrier Reef Survey 2026",
+              "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+              "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            },
+            {
+              "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+              "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+              "kind": "workspace",
+              "name": "Great Barrier Reef Survey 2026",
+              "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+              "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+            }
+          ]
+        },
+        "properties": {
+          "projects": {
+            "example": [
+              {
+                "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                "kind": "workspace",
+                "name": "Great Barrier Reef Survey 2026",
+                "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              },
+              {
+                "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                "kind": "workspace",
+                "name": "Great Barrier Reef Survey 2026",
+                "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              },
+              {
+                "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                "kind": "workspace",
+                "name": "Great Barrier Reef Survey 2026",
+                "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+              }
+            ],
+            "items": {
+              "$ref": "#/components/schemas/Project"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "projects"
+        ],
+        "type": "object"
+      },
+      "MemberProfile": {
+        "example": {
+          "capabilities": [
+            "read",
+            "write"
+          ],
+          "display_name": "Dr William Riker",
+          "email": "w.riker@csiro.au",
+          "kind": "user",
+          "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+        },
+        "properties": {
+          "capabilities": {
+            "description": "Granted capabilities on the object (project or account grants)",
+            "example": [
+              "read",
+              "write"
+            ],
+            "items": {
+              "example": "Dolores qui animi.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "display_name": {
+            "description": "Display name (empty if not available)",
+            "example": "Dr William Riker",
+            "type": "string"
+          },
+          "email": {
+            "description": "Email (empty if not available or service principal)",
+            "example": "w.riker@csiro.au",
+            "type": "string"
+          },
+          "kind": {
+            "description": "user | service",
+            "example": "user",
+            "type": "string"
+          },
+          "user_id": {
+            "description": "Principal URN",
+            "example": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user_id",
+          "kind",
+          "display_name",
+          "email",
+          "capabilities"
+        ],
+        "type": "object"
+      },
+      "NotFoundT": {
+        "description": "not found",
+        "example": {
+          "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+          "message": "project not found"
+        },
+        "properties": {
+          "id": {
+            "description": "Resource identifier",
+            "example": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+            "type": "string"
+          },
+          "message": {
+            "description": "Error message",
+            "example": "project not found",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "Project": {
+        "example": {
+          "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+          "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+          "kind": "workspace",
+          "name": "Great Barrier Reef Survey 2026",
+          "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+          "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+        },
+        "properties": {
+          "account_id": {
+            "description": "Owning account URN",
+            "example": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+            "type": "string"
+          },
+          "id": {
+            "description": "Project URN",
+            "example": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+            "type": "string"
+          },
+          "kind": {
+            "description": "personal | workspace",
+            "example": "workspace",
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name",
+            "example": "Great Barrier Reef Survey 2026",
+            "type": "string"
+          },
+          "owner_user_id": {
+            "description": "Owner user URN (record of provenance)",
+            "example": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+            "type": "string"
+          },
+          "parent_id": {
+            "description": "Parent project URN, if any",
+            "example": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "account_id",
+          "name",
+          "owner_user_id",
+          "kind"
+        ],
+        "type": "object"
+      },
+      "ProjectDataset": {
+        "example": {
+          "access": [
+            "Mollitia provident ratione veritatis ea qui sed.",
+            "Ipsum blanditiis itaque omnis doloremque amet error."
+          ],
+          "capability": "18378234397864834016",
+          "created_at": "1980-10-08T10:36:03Z",
+          "created_by": "Laboriosam nihil totam placeat quis ex nesciunt.",
+          "default": false,
+          "description": "Exercitationem sunt.",
+          "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+          "name": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+          "owned": true,
+          "project_id": "Illo ut nobis excepturi laboriosam."
+        },
+        "properties": {
+          "access": {
+            "description": "Access granted to the project: read, write",
+            "example": [
+              "Mollitia provident ratione veritatis ea qui sed.",
+              "Ipsum blanditiis itaque omnis doloremque amet error."
+            ],
+            "items": {
+              "example": "Mollitia provident ratione veritatis ea qui sed.",
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "capability": {
+            "description": "Datafabric capability for this dataset's data, as a decimal uint64; pass it as can-read and can-retract",
+            "example": "18378234397864834016",
+            "type": "string"
+          },
+          "created_at": {
+            "description": "Creation time",
+            "example": "1980-10-08T10:36:03Z",
+            "format": "date-time",
+            "type": "string"
+          },
+          "created_by": {
+            "description": "Creator URN (user or principal); absent if created by the platform",
+            "example": "Laboriosam nihil totam placeat quis ex nesciunt.",
+            "type": "string"
+          },
+          "default": {
+            "description": "Whether this is the owning project's default dataset (same id as the project)",
+            "example": false,
+            "type": "boolean"
+          },
+          "description": {
+            "description": "Description",
+            "example": "Exercitationem sunt.",
+            "type": "string"
+          },
+          "id": {
+            "description": "Dataset URN",
+            "example": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+            "type": "string"
+          },
+          "name": {
+            "description": "Display name",
+            "example": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+            "type": "string"
+          },
+          "owned": {
+            "description": "Whether the project owns the dataset",
+            "example": true,
+            "type": "boolean"
+          },
+          "project_id": {
+            "description": "Owning project URN. The owner manages the dataset; access is by grant.",
+            "example": "Illo ut nobis excepturi laboriosam.",
+            "type": "string"
+          }
+        },
+        "required": [
+          "owned",
+          "access",
+          "id",
+          "project_id",
+          "name",
+          "description",
+          "default",
+          "created_at",
+          "capability"
+        ],
+        "type": "object"
+      },
+      "UnauthorizedT": {
+        "description": "not authorized",
+        "example": {
+          "message": "missing or expired token"
+        },
+        "properties": {
+          "message": {
+            "description": "Error message",
+            "example": "missing or expired token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "type": "object"
+      },
+      "UpdateDatasetPayload": {
+        "description": "Request body for update-dataset.",
+        "example": {
+          "description": "14c",
+          "name": "u3y"
+        },
+        "properties": {
+          "description": {
+            "description": "New description",
+            "example": "14c",
+            "maxLength": 2000,
+            "type": "string"
+          },
+          "name": {
+            "description": "New display name",
+            "example": "u3y",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "type": "object"
+      },
+      "UpdateProjectPayload": {
+        "description": "Request body for update-project.",
+        "example": {
+          "name": "r6j"
+        },
+        "properties": {
+          "name": {
+            "description": "New display name",
+            "example": "r6j",
+            "maxLength": 200,
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      }
+    },
+    "securitySchemes": {
+      "jwt_header_Authorization": {
+        "bearerFormat": "JWT",
+        "description": "ivcap-id-issued JWT whose sub is the caller's pseudonym (and, when project-scoped, project_id and the project's owning account)",
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "description": "Authentication and identity management for IVCAP",
+    "title": "IVCAP Identity Service",
+    "version": "1.0.0"
+  },
+  "openapi": "3.2.0",
+  "paths": {
+    "/.well-known/jwks.json": {
+      "get": {
+        "description": "Return merged JWKS (local signing key + Hydra public keys)",
+        "operationId": "jwks#list",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "format": "binary",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "OK response."
+          }
+        },
+        "summary": "Get JSON Web Key Set",
+        "tags": [
+          "Keys"
+        ]
+      }
+    },
+    "/accounts": {
+      "get": {
+        "description": "List accounts the caller belongs to",
+        "operationId": "accounts#list-accounts",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "accounts": [
+                    {
+                      "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "kind": "workspace",
+                      "name": "CSIRO Remote Sensing"
+                    },
+                    {
+                      "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "kind": "workspace",
+                      "name": "CSIRO Remote Sensing"
+                    },
+                    {
+                      "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "kind": "workspace",
+                      "name": "CSIRO Remote Sensing"
+                    },
+                    {
+                      "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "kind": "workspace",
+                      "name": "CSIRO Remote Sensing"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListAccountsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "List accounts",
+        "tags": [
+          "Accounts"
+        ]
+      },
+      "post": {
+        "description": "Create a new workspace account; the caller becomes its first admin",
+        "operationId": "accounts#create-account",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "name": "sz3"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccountPayload"
+              }
+            }
+          },
+          "description": "Request body for create-account.",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                  "kind": "workspace",
+                  "name": "CSIRO Remote Sensing"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            },
+            "description": "Created response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Create account",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
+    "/accounts/{account_id}/invitations": {
+      "get": {
+        "description": "List an account's invitations (gated on can_manage_members)",
+        "operationId": "accounts#list-account-invitations",
+        "parameters": [
+          {
+            "description": "Account URN",
+            "example": "lw6",
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "lw6",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "invitations": [
+                    {
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "capabilities": [
+                        "read",
+                        "write"
+                      ],
+                      "email": "w.riker@csiro.au",
+                      "expires_at": "2027-01-15T10:30:00Z",
+                      "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                      "kind": "project",
+                      "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "status": "pending"
+                    },
+                    {
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "capabilities": [
+                        "read",
+                        "write"
+                      ],
+                      "email": "w.riker@csiro.au",
+                      "expires_at": "2027-01-15T10:30:00Z",
+                      "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                      "kind": "project",
+                      "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "status": "pending"
+                    },
+                    {
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "capabilities": [
+                        "read",
+                        "write"
+                      ],
+                      "email": "w.riker@csiro.au",
+                      "expires_at": "2027-01-15T10:30:00Z",
+                      "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                      "kind": "project",
+                      "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "status": "pending"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListInvitationsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "List account invitations",
+        "tags": [
+          "Invitations"
+        ]
+      },
+      "post": {
+        "description": "Invite an email to an account (gated on can_manage_members). On accept the invitee joins the account roster and receives the selected account capabilities.",
+        "operationId": "accounts#create-account-invitation",
+        "parameters": [
+          {
+            "description": "Account URN",
+            "example": "gfp",
+            "in": "path",
+            "name": "account_id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "gfp",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "capabilities": [
+                  "gd8",
+                  "zzq",
+                  "mte"
+                ],
+                "email": "xbj"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateAccountInvitationPayload"
+              }
+            }
+          },
+          "description": "Request body for create-account-invitation.",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                  "capabilities": [
+                    "read",
+                    "write"
+                  ],
+                  "email": "w.riker@csiro.au",
+                  "expires_at": "2027-01-15T10:30:00Z",
+                  "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                  "kind": "project",
+                  "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "status": "pending"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            },
+            "description": "Created response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Create account invitation",
+        "tags": [
+          "Invitations"
+        ]
+      }
+    },
+    "/accounts/{id}": {
+      "get": {
+        "description": "Get a single account",
+        "operationId": "accounts#get-account",
+        "parameters": [
+          {
+            "description": "Account URN",
+            "example": "8d5",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "8d5",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                  "kind": "workspace",
+                  "name": "CSIRO Remote Sensing"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Account"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Get account",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
+    "/accounts/{id}/grants": {
+      "post": {
+        "description": "Grant account-admin capabilities to a user",
+        "operationId": "accounts#add-account-grant",
+        "parameters": [
+          {
+            "description": "Account URN",
+            "example": "ig3",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "ig3",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "capabilities": [
+                  "b4q",
+                  "qgw",
+                  "8rh"
+                ],
+                "user_id": "twn"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/AddAccountGrantPayload"
+              }
+            }
+          },
+          "description": "Request body for add-account-grant.",
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Add account grant",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
+    "/accounts/{id}/grants/{user_id}": {
+      "delete": {
+        "description": "Revoke an account-admin capability from a user",
+        "operationId": "accounts#remove-account-grant",
+        "parameters": [
+          {
+            "allowEmptyValue": true,
+            "description": "Account capability to revoke",
+            "example": "uea",
+            "in": "query",
+            "name": "capability",
+            "required": true,
+            "schema": {
+              "description": "Account capability to revoke",
+              "example": "uea",
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Account URN",
+            "example": "p9j",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "p9j",
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "description": "User URN",
+            "example": "tew",
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "description": "User URN",
+              "example": "tew",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Remove account grant",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
+    "/accounts/{id}/members": {
+      "get": {
+        "description": "List an account's members with their display profiles (gated on member)",
+        "operationId": "accounts#list-account-members",
+        "parameters": [
+          {
+            "description": "Account URN",
+            "example": "pw6",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "pw6",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "members": [
+                    {
+                      "capabilities": [
+                        "read",
+                        "write"
+                      ],
+                      "display_name": "Dr William Riker",
+                      "email": "w.riker@csiro.au",
+                      "kind": "user",
+                      "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+                    },
+                    {
+                      "capabilities": [
+                        "read",
+                        "write"
+                      ],
+                      "display_name": "Dr William Riker",
+                      "email": "w.riker@csiro.au",
+                      "kind": "user",
+                      "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListMembersResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "List account members",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
+    "/accounts/{id}/members/{user_id}": {
+      "delete": {
+        "description": "Remove a user from a workspace account (revokes all their account grants). Members join only via invitation — there is no direct add-member endpoint.",
+        "operationId": "accounts#remove-account-member",
+        "parameters": [
+          {
+            "description": "Account URN",
+            "example": "c3l",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "c3l",
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "description": "User URN to remove",
+            "example": "0oh",
+            "in": "path",
+            "name": "user_id",
+            "required": true,
+            "schema": {
+              "description": "User URN to remove",
+              "example": "0oh",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Remove account member",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
+    "/accounts/{id}/projects": {
+      "get": {
+        "description": "List projects belonging to an account (gated on account membership)",
+        "operationId": "accounts#list-account-projects",
+        "parameters": [
+          {
+            "description": "Account URN",
+            "example": "z55",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Account URN",
+              "example": "z55",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "projects": [
+                    {
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "kind": "workspace",
+                      "name": "Great Barrier Reef Survey 2026",
+                      "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                      "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    },
+                    {
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "kind": "workspace",
+                      "name": "Great Barrier Reef Survey 2026",
+                      "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                      "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    },
+                    {
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "kind": "workspace",
+                      "name": "Great Barrier Reef Survey 2026",
+                      "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                      "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListProjectsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "List account projects",
+        "tags": [
+          "Accounts"
+        ]
+      }
+    },
+    "/capabilities": {
+      "get": {
+        "description": "List the grantable capability vocabulary per object kind (project, account). Public, non-sensitive reference data used by clients like ivcap-cli to validate and present grants/invitations. No authentication required.",
+        "operationId": "accounts#list-capabilities",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account": [
+                    {
+                      "description": "Read access to project resources and metadata",
+                      "name": "read"
+                    },
+                    {
+                      "description": "Read access to project resources and metadata",
+                      "name": "read"
+                    },
+                    {
+                      "description": "Read access to project resources and metadata",
+                      "name": "read"
+                    },
+                    {
+                      "description": "Read access to project resources and metadata",
+                      "name": "read"
+                    }
+                  ],
+                  "project": [
+                    {
+                      "description": "Read access to project resources and metadata",
+                      "name": "read"
+                    },
+                    {
+                      "description": "Read access to project resources and metadata",
+                      "name": "read"
+                    },
+                    {
+                      "description": "Read access to project resources and metadata",
+                      "name": "read"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/CapabilitiesResult"
+                }
+              }
+            },
+            "description": "OK response."
+          }
+        },
+        "summary": "List capabilities",
+        "tags": [
+          "Capabilities"
+        ]
+      }
+    },
+    "/datasets/{id}": {
+      "delete": {
+        "description": "Soft-delete a dataset and revoke all access to it (gated on can_delete). A project's default dataset is deleted only with the project.",
+        "operationId": "accounts#delete-dataset",
+        "parameters": [
+          {
+            "description": "Dataset URN",
+            "example": "pz9",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Dataset URN",
+              "example": "pz9",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Delete dataset",
+        "tags": [
+          "Datasets"
+        ]
+      },
+      "get": {
+        "description": "Get a dataset (gated on can_read on the dataset or its owning project)",
+        "operationId": "accounts#get-dataset",
+        "parameters": [
+          {
+            "description": "Dataset URN",
+            "example": "pz9",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Dataset URN",
+              "example": "pz9",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "capability": "18378234397864834016",
+                  "created_at": "2012-10-12T23:42:17Z",
+                  "created_by": "Aliquid quod voluptas voluptas aut laudantium.",
+                  "default": false,
+                  "description": "Rerum ab molestiae.",
+                  "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "name": "Corrupti vel qui rerum facere et voluptas.",
+                  "project_id": "Quibusdam recusandae sapiente placeat vero exercitationem."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Dataset"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Get dataset",
+        "tags": [
+          "Datasets"
+        ]
+      },
+      "patch": {
+        "description": "Update a dataset's name or description (gated on can_share)",
+        "operationId": "accounts#update-dataset",
+        "parameters": [
+          {
+            "description": "Dataset URN",
+            "example": "z5n",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Dataset URN",
+              "example": "z5n",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "description": "14c",
+                "name": "u3y"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/UpdateDatasetPayload"
+              }
+            }
+          },
+          "description": "Request body for update-dataset.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "capability": "18378234397864834016",
+                  "created_at": "1998-05-26T11:56:33Z",
+                  "created_by": "Dolorum ipsa molestiae earum placeat itaque.",
+                  "default": true,
+                  "description": "Recusandae reprehenderit et consequatur tempora accusantium in.",
+                  "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "name": "Quis aut aut excepturi sed.",
+                  "project_id": "Quia ad neque et perferendis nam."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Dataset"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Update dataset",
+        "tags": [
+          "Datasets"
+        ]
+      }
+    },
+    "/datasets/{id}/events": {
+      "get": {
+        "description": "A dataset's audit history: creation, changes and every grant and revoke, with who made them (gated on can_share)",
+        "operationId": "accounts#list-dataset-events",
+        "parameters": [
+          {
+            "description": "Dataset URN",
+            "example": "pz9",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Dataset URN",
+              "example": "pz9",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "events": [
+                    {
+                      "access": "A assumenda distinctio reiciendis.",
+                      "action": "Vero fuga amet tempora facere sit.",
+                      "actor": "Doloremque quia.",
+                      "at": "1985-02-14T01:03:11Z",
+                      "grantee_id": "Ea veritatis tempore quo.",
+                      "grantee_kind": "In voluptatem voluptas perspiciatis quis minima."
+                    },
+                    {
+                      "access": "A assumenda distinctio reiciendis.",
+                      "action": "Vero fuga amet tempora facere sit.",
+                      "actor": "Doloremque quia.",
+                      "at": "1985-02-14T01:03:11Z",
+                      "grantee_id": "Ea veritatis tempore quo.",
+                      "grantee_kind": "In voluptatem voluptas perspiciatis quis minima."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListDatasetEventsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "List dataset events",
+        "tags": [
+          "Datasets"
+        ]
+      }
+    },
+    "/datasets/{id}/grants": {
+      "delete": {
+        "description": "Revoke a dataset grant. Either side may revoke: can_share on the dataset, or can_write on the grantee project.",
+        "operationId": "accounts#remove-dataset-grant",
+        "parameters": [
+          {
+            "allowEmptyValue": true,
+            "description": "project | service | public",
+            "example": "cum",
+            "in": "query",
+            "name": "grantee_kind",
+            "required": true,
+            "schema": {
+              "description": "project | service | public",
+              "example": "cum",
+              "maxLength": 32,
+              "type": "string"
+            }
+          },
+          {
+            "allowEmptyValue": true,
+            "description": "Project URN or principal URN; omitted for public",
+            "example": "c49",
+            "in": "query",
+            "name": "grantee_id",
+            "schema": {
+              "description": "Project URN or principal URN; omitted for public",
+              "example": "c49",
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "allowEmptyValue": true,
+            "description": "read | write (public is read only)",
+            "example": "duc",
+            "in": "query",
+            "name": "access",
+            "required": true,
+            "schema": {
+              "description": "read | write (public is read only)",
+              "example": "duc",
+              "maxLength": 32,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Dataset URN",
+            "example": "0md",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Dataset URN",
+              "example": "0md",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Remove dataset grant",
+        "tags": [
+          "Datasets"
+        ]
+      },
+      "get": {
+        "description": "List who may read or write a dataset (gated on can_share)",
+        "operationId": "accounts#list-dataset-grants",
+        "parameters": [
+          {
+            "description": "Dataset URN",
+            "example": "pz9",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Dataset URN",
+              "example": "pz9",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "grants": [
+                    {
+                      "access": "Modi amet veritatis dicta quae.",
+                      "granted_at": "1972-06-12T11:39:23Z",
+                      "granted_by": "Numquam quidem.",
+                      "grantee_id": "Tempore molestiae fugit atque.",
+                      "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+                    },
+                    {
+                      "access": "Modi amet veritatis dicta quae.",
+                      "granted_at": "1972-06-12T11:39:23Z",
+                      "granted_by": "Numquam quidem.",
+                      "grantee_id": "Tempore molestiae fugit atque.",
+                      "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+                    },
+                    {
+                      "access": "Modi amet veritatis dicta quae.",
+                      "granted_at": "1972-06-12T11:39:23Z",
+                      "granted_by": "Numquam quidem.",
+                      "grantee_id": "Tempore molestiae fugit atque.",
+                      "grantee_kind": "Quos ut distinctio delectus fuga dicta accusantium."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListDatasetGrantsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "List dataset grants",
+        "tags": [
+          "Datasets"
+        ]
+      },
+      "post": {
+        "description": "Grant read or write on a dataset to a project, a service principal or everyone (read only). Needs can_share on the dataset and the access being granted; granting to a project also needs can_write on that project, so both sides consent.",
+        "operationId": "accounts#add-dataset-grant",
+        "parameters": [
+          {
+            "description": "Dataset URN",
+            "example": "0md",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Dataset URN",
+              "example": "0md",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "access": "952",
+                "grantee_id": "6xp",
+                "grantee_kind": "bju"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/DatasetGrantPayload"
+              }
+            }
+          },
+          "description": "Request body for add-dataset-grant.",
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Add dataset grant",
+        "tags": [
+          "Datasets"
+        ]
+      }
+    },
+    "/invitations/mine": {
+      "get": {
+        "description": "List pending invitations bound to the caller",
+        "operationId": "accounts#list-my-invitations",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "invitations": [
+                    {
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "capabilities": [
+                        "read",
+                        "write"
+                      ],
+                      "email": "w.riker@csiro.au",
+                      "expires_at": "2027-01-15T10:30:00Z",
+                      "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                      "kind": "project",
+                      "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "status": "pending"
+                    },
+                    {
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "capabilities": [
+                        "read",
+                        "write"
+                      ],
+                      "email": "w.riker@csiro.au",
+                      "expires_at": "2027-01-15T10:30:00Z",
+                      "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                      "kind": "project",
+                      "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "status": "pending"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListInvitationsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "List my invitations",
+        "tags": [
+          "Invitations"
+        ]
+      }
+    },
+    "/invitations/{id}": {
+      "delete": {
+        "description": "Revoke a pending invitation",
+        "operationId": "accounts#revoke-invitation",
+        "parameters": [
+          {
+            "description": "Invitation URN",
+            "example": "hg4",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Invitation URN",
+              "example": "hg4",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Revoke invitation",
+        "tags": [
+          "Invitations"
+        ]
+      }
+    },
+    "/invitations/{id}/accept": {
+      "post": {
+        "description": "Accept a pending invitation bound to the caller; writes grants",
+        "operationId": "accounts#accept-invitation",
+        "parameters": [
+          {
+            "description": "Invitation URN",
+            "example": "sgb",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Invitation URN",
+              "example": "sgb",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Accept invitation",
+        "tags": [
+          "Invitations"
+        ]
+      }
+    },
+    "/invitations/{id}/decline": {
+      "post": {
+        "description": "Decline a pending invitation bound to the caller",
+        "operationId": "accounts#decline-invitation",
+        "parameters": [
+          {
+            "description": "Invitation URN",
+            "example": "sgb",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Invitation URN",
+              "example": "sgb",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Decline invitation",
+        "tags": [
+          "Invitations"
+        ]
+      }
+    },
+    "/projects": {
+      "get": {
+        "description": "List projects the caller is a member of",
+        "operationId": "accounts#list-my-projects",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "projects": [
+                    {
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "kind": "workspace",
+                      "name": "Great Barrier Reef Survey 2026",
+                      "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                      "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    },
+                    {
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "kind": "workspace",
+                      "name": "Great Barrier Reef Survey 2026",
+                      "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                      "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListProjectsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "List my projects",
+        "tags": [
+          "Projects"
+        ]
+      },
+      "post": {
+        "description": "Create a project under an account (gated on can_create_project). With a parent_id and no account_id the project inherits the parent's account; account_id overrides it and is gated on can_create_project too. A parent_id is additionally gated on can_add_child_project on that parent, since permissions cascade from parent to child.",
+        "operationId": "accounts#create-project",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "account_id": "mt0",
+                "name": "wdl",
+                "parent_id": "kp6"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateProjectPayload"
+              }
+            }
+          },
+          "description": "Request body for create-project.",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "kind": "workspace",
+                  "name": "Great Barrier Reef Survey 2026",
+                  "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                  "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            },
+            "description": "Created response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Create project",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{id}": {
+      "delete": {
+        "description": "Soft-delete a project and remove its FGA tuples",
+        "operationId": "accounts#delete-project",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "9il",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "9il",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Delete project",
+        "tags": [
+          "Projects"
+        ]
+      },
+      "get": {
+        "description": "Get a single project",
+        "operationId": "accounts#get-project",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "d5j",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "d5j",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "kind": "workspace",
+                  "name": "Great Barrier Reef Survey 2026",
+                  "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                  "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Get project",
+        "tags": [
+          "Projects"
+        ]
+      },
+      "patch": {
+        "description": "Update a project's display name",
+        "operationId": "accounts#update-project",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "8hv",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "8hv",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "name": "r6j"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/UpdateProjectPayload"
+              }
+            }
+          },
+          "description": "Request body for update-project.",
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "kind": "workspace",
+                  "name": "Great Barrier Reef Survey 2026",
+                  "owner_user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345",
+                  "parent_id": "urn:ivcap:project:a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Project"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Update project",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{id}/leave": {
+      "post": {
+        "description": "Voluntarily leave a project (strips all caller's grants, subject to orphan guard)",
+        "operationId": "accounts#leave-project",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "zyt",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "zyt",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Leave project",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{id}/members": {
+      "get": {
+        "description": "List a project's members with their display profiles (gated on can_read)",
+        "operationId": "accounts#list-project-members",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "qze",
+            "in": "path",
+            "name": "id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "qze",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "members": [
+                    {
+                      "capabilities": [
+                        "read",
+                        "write"
+                      ],
+                      "display_name": "Dr William Riker",
+                      "email": "w.riker@csiro.au",
+                      "kind": "user",
+                      "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+                    },
+                    {
+                      "capabilities": [
+                        "read",
+                        "write"
+                      ],
+                      "display_name": "Dr William Riker",
+                      "email": "w.riker@csiro.au",
+                      "kind": "user",
+                      "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+                    },
+                    {
+                      "capabilities": [
+                        "read",
+                        "write"
+                      ],
+                      "display_name": "Dr William Riker",
+                      "email": "w.riker@csiro.au",
+                      "kind": "user",
+                      "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+                    },
+                    {
+                      "capabilities": [
+                        "read",
+                        "write"
+                      ],
+                      "display_name": "Dr William Riker",
+                      "email": "w.riker@csiro.au",
+                      "kind": "user",
+                      "user_id": "urn:ivcap:user:3f5e7b9c-1a2d-4e6f-8b0c-abcdef012345"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListMembersResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "List project members",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{project_id}/datasets": {
+      "get": {
+        "description": "List the datasets a project owns or has been granted, with the access granted to it (gated on can_read on the project)",
+        "operationId": "accounts#list-project-datasets",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "zg9",
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "zg9",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "datasets": [
+                    {
+                      "access": [
+                        "Mollitia provident ratione veritatis ea qui sed.",
+                        "Ipsum blanditiis itaque omnis doloremque amet error."
+                      ],
+                      "capability": "18378234397864834016",
+                      "created_at": "1980-10-08T10:36:03Z",
+                      "created_by": "Laboriosam nihil totam placeat quis ex nesciunt.",
+                      "default": false,
+                      "description": "Exercitationem sunt.",
+                      "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "name": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+                      "owned": true,
+                      "project_id": "Illo ut nobis excepturi laboriosam."
+                    },
+                    {
+                      "access": [
+                        "Mollitia provident ratione veritatis ea qui sed.",
+                        "Ipsum blanditiis itaque omnis doloremque amet error."
+                      ],
+                      "capability": "18378234397864834016",
+                      "created_at": "1980-10-08T10:36:03Z",
+                      "created_by": "Laboriosam nihil totam placeat quis ex nesciunt.",
+                      "default": false,
+                      "description": "Exercitationem sunt.",
+                      "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "name": "Sunt itaque repellendus omnis amet praesentium aperiam.",
+                      "owned": true,
+                      "project_id": "Illo ut nobis excepturi laboriosam."
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListProjectDatasetsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "List project datasets",
+        "tags": [
+          "Datasets"
+        ]
+      },
+      "post": {
+        "description": "Create a dataset owned by a project (gated on can_write on the project). The project's readers can read it and its writers can write it.",
+        "operationId": "accounts#create-dataset",
+        "parameters": [
+          {
+            "description": "Owning project URN",
+            "example": "aff",
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "description": "Owning project URN",
+              "example": "aff",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "description": "zr1",
+                "name": "kti"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateDatasetPayload"
+              }
+            }
+          },
+          "description": "Request body for create-dataset.",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "capability": "18378234397864834016",
+                  "created_at": "2011-07-10T08:03:41Z",
+                  "created_by": "Reiciendis et quaerat.",
+                  "default": false,
+                  "description": "Quo dicta voluptate aut dolor dolor voluptas.",
+                  "id": "urn:ivcap:dataset:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "name": "Fugiat non rerum consequatur.",
+                  "project_id": "Aut sed est dolor nam nisi."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Dataset"
+                }
+              }
+            },
+            "description": "Created response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Create dataset",
+        "tags": [
+          "Datasets"
+        ]
+      }
+    },
+    "/projects/{project_id}/grants": {
+      "post": {
+        "description": "Grant project capabilities to a user or service principal",
+        "operationId": "accounts#add-project-grant",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "rcj",
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "rcj",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "capabilities": [
+                  "w3r",
+                  "myr",
+                  "h0i"
+                ],
+                "principal_id": "0af",
+                "principal_kind": "rqu"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/AddProjectGrantPayload"
+              }
+            }
+          },
+          "description": "Request body for add-project-grant.",
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Add project grant",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{project_id}/grants/{principal_id}": {
+      "delete": {
+        "description": "Revoke a project capability from a principal",
+        "operationId": "accounts#remove-project-grant",
+        "parameters": [
+          {
+            "allowEmptyValue": true,
+            "description": "user | service",
+            "example": "0tm",
+            "in": "query",
+            "name": "principal_kind",
+            "required": true,
+            "schema": {
+              "description": "user | service",
+              "example": "0tm",
+              "maxLength": 32,
+              "type": "string"
+            }
+          },
+          {
+            "allowEmptyValue": true,
+            "description": "Project capability to revoke",
+            "example": "r8m",
+            "in": "query",
+            "name": "capability",
+            "required": true,
+            "schema": {
+              "description": "Project capability to revoke",
+              "example": "r8m",
+              "maxLength": 64,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Project URN",
+            "example": "w2f",
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "w2f",
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Principal URN",
+            "example": "h6d",
+            "in": "path",
+            "name": "principal_id",
+            "required": true,
+            "schema": {
+              "description": "Principal URN",
+              "example": "h6d",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Remove project grant",
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/projects/{project_id}/invitations": {
+      "get": {
+        "description": "List a project's invitations",
+        "operationId": "accounts#list-project-invitations",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "jbx",
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "jbx",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "invitations": [
+                    {
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "capabilities": [
+                        "read",
+                        "write"
+                      ],
+                      "email": "w.riker@csiro.au",
+                      "expires_at": "2027-01-15T10:30:00Z",
+                      "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                      "kind": "project",
+                      "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "status": "pending"
+                    },
+                    {
+                      "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                      "capabilities": [
+                        "read",
+                        "write"
+                      ],
+                      "email": "w.riker@csiro.au",
+                      "expires_at": "2027-01-15T10:30:00Z",
+                      "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                      "kind": "project",
+                      "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                      "status": "pending"
+                    }
+                  ]
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ListInvitationsResult"
+                }
+              }
+            },
+            "description": "OK response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "List project invitations",
+        "tags": [
+          "Invitations"
+        ]
+      },
+      "post": {
+        "description": "Invite an email to a project (gated on can_add_user)",
+        "operationId": "accounts#create-invitation",
+        "parameters": [
+          {
+            "description": "Project URN",
+            "example": "u4h",
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "u4h",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "capabilities": [
+                  "2ee",
+                  "men",
+                  "2xx"
+                ],
+                "email": "bjv"
+              },
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvitationPayload"
+              }
+            }
+          },
+          "description": "Request body for create-invitation.",
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "account_id": "urn:ivcap:account:9d3a83be-8f3e-4d5f-b3ae-1234567890ab",
+                  "capabilities": [
+                    "read",
+                    "write"
+                  ],
+                  "email": "w.riker@csiro.au",
+                  "expires_at": "2027-01-15T10:30:00Z",
+                  "id": "urn:ivcap:invitation:2e4f6b8d-0c1e-3a5b-7d9f-fedcba987654",
+                  "kind": "project",
+                  "project_id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "status": "pending"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Invitation"
+                }
+              }
+            },
+            "description": "Created response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Create project invitation",
+        "tags": [
+          "Invitations"
+        ]
+      }
+    },
+    "/projects/{project_id}/members/{principal_id}": {
+      "delete": {
+        "description": "Remove a principal from a project entirely, atomically revoking all of their project grants (subject to the orphan guard). Unlike remove-project-grant this does not target a single capability.",
+        "operationId": "accounts#remove-project-member",
+        "parameters": [
+          {
+            "allowEmptyValue": true,
+            "description": "user | service",
+            "example": "ljs",
+            "in": "query",
+            "name": "principal_kind",
+            "required": true,
+            "schema": {
+              "description": "user | service",
+              "example": "ljs",
+              "maxLength": 32,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Project URN",
+            "example": "b5x",
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "description": "Project URN",
+              "example": "b5x",
+              "maxLength": 128,
+              "type": "string"
+            }
+          },
+          {
+            "description": "Principal URN",
+            "example": "3jc",
+            "in": "path",
+            "name": "principal_id",
+            "required": true,
+            "schema": {
+              "description": "Principal URN",
+              "example": "3jc",
+              "maxLength": 128,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content response."
+          },
+          "400": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "account_id is required when parent_id is not given"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestT"
+                }
+              }
+            },
+            "description": "bad-request: Bad Request response."
+          },
+          "401": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "missing or expired token"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/UnauthorizedT"
+                }
+              }
+            },
+            "description": "not-authorized: Unauthorized response."
+          },
+          "403": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "insufficient capabilities on this resource"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ForbiddenT"
+                }
+              }
+            },
+            "description": "forbidden: Forbidden response."
+          },
+          "404": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "id": "urn:ivcap:project:7c1d45ef-2b3a-4f6e-8c9d-0987654321ba",
+                  "message": "project not found"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/NotFoundT"
+                }
+              }
+            },
+            "description": "not-found: Not Found response."
+          },
+          "409": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "message": "a project with this name already exists in the account"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ConflictT"
+                }
+              }
+            },
+            "description": "conflict: Conflict response."
+          }
+        },
+        "security": [
+          {
+            "jwt_header_Authorization": []
+          }
+        ],
+        "summary": "Remove project member",
+        "tags": [
+          "Projects"
+        ]
+      }
+    }
+  },
+  "servers": [
+    {
+      "description": "Public listener — ingress-reachable",
+      "name": "public",
+      "url": "http://localhost:8002"
+    }
+  ],
+  "tags": [
+    {
+      "description": "Public keys for verifying the tokens ivcap-id signs.",
+      "name": "Keys"
+    },
+    {
+      "description": "Workspace accounts, which own projects: membership and account-level capability grants.",
+      "name": "Accounts"
+    },
+    {
+      "description": "The capabilities that can be granted on each kind of object. No authentication required.",
+      "name": "Capabilities"
+    },
+    {
+      "description": "Invite people by email to an account or project, and answer the invitations sent to you.",
+      "name": "Invitations"
+    },
+    {
+      "description": "Projects within an account: lifecycle, members and project-level capability grants.",
+      "name": "Projects"
+    }
+  ]
+}

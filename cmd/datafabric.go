@@ -74,7 +74,7 @@ var (
 		Short:   "Add aspect of a specific schema to an entity",
 		Aliases: []string{"a", "+"},
 		Long:    `.....`,
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			return addAspectUpdateCmd(true, cmd, args)
 		},
@@ -85,7 +85,7 @@ var (
 		Short:   "Update an aspect record for an entity and a specific schema",
 		Aliases: []string{"a", "+"},
 		Long:    `This command will only succeed if there is only one active record for the entity/schema pair`,
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			return addAspectUpdateCmd(false, cmd, args)
 		},
@@ -96,7 +96,7 @@ var (
 		Short:   "Get a specific aspect record",
 		Aliases: []string{"g"},
 		// Long:    `.....`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			return getAspect(GetHistory(args[0]))
 		},
@@ -107,7 +107,7 @@ var (
 		Short:   "Retract a specific aspect record",
 		Aliases: []string{"r"},
 		// Long:    `.....`,
-		Args: cobra.ExactArgs(1),
+		Args: exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			aspectID := GetHistory(args[0])
 			ctxt := context.Background()

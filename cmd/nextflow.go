@@ -194,7 +194,7 @@ var (
 	nextflowCreateCmd = &cobra.Command{
 		Use:   "create [flags] -f package.tar|package.tgz",
 		Short: "Create a Nextflow service definition from a local archive",
-		Args:  cobra.ExactArgs(0),
+		Args:  exactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// Service ID is extracted from the archive's ivcap.yaml
 			return runNextflowCreateOrUpdate(context.Background(), "")
@@ -220,7 +220,7 @@ var (
 		Aliases: []string{"get-job", "get", "get-run"},
 		Short:   "Get status or results of a Nextflow job",
 		Long:    "Fetch details about a single Nextflow job without needing the service/pipeline URN",
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			jobID := GetHistory(args[0])
 			ctxt := context.Background()
@@ -233,7 +233,7 @@ var (
 		Aliases: []string{"result", "results"},
 		Short:   "List or download files from a Nextflow job result artifact",
 		Long:    "Download and access the result artifact from a Nextflow job. Without flags, shows summary. With -f, downloads/extracts files into the specified directory.",
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			jobID := GetHistory(args[0])
 			ctxt := context.Background()
@@ -246,7 +246,7 @@ var (
 		Aliases: []string{"job-report", "report"},
 		Short:   "View Nextflow job execution report in a web browser",
 		Long:    "Download the output directory from a Nextflow job and serve the index.html file in a local web server. The report will be automatically opened in your browser if possible. With --multiqc, serves the MultiQC report if available.",
-		Args:    cobra.ExactArgs(1),
+		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			jobID := GetHistory(args[0])
 			ctxt := context.Background()
@@ -258,7 +258,7 @@ var (
 		Use:   "retract service-id [flags]",
 		Short: "Retract the service aspect(s) created by 'nextflow create'",
 		Long:  "Query and retract the service description aspect(s) for a given service ID. This is the opposite of 'nextflow create'.",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			serviceID := GetHistory(args[0])
 			ctxt := context.Background()
@@ -270,7 +270,7 @@ var (
 		Use:   "run [flags] service-id [-f job-input|-] [-a aspect-urn] [-s|--samplesheet file.csv|-] [--watch] [--stream]",
 		Short: "Alias for 'ivcap job create'",
 		Long:  "Alias for 'ivcap job create' (creates a job for a given service ID with provided input).",
-		Args:  cobra.ExactArgs(1),
+		Args:  exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			ctxt := context.Background()
 			serviceID := GetHistory(args[0])
@@ -351,7 +351,7 @@ Examples:
   ivcap nextflow events urn:ivcap:service:123 urn:ivcap:job:456
   ivcap nextflow events --max-messages 10 service-id job-id
   ivcap nextflow events --last-event-id abc123 service-id job-id`,
-		Args: cobra.ExactArgs(2),
+		Args: exactArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			serviceID := GetHistory(args[0])
 			jobID := GetHistory(args[1])
