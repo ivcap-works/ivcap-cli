@@ -40,5 +40,5 @@ ivcap [flags]
 * [ivcap secret](ivcap_secret.md)	 - Set and list secrets 
 * [ivcap service](ivcap_service.md)	 - Create and manage services
 * [ivcap skills](ivcap_skills.md)	 - List and show agent skill docs embedded in this CLI release
-* [ivcap whoami](ivcap_whoami.md)	 - Show the currently authenticated identity and accessible accounts/projects
+* [ivcap whoami](ivcap_whoami.md)	 - Show the currently authenticated identity, current project and account
 
