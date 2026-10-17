@@ -35,10 +35,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// The `ncbi` commands talk to NCBI Datasets, not to an IVCAP deployment, so they
-// need no context and no login. The NCBI access itself lives in the
-// ivcap-ncbi-genome-download library; this file only maps flags onto its
-// requests and prints the results the way the other commands do.
+// The NCBI access lives in the ivcap-ncbi-genome-download library; this file
+// maps flags onto its requests and prints the results the way the other commands
+// do. Download and reports need no IVCAP login; import also talks to IVCAP.
 
 var (
 	ncbiAPIKey string
@@ -50,6 +49,17 @@ var (
 	ncbiChromosomes     []string
 	ncbiAssemblyVersion string
 	ncbiFastZip         bool
+
+	// ncbi genome import
+	ncbiImportIncludes       []string
+	ncbiImportChromosomes    []string
+	ncbiImportVersion        string
+	ncbiImportFastZip        bool
+	ncbiImportName           string
+	ncbiImportPolicy         string
+	ncbiImportChunkSize      int64
+	ncbiImportReportSchema   string
+	ncbiImportManifestSchema string
 
 	// ncbi genome reports
 	ncbiRepVersion  string
@@ -67,6 +77,7 @@ func init() {
 	rootCmd.AddCommand(ncbiCmd)
 	ncbiCmd.AddCommand(ncbiGenomeCmd)
 	ncbiGenomeCmd.AddCommand(ncbiDownloadCmd)
+	ncbiGenomeCmd.AddCommand(ncbiImportCmd)
 	ncbiGenomeCmd.AddCommand(ncbiReportsCmd)
 
 	ncbiCmd.PersistentFlags().StringVar(&ncbiAPIKey, "ncbi-api-key", "",
@@ -83,6 +94,23 @@ func init() {
 		"Version policy: 'current', 'latest' or 'all' [use the version given in ACCESSION]")
 	d.BoolVar(&ncbiFastZip, "fast-zip-validation", false,
 		"Only check the zip's directory after the download, not every file in it")
+
+	i := ncbiImportCmd.Flags()
+	i.StringSliceVar(&ncbiImportIncludes, "include", []string{"genome"},
+		"Files to include (comma-separated): genome, rna, protein, cds, gff3, gtf, gbff, seq-report, all, none")
+	i.StringSliceVar(&ncbiImportChromosomes, "chromosomes", nil,
+		"Limit the genome FASTA to these chromosomes (comma-separated, or 'all')")
+	i.StringVar(&ncbiImportVersion, "assembly-version", "",
+		"Version policy: 'current', 'latest' or 'all' [use the version given in ACCESSION]")
+	i.BoolVar(&ncbiImportFastZip, "fast-zip-validation", false,
+		"Only check the zip's directory after the download, not every file in it")
+	i.StringVarP(&ncbiImportName, "name", "n", "", "Artifact name [zip file name]")
+	i.StringVarP(&ncbiImportPolicy, "policy", "p", "", "Policy controlling access to the artifact and aspects")
+	i.Int64Var(&ncbiImportChunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
+	i.StringVar(&ncbiImportReportSchema, "report-schema", ncbiAssemblyReportSchema,
+		"Schema URN for the assembly report aspect")
+	i.StringVar(&ncbiImportManifestSchema, "manifest-schema", artifactArchiveManifestSchema,
+		"Schema URN for the RO-Crate manifest aspect")
 
 	r := ncbiReportsCmd.Flags()
 	r.StringVar(&ncbiRepVersion, "assembly-version", "",
@@ -101,11 +129,12 @@ func init() {
 var (
 	ncbiCmd = &cobra.Command{
 		Use:   "ncbi",
-		Short: "Look up and download genomes from NCBI",
-		Long: `Look up genome assemblies at NCBI and download their data packages.
+		Short: "Look up, download and import genomes from NCBI",
+		Long: `Look up genome assemblies at NCBI, download their data packages and import them into IVCAP.
 
-These commands talk to NCBI Datasets (https://www.ncbi.nlm.nih.gov/datasets/), not to an
-IVCAP deployment, so they need no context and no login.`,
+The download and reports commands only talk to NCBI Datasets
+(https://www.ncbi.nlm.nih.gov/datasets/), so they need no IVCAP context or login. Import uploads
+an existing package to the active IVCAP deployment and attaches report and manifest aspects.`,
 	}
 
 	ncbiGenomeCmd = &cobra.Command{
@@ -150,6 +179,43 @@ is printed in machine-readable form.
 			}
 			client := ncbiNewClient(ncbiAPIKey, silent, os.Stderr)
 			return runNcbiDownload(ctxt, client, o, os.Stdout, os.Stderr)
+		},
+	}
+
+	ncbiImportCmd = &cobra.Command{
+		Use:   "import ACCESSION [flags]",
+		Short: "Import an NCBI genome package into IVCAP",
+		Long: `Import an NCBI genome data package as an IVCAP artifact.
+
+The package is downloaded to a temporary file which is removed after upload; no local package is
+left behind. The same --include, --chromosomes, --assembly-version and --fast-zip-validation options
+as 'ncbi genome download' control the package. The imported artifact receives an assembly report
+aspect and an RO-Crate 1.2 archive manifest aspect.
+
+If an aspect request fails after upload, the error names the uploaded artifact so it can be repaired.`,
+		Example: `  ivcap ncbi genome import GCF_000001735.4
+  ivcap ncbi genome import GCF_000001735.4 --include genome,gff3,seq-report
+  ivcap --output json ncbi genome import GCF_000001735.4 --policy urn:ivcap:policy:...`,
+		Args: exactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctxt, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+			defer stop()
+			o := ncbiImportOpts{
+				Accession:       args[0],
+				Includes:        ncbiImportIncludes,
+				Chromosomes:     ncbiImportChromosomes,
+				AssemblyVersion: ncbiImportVersion,
+				FastZip:         ncbiImportFastZip,
+				Name:            ncbiImportName,
+				Policy:          ncbiImportPolicy,
+				ChunkSize:       ncbiImportChunkSize,
+				ReportSchema:    ncbiImportReportSchema,
+				ManifestSchema:  ncbiImportManifestSchema,
+				Format:          outputFormat,
+				Silent:          silent,
+			}
+			client := ncbiNewClient(ncbiAPIKey, silent, os.Stderr)
+			return runNcbiImport(ctxt, client, o, CreateAdapterWithTimeout(true, timeout), os.Stdout, os.Stderr)
 		},
 	}
 
@@ -383,6 +449,190 @@ func printNcbiDownload(w io.Writer, res *ncbigenome.Result, path, format string)
 		t.Render()
 	}
 	return nil
+}
+
+// ---- import -----------------------------------------------------------------
+
+const (
+	ncbiAssemblyReportSchema = "urn:ivcap:schema:ncbi.assembly-data-report.1"
+)
+
+type ncbiImportOpts struct {
+	Accession       string
+	Includes        []string
+	Chromosomes     []string
+	AssemblyVersion string
+	FastZip         bool
+	Name            string
+	Policy          string
+	ChunkSize       int64
+	ReportSchema    string
+	ManifestSchema  string
+	Format          string // "", "json" or "yaml"
+	Silent          bool
+}
+
+type ncbiImportOutput struct {
+	Artifact       string `json:"artifact"`
+	Accession      string `json:"accession"`
+	Bytes          int64  `json:"bytes"`
+	ReportAspect   string `json:"report_aspect,omitempty"`
+	ManifestAspect string `json:"manifest_aspect,omitempty"`
+}
+
+func runNcbiImport(
+	ctxt context.Context,
+	client *ncbigenome.Client,
+	o ncbiImportOpts,
+	adapter *adpt.Adapter,
+	stdout, stderr io.Writer,
+) error {
+	if o.ReportSchema == "" {
+		return errors.New("report schema must not be empty")
+	}
+	if o.ManifestSchema == "" {
+		return errors.New("manifest schema must not be empty")
+	}
+
+	req, err := ncbiDownloadRequest(ncbiDownloadOpts{
+		Accession:       o.Accession,
+		Includes:        o.Includes,
+		Chromosomes:     o.Chromosomes,
+		AssemblyVersion: o.AssemblyVersion,
+		FastZip:         o.FastZip,
+	})
+	if err != nil {
+		return err
+	}
+
+	// Fetch the report explicitly: it is stored as its own aspect, independently
+	// of any report file NCBI may include inside the downloaded package.
+	reports, err := client.AssemblyReports(ctxt, req)
+	if err != nil {
+		return ncbiCLIErr(err)
+	}
+	if len(reports) != 1 {
+		return ncbiCLIErr(ncbigenome.ErrNotSingleGenome)
+	}
+	reportBytes, err := ncbiAspectJSON(reports[0], o.ReportSchema)
+	if err != nil {
+		return fmt.Errorf("cannot encode assembly report: %w", err)
+	}
+
+	tmpDir, err := os.MkdirTemp("", "ivcap-ncbi-import-*")
+	if err != nil {
+		return fmt.Errorf("cannot create temporary download directory: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	path := filepath.Join(tmpDir, "package.zip")
+	onProgress, done := ncbiProgress(o.Silent, o.Format, stderr)
+	req.OnProgress = onProgress
+	res, err := client.DownloadToFile(ctxt, req, path)
+	done()
+	if err != nil {
+		return ncbiCLIErr(err)
+	}
+	if res.Warning != "" && !o.Silent {
+		fmt.Fprintln(stderr, "Warning:", res.Warning)
+	}
+	info, err := os.Stat(filepath.Clean(path))
+	if err != nil {
+		return fmt.Errorf("cannot read temporary NCBI package: %w", err)
+	}
+	manifest := res.Manifest
+	if manifest == nil {
+		manifest, err = ncbigenome.ReadManifest(path)
+		if err != nil {
+			return fmt.Errorf("cannot read temporary package manifest: %w", err)
+		}
+	}
+	published := info.ModTime().UTC().Format(time.DateOnly)
+	if reports[0].AssemblyInfo != nil && reports[0].AssemblyInfo.ReleaseDate != "" {
+		published = reports[0].AssemblyInfo.ReleaseDate
+	}
+	entries := make([]archiveManifestEntry, 0, len(manifest.Files))
+	for _, file := range manifest.Files {
+		entries = append(entries, archiveManifestEntry{Name: file.Name, Size: file.Size})
+	}
+	manifestBytes, err := json.Marshal(archiveManifestAspect{
+		Schema:  o.ManifestSchema,
+		Profile: roCrateProfile,
+		ROCrate: buildROCrate(archiveManifestMetadata{
+			Identifier:  reports[0].Accession,
+			Name:        fmt.Sprintf("NCBI genome data package %s", reports[0].Accession),
+			Description: "NCBI Datasets genome data package imported into IVCAP.",
+			Published:   published,
+		}, entries),
+	})
+	if err != nil {
+		return fmt.Errorf("cannot encode package manifest: %w", err)
+	}
+
+	f, err := os.Open(filepath.Clean(path))
+	if err != nil {
+		return fmt.Errorf("cannot open NCBI package %q: %w", path, err)
+	}
+	defer f.Close()
+	artifactName := o.Name
+	if artifactName == "" {
+		artifactName = res.Accession + ".zip"
+	}
+	resp, err := sdk.CreateArtifact(ctxt, &sdk.CreateArtifactRequest{
+		Name: artifactName, Size: info.Size(), Policy: o.Policy,
+	}, "application/zip", info.Size(), nil, adapter, logger)
+	if err != nil {
+		return fmt.Errorf("cannot create artifact for NCBI package %s: %w", res.Accession, err)
+	}
+	if resp.ID == nil || resp.DataHref == nil {
+		return errors.New("artifact create response is missing its id or upload URL")
+	}
+	artifactID := *resp.ID
+	uploadPath, err := (*adapter).GetPath(*resp.DataHref)
+	if err != nil {
+		return fmt.Errorf("cannot parse upload URL for artifact %s: %w", artifactID, err)
+	}
+	if err := sdk.UploadArtifact(ctxt, f, info.Size(), 0, o.ChunkSize, uploadPath, adapter, true, logger); err != nil {
+		return fmt.Errorf("cannot upload artifact %s: %w", artifactID, err)
+	}
+
+	reportAspect, err := addAspectContent(ctxt, artifactID, o.ReportSchema, o.Policy, reportBytes, adapter)
+	if err != nil {
+		return fmt.Errorf("artifact %s was uploaded, but its report aspect could not be added: %w", artifactID, err)
+	}
+	manifestAspect, err := addAspectContent(ctxt, artifactID, o.ManifestSchema, o.Policy, manifestBytes, adapter)
+	if err != nil {
+		return fmt.Errorf("artifact %s and report aspect %s were created, but the manifest aspect could not be added: %w",
+			artifactID, reportAspect, err)
+	}
+
+	result := ncbiImportOutput{
+		Artifact: artifactID, Accession: reports[0].Accession, Bytes: info.Size(),
+		ReportAspect: reportAspect, ManifestAspect: manifestAspect,
+	}
+	if o.Format == "json" || o.Format == "yaml" {
+		return printNcbiStructured(stdout, result, o.Format)
+	}
+	if o.Silent {
+		_, err = fmt.Fprintln(stdout, artifactID)
+		return err
+	}
+	_, err = fmt.Fprintf(stdout, "Downloaded and imported %s as %s (%s)\nReport aspect: %s\nManifest aspect: %s\n",
+		result.Accession, artifactID, ncbiBytes(info.Size()), reportAspect, manifestAspect)
+	return err
+}
+
+func ncbiAspectJSON(value any, schema string) ([]byte, error) {
+	b, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	var aspect map[string]any
+	if err := json.Unmarshal(b, &aspect); err != nil {
+		return nil, err
+	}
+	aspect["$schema"] = schema
+	aspect["json_schema"] = ncbigenome.AssemblyDataReportSchemaURL
+	return json.Marshal(aspect)
 }
 
 // ---- reports ----------------------------------------------------------------

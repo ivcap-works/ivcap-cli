@@ -2,6 +2,14 @@
 
 Resume uploading artifact content
 
+### Synopsis
+
+Resume uploading content to an existing artifact.
+
+Local ZIP, TAR and TAR.GZ archives are indexed before upload and receive an RO-Crate 1.2 JSON-LD
+manifest aspect by default. Use --without-manifest to opt out. Content read from stdin cannot be
+indexed and is uploaded without a manifest.
+
 ```
 ivcap artifact upload artifactID -f file|- [flags]
 ```
@@ -9,10 +17,12 @@ ivcap artifact upload artifactID -f file|- [flags]
 ### Options
 
 ```
-      --chunk-size int        Chunk size for splitting large files (default 10000000)
-  -t, --content-type string   Content type of artifact; auto-detected when omitted. Accepts a full MIME type (e.g. application/x-compressed-tar) or a bare extension (e.g. tgz, nc, fasta)
-  -f, --file string           Path to file containing artifact content
-  -h, --help                  help for upload
+      --chunk-size int           Chunk size for splitting large files (default 10000000)
+  -t, --content-type string      Content type of artifact; auto-detected when omitted. Accepts a full MIME type (e.g. application/x-compressed-tar) or a bare extension (e.g. tgz, nc, fasta)
+  -f, --file string              Path to file containing artifact content
+  -h, --help                     help for upload
+      --manifest-schema string   Schema URN for the archive manifest aspect (default "urn:ivcap:schema:artifact.archive-manifest.1")
+      --without-manifest         Do not add a file manifest for ZIP, TAR or TAR.GZ archives
 ```
 
 ### Options inherited from parent commands

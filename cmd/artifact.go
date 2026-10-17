@@ -66,12 +66,16 @@ func init() {
 	createArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact; auto-detected when omitted. Accepts a full MIME type (e.g. application/x-compressed-tar) or a bare extension (e.g. tgz, nc, fasta)")
 	createArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
 	createArtifactCmd.Flags().BoolVar(&force, "force", false, "Force creation of new artifact, even if already uploaded")
+	createArtifactCmd.Flags().BoolVar(&artifactWithoutManifest, "without-manifest", false, "Do not add a file manifest for ZIP, TAR or TAR.GZ archives")
+	createArtifactCmd.Flags().StringVar(&artifactManifestSchema, "manifest-schema", artifactArchiveManifestSchema, "Schema URN for the archive manifest aspect")
 
 	// UPLOAD
 	artifactCmd.AddCommand(uploadArtifactCmd)
 	uploadArtifactCmd.Flags().StringVarP(&fileName, "file", "f", "", "Path to file containing artifact content")
 	uploadArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact; auto-detected when omitted. Accepts a full MIME type (e.g. application/x-compressed-tar) or a bare extension (e.g. tgz, nc, fasta)")
 	uploadArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
+	uploadArtifactCmd.Flags().BoolVar(&artifactWithoutManifest, "without-manifest", false, "Do not add a file manifest for ZIP, TAR or TAR.GZ archives")
+	uploadArtifactCmd.Flags().StringVar(&artifactManifestSchema, "manifest-schema", artifactArchiveManifestSchema, "Schema URN for the archive manifest aspect")
 
 	// // ADD METADATA
 	// artifactCmd.AddCommand(addArtifactMetadataCmd)
@@ -108,10 +112,12 @@ type ArtifactInCollection struct {
 }
 
 var (
-	artifactCollection string
-	contentType        string
-	chunkSize          int64
-	force              bool
+	artifactCollection      string
+	contentType             string
+	chunkSize               int64
+	force                   bool
+	artifactWithoutManifest bool
+	artifactManifestSchema  string
 
 	artifactCmd = &cobra.Command{
 		Use:     "artifact",
@@ -210,7 +216,11 @@ Supported extension shorthands include (but are not limited to):
 
 When reading from stdin (-f -) the first 512 bytes are sniffed and replayed into the
 upload stream so no data is lost.  For piped tar.gz streams (where the extension is
-unavailable) pass -t tgz or -t application/x-compressed-tar explicitly.`,
+unavailable) pass -t tgz or -t application/x-compressed-tar explicitly.
+
+Local ZIP, TAR and TAR.GZ archives are indexed before upload and receive an RO-Crate 1.2 JSON-LD
+manifest aspect by default. Use --without-manifest to opt out. Content read from stdin cannot be
+indexed and is uploaded without a manifest.`,
 
 		Run: func(cmd *cobra.Command, args []string) {
 			uploadArtifact(fileName, force, artifactCollection)
@@ -218,13 +228,23 @@ unavailable) pass -t tgz or -t application/x-compressed-tar explicitly.`,
 	}
 
 	uploadArtifactCmd = &cobra.Command{
-		Use:     "upload artifactID -f file|-",
-		Short:   "Resume uploading artifact content",
+		Use:   "upload artifactID -f file|-",
+		Short: "Resume uploading artifact content",
+		Long: `Resume uploading content to an existing artifact.
+
+Local ZIP, TAR and TAR.GZ archives are indexed before upload and receive an RO-Crate 1.2 JSON-LD
+manifest aspect by default. Use --without-manifest to opt out. Content read from stdin cannot be
+indexed and is uploaded without a manifest.`,
 		Aliases: []string{"resume"},
 		Args:    exactArgs(1),
 
 		Run: func(cmd *cobra.Command, args []string) {
 			artifactID := args[0]
+			manifestContent, err := prepareArtifactManifest(fileName)
+			if err != nil {
+				cobra.CheckErr(err)
+				return
+			}
 			reader, contentType, size := getReader(fileName, contentType)
 			logger.Debug("upload artifact", log.String("content-type", contentType), log.String("file", fileName))
 			adapter := CreateAdapter(true)
@@ -259,13 +279,22 @@ unavailable) pass -t tgz or -t application/x-compressed-tar explicitly.`,
 			}
 
 			if size > 0 && offset >= size {
-				// already done
+				if manifestContent != nil {
+					if err = attachArtifactManifest(ctxt, artifactID, manifestContent, adapter); err != nil {
+						cobra.CheckErr(fmt.Sprintf("artifact '%s' is fully uploaded, but its manifest aspect could not be added: %v", artifactID, err))
+					}
+					return
+				}
 				cobra.CompErrorln(fmt.Sprintf("Artifact '%s' already fully uploaded\n", artifactID))
 				return
 			}
 
 			if err = upload(ctxt, reader, artifactID, path, size, offset, adapter); err != nil {
 				cobra.CompErrorln(fmt.Sprintf("while uploading artifact '%s' - %v", artifactID, err))
+				return
+			}
+			if err = attachArtifactManifest(ctxt, artifactID, manifestContent, adapter); err != nil {
+				cobra.CheckErr(fmt.Sprintf("artifact '%s' was uploaded, but its manifest aspect could not be added: %v", artifactID, err))
 			}
 		},
 	}
@@ -381,12 +410,23 @@ func uploadArtifact(
 ) (artifactID string) {
 	var reader io.Reader
 	var size int64
+	manifestContent, err := prepareArtifactManifest(fileName)
+	if err != nil {
+		cobra.CheckErr(err)
+		return
+	}
+	ctxt := context.Background()
+	adapter := CreateAdapterWithTimeout(true, timeout)
 
 	fileHash := getFileHash(fileName)
 	metaFile, metaExists := getArtifactMetaFileFor(fileName)
 	if !force && metaFile != nil && metaExists {
 		if aidP := getArtifactIdFromMeta(*metaFile, fileHash); aidP != nil {
 			artifactID = *aidP
+			if err := attachArtifactManifest(ctxt, artifactID, manifestContent, adapter); err != nil {
+				cobra.CheckErr(fmt.Sprintf("artifact '%s' already exists, but its manifest aspect could not be added: %v", artifactID, err))
+				return ""
+			}
 			if silent {
 				fmt.Printf("%s\n", artifactID)
 			} else {
@@ -402,14 +442,12 @@ func uploadArtifact(
 	if name == "" && fileName != "-" {
 		name = filepath.Base(fileName)
 	}
-	adapter := CreateAdapterWithTimeout(true, timeout)
 	req := &sdk.CreateArtifactRequest{
 		Name:       name,
 		Size:       size,
 		Collection: artifactCollection,
 		Policy:     policy,
 	}
-	ctxt := context.Background()
 	resp, err := sdk.CreateArtifact(ctxt, req, contentType, size, nil, adapter, logger)
 	if err != nil {
 		cobra.CheckErr(fmt.Sprintf("while creating record for '%s'- %v", fileName, err))
@@ -427,6 +465,10 @@ func uploadArtifact(
 	if err = upload(ctxt, reader, artifactID, path, size, 0, adapter); err != nil {
 		cobra.CheckErr(fmt.Sprintf("while upload - %v", err))
 		return
+	}
+	if err = attachArtifactManifest(ctxt, artifactID, manifestContent, adapter); err != nil {
+		cobra.CheckErr(fmt.Sprintf("artifact '%s' was uploaded, but its manifest aspect could not be added: %v", artifactID, err))
+		return ""
 	}
 	if artifactCollection != "" {
 		if err = addItemToCollection(ctxt, artifactCollection, artifactID, adapter); err != nil {
@@ -449,6 +491,37 @@ func uploadArtifact(
 		}
 	}
 	return
+}
+
+func prepareArtifactManifest(fileName string) ([]byte, error) {
+	if artifactWithoutManifest || fileName == "" || fileName == "-" {
+		return nil, nil
+	}
+	isArchive, err := isManifestArchive(fileName)
+	if err != nil {
+		return nil, err
+	}
+	if !isArchive {
+		return nil, nil
+	}
+	return archiveManifestForFile(fileName, artifactManifestSchema, archiveManifestMetadata{
+		Name:        name,
+		Description: "Files contained in the uploaded artifact archive.",
+	})
+}
+
+func attachArtifactManifest(ctxt context.Context, artifactID string, content []byte, adapter *a.Adapter) error {
+	if content == nil {
+		return nil
+	}
+	manifestID, err := addAspectContent(ctxt, artifactID, artifactManifestSchema, policy, content, adapter)
+	if err != nil {
+		return err
+	}
+	if !silent && outputFormat == "" {
+		fmt.Printf("Added archive manifest aspect '%s'\n", manifestID)
+	}
+	return nil
 }
 
 func upload(

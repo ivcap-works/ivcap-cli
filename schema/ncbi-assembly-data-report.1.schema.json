@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ivcap:schema:ncbi.assembly-data-report.1",
+  "title": "NCBI assembly data report aspect",
+  "description": "An NCBI Datasets assembly report stored as an IVCAP DataFabric aspect.",
+  "allOf": [
+    {
+      "$ref": "https://raw.githubusercontent.com/ivcap-works/ivcap-ncbi-genome-download/main/schema/assembly-data-report.schema.json"
+    },
+    {
+      "type": "object",
+      "required": ["$schema", "json_schema", "accession"],
+      "properties": {
+        "$schema": {
+          "const": "urn:ivcap:schema:ncbi.assembly-data-report.1"
+        },
+        "json_schema": {
+          "const": "https://raw.githubusercontent.com/ivcap-works/ivcap-ncbi-genome-download/main/schema/assembly-data-report.schema.json"
+        },
+        "accession": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  ]
+}

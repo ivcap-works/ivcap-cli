@@ -26,6 +26,10 @@ When reading from stdin (-f -) the first 512 bytes are sniffed and replayed into
 upload stream so no data is lost.  For piped tar.gz streams (where the extension is
 unavailable) pass -t tgz or -t application/x-compressed-tar explicitly.
 
+Local ZIP, TAR and TAR.GZ archives are indexed before upload and receive an RO-Crate 1.2 JSON-LD
+manifest aspect by default. Use --without-manifest to opt out. Content read from stdin cannot be
+indexed and is uploaded without a manifest.
+
 ```
 ivcap artifact create [flags] -n name -f file|-
 ```
@@ -33,14 +37,16 @@ ivcap artifact create [flags] -n name -f file|-
 ### Options
 
 ```
-      --chunk-size int        Chunk size for splitting large files (default 10000000)
-  -c, --collection string     Assigns artifact to a specific collection
-  -t, --content-type string   Content type of artifact; auto-detected when omitted. Accepts a full MIME type (e.g. application/x-compressed-tar) or a bare extension (e.g. tgz, nc, fasta)
-  -f, --file string           Path to file containing artifact content
-      --force                 Force creation of new artifact, even if already uploaded
-  -h, --help                  help for create
-  -n, --name string           Human friendly name
-  -p, --policy string         Policy controlling access
+      --chunk-size int           Chunk size for splitting large files (default 10000000)
+  -c, --collection string        Assigns artifact to a specific collection
+  -t, --content-type string      Content type of artifact; auto-detected when omitted. Accepts a full MIME type (e.g. application/x-compressed-tar) or a bare extension (e.g. tgz, nc, fasta)
+  -f, --file string              Path to file containing artifact content
+      --force                    Force creation of new artifact, even if already uploaded
+  -h, --help                     help for create
+      --manifest-schema string   Schema URN for the archive manifest aspect (default "urn:ivcap:schema:artifact.archive-manifest.1")
+  -n, --name string              Human friendly name
+  -p, --policy string            Policy controlling access
+      --without-manifest         Do not add a file manifest for ZIP, TAR or TAR.GZ archives
 ```
 
 ### Options inherited from parent commands

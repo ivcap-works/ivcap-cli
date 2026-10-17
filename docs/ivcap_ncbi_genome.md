@@ -23,7 +23,8 @@ Genome assemblies at NCBI
 
 ### SEE ALSO
 
-* [ivcap ncbi](ivcap_ncbi.md)	 - Look up and download genomes from NCBI
+* [ivcap ncbi](ivcap_ncbi.md)	 - Look up, download and import genomes from NCBI
 * [ivcap ncbi genome download](ivcap_ncbi_genome_download.md)	 - Download the data package of one genome assembly as a zip file
+* [ivcap ncbi genome import](ivcap_ncbi_genome_import.md)	 - Import an NCBI genome package into IVCAP
 * [ivcap ncbi genome reports](ivcap_ncbi_genome_reports.md)	 - Show the NCBI genome assembly reports for assembly or BioProject accessions
 

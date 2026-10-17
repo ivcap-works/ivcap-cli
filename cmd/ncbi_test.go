@@ -20,15 +20,19 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 
+	adpt "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 	ncbigenome "github.com/ivcap-works/ivcap-ncbi-genome-download"
+	log "go.uber.org/zap"
 )
 
 func ncbiTestZip(t *testing.T, files map[string]string) []byte {
@@ -338,6 +342,149 @@ func TestRunNcbiDownloadRejectsMoreThanOneGenome(t *testing.T) {
 	}
 }
 
+func TestRunNcbiImport(t *testing.T) {
+	zipBytes := ncbiTestZip(t, map[string]string{
+		"ncbi_dataset/data/GCF_000001735.4/genomic.fna": ">chr1\nACGT\n",
+		"ncbi_dataset/data/assembly data report.jsonl":  "{}\n",
+	})
+
+	const artifactID = "urn:ivcap:artifact:11111111-1111-1111-1111-111111111111"
+	var uploaded []byte
+	var downloaded bool
+	var aspects []struct {
+		schema string
+		entity string
+		body   map[string]any
+	}
+	var srv *httptest.Server
+	srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
+		switch {
+		case r.URL.Path == "/genome/dataset_report":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = io.WriteString(w, `{"reports":[{"accession":"GCF_000001735.4","organism":{"organism_name":"Arabidopsis thaliana"},"assembly_info":{"release_date":"2018-03-15"}}]}`)
+		case r.URL.Path == "/genome/download":
+			downloaded = true
+			body, _ := io.ReadAll(r.Body)
+			if !bytes.Contains(body, []byte("GENOME_GFF")) || !bytes.Contains(body, []byte("chr1")) {
+				t.Errorf("download request does not contain import selections: %s", body)
+			}
+			w.Header().Set("Content-Type", "application/zip")
+			_, _ = w.Write(zipBytes)
+		case r.Method == http.MethodPost && r.URL.Path == "/1/artifacts":
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(w, `{"id":%q,"data-href":%q}`, artifactID, srv.URL+"/upload/package")
+		case r.Method == http.MethodPatch && r.URL.Path == "/upload/package":
+			uploaded, _ = io.ReadAll(r.Body)
+			w.Header().Set("Upload-Offset", strconv.Itoa(len(uploaded)))
+			w.WriteHeader(http.StatusNoContent)
+		case r.Method == http.MethodPost && r.URL.Path == "/1/aspects":
+			var body map[string]any
+			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+				t.Errorf("decode aspect: %v", err)
+			}
+			aspects = append(aspects, struct {
+				schema string
+				entity string
+				body   map[string]any
+			}{r.URL.Query().Get("schema"), r.URL.Query().Get("entity"), body})
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprintf(w, `{"id":"urn:ivcap:aspect:%08d-1111-1111-1111-111111111111"}`, len(aspects))
+		default:
+			t.Errorf("unexpected request: %s %s", r.Method, r.URL.String())
+			http.NotFound(w, r)
+		}
+	}))
+	t.Cleanup(srv.Close)
+
+	conn := &adpt.ConnectionCtxt{URL: srv.URL, TimeoutSec: 5}
+	adapter := adpt.RestAdapter(adpt.WithConnContext(conn))
+	ncbiClient := ncbigenome.New(ncbigenome.Options{BaseURL: srv.URL, MaxRetries: -1})
+	oldLogger := logger
+	logger = log.NewNop()
+	t.Cleanup(func() { logger = oldLogger })
+
+	var out bytes.Buffer
+	err := runNcbiImport(context.Background(), ncbiClient, ncbiImportOpts{
+		Accession:       "GCF_000001735.4",
+		Includes:        []string{"genome", "gff3"},
+		Chromosomes:     []string{"chr1"},
+		AssemblyVersion: "current",
+		FastZip:         true,
+		ChunkSize:       -1,
+		ReportSchema:    "urn:ivcap:schema:ncbi.assembly-report.1",
+		ManifestSchema:  artifactArchiveManifestSchema,
+		Format:          "json",
+		Silent:          true,
+	}, &adapter, &out, io.Discard)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !downloaded {
+		t.Error("import did not download the package from NCBI")
+	}
+	if !bytes.Equal(uploaded, zipBytes) {
+		t.Error("uploaded content differs from the zip")
+	}
+	if len(aspects) != 2 {
+		t.Fatalf("created %d aspects, want 2", len(aspects))
+	}
+	for _, aspect := range aspects {
+		if aspect.entity != artifactID {
+			t.Errorf("aspect entity = %q, want %q", aspect.entity, artifactID)
+		}
+	}
+	if aspects[0].schema != "urn:ivcap:schema:ncbi.assembly-report.1" || aspects[0].body["accession"] != "GCF_000001735.4" {
+		t.Errorf("unexpected report aspect: %+v", aspects[0])
+	}
+	if aspects[0].body["$schema"] != aspects[0].schema {
+		t.Errorf("report aspect schema mismatch: query=%q body=%v", aspects[0].schema, aspects[0].body["$schema"])
+	}
+	if aspects[0].body["json_schema"] != ncbigenome.AssemblyDataReportSchemaURL {
+		t.Errorf("report aspect lacks the published JSON Schema URL: %+v", aspects[0].body)
+	}
+	if aspects[1].schema != artifactArchiveManifestSchema || aspects[1].body["$schema"] != artifactArchiveManifestSchema || aspects[1].body["profile"] != roCrateProfile {
+		t.Errorf("unexpected manifest aspect: %+v", aspects[1])
+	}
+	roCrate, _ := aspects[1].body["ro_crate"].(map[string]any)
+	graph, _ := roCrate["@graph"].([]any)
+	if roCrate["@context"] != roCrateContext || len(graph) != 4 {
+		t.Errorf("unexpected embedded RO-Crate: %+v", roCrate)
+	}
+	descriptor, _ := graph[0].(map[string]any)
+	root, _ := graph[1].(map[string]any)
+	if descriptor["@id"] != "ro-crate-metadata.json" || descriptor["@type"] != "CreativeWork" {
+		t.Errorf("unexpected RO-Crate metadata descriptor: %v", descriptor)
+	}
+	if conforms, _ := descriptor["conformsTo"].(map[string]any); conforms["@id"] != roCrateProfile {
+		t.Errorf("RO-Crate descriptor does not conform to 1.2: %v", descriptor)
+	}
+	parts, _ := root["hasPart"].([]any)
+	if root["@id"] != "./" || root["@type"] != "Dataset" || root["identifier"] != "GCF_000001735.4" || root["datePublished"] != "2018-03-15" || len(parts) != 2 {
+		t.Errorf("unexpected RO-Crate root dataset: %v", root)
+	}
+	var foundEscapedPath bool
+	for _, raw := range graph[2:] {
+		file, _ := raw.(map[string]any)
+		if file["@type"] != "File" || file["contentSize"] == nil || file["encodingFormat"] == nil {
+			t.Errorf("incomplete RO-Crate file entity: %v", file)
+		}
+		if strings.Contains(fmt.Sprint(file["@id"]), "%20") {
+			foundEscapedPath = true
+		}
+	}
+	if !foundEscapedPath {
+		t.Error("RO-Crate file paths were not URI-escaped")
+	}
+	var result ncbiImportOutput
+	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
+		t.Fatalf("invalid result JSON: %v\n%s", err, out.String())
+	}
+	if result.Artifact != artifactID || result.ReportAspect == "" || result.ManifestAspect == "" {
+		t.Errorf("unexpected import result: %+v", result)
+	}
+}
+
 func TestRunNcbiReports(t *testing.T) {
 	reports := `{"reports":[` +
 		`{"accession":"GCF_000001735.4","source_database":"SOURCE_DATABASE_REFSEQ",` +
@@ -399,7 +546,7 @@ func TestRunNcbiReportsEmpty(t *testing.T) {
 // -o/--output is the global output-format flag; the ncbi commands must inherit
 // it and must not define their own (as 'nextflow job-result' does).
 func TestNcbiCommandWiring(t *testing.T) {
-	for _, path := range [][]string{{"ncbi", "genome", "download"}, {"ncbi", "genome", "reports"}} {
+	for _, path := range [][]string{{"ncbi", "genome", "download"}, {"ncbi", "genome", "import"}, {"ncbi", "genome", "reports"}} {
 		c, _, err := rootCmd.Find(path)
 		if err != nil || c == nil || c.Name() != path[len(path)-1] {
 			t.Fatalf("command %v not found: %v", path, err)
@@ -414,6 +561,15 @@ func TestNcbiCommandWiring(t *testing.T) {
 	c, _, _ := rootCmd.Find([]string{"ncbi", "genome", "download"})
 	if f := c.Flags().Lookup("file"); f == nil || f.Shorthand != "f" {
 		t.Error("download must take the destination as -f/--file, like 'artifact download'")
+	}
+	c, _, _ = rootCmd.Find([]string{"ncbi", "genome", "import"})
+	if c.Flags().Lookup("file") != nil || c.Flags().Lookup("force") != nil {
+		t.Error("import must not expose local download --file/--force flags")
+	}
+	for _, flag := range []string{"include", "chromosomes", "assembly-version", "fast-zip-validation"} {
+		if c.Flags().Lookup(flag) == nil {
+			t.Errorf("import lacks download selection flag --%s", flag)
+		}
 	}
 }
 
