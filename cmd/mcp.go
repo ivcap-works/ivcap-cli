@@ -30,7 +30,8 @@ import (
 func init() {
 	rootCmd.AddCommand(mcpCmd)
 	mcpCmd.Flags().StringVarP(&toolSchema, "tool-schema", "s", "urn:sd-core:schema.ai-tool.1", "the schema URN used for describing MCP tools")
-	mcpCmd.Flags().IntVar(&mcpPort, "port", -1, "optional port to open for SSE connection to MCP server")
+	mcpCmd.Flags().IntVar(&mcpPort, "port", -1, "optional port to open for Streamable HTTP connection to MCP server")
+
 	mcpCmd.Flags().BoolVar(&mcpWithLogging, "with-logging", false, "enable JSON-RPC request/response logging to file")
 	mcpCmd.Flags().StringVar(&mcpLogDir, "log-dir", "/tmp", "directory for MCP log files")
 }
@@ -93,18 +94,25 @@ Before answering any task:
 				LogDir:        mcpLogDir,
 			})
 			if mcpPort > 0 {
-				logger.Info("MCP Proxy Server starting as SSE server...", log.Int("port", mcpPort))
+				logger.Info("MCP Proxy Server starting as Streamable HTTP server...", log.Int("port", mcpPort))
 				if mcpWithLogging {
-					logger.Warn("--with-logging is not yet supported for SSE mode, logging disabled")
+					logger.Warn("--with-logging is not yet supported for Streamable HTTP mode, logging disabled")
 				}
-				hs := server.NewSSEServer(s,
-					server.WithSSEEndpoint("/mcp"),
+				// NewStreamableHTTPServer supports the full range of MCP protocol
+				// versions (2024-11-05 through 2026-07-28) on a single endpoint.
+				// The protocol era (legacy session-based handshake vs. the
+				// stateless 2026-07-28 core) is detected per-request, so older
+				// and newer clients can be served concurrently without any
+				// separate configuration or endpoint.
+				hs := server.NewStreamableHTTPServer(s,
+					server.WithEndpointPath("/mcp"),
 				)
 				if err := hs.Start(fmt.Sprintf("localhost:%d", mcpPort)); err != nil {
 					cobra.CheckErr(fmt.Sprintf("Server error: %v", err))
 				}
 			} else {
 				logger.Info("MCP Proxy Server starting in STDIO mode...")
+
 				if mcpWithLogging {
 					logPath, err := mcppkg.ServeStdioWithLogging(s, mcpLogDir)
 					if err != nil {

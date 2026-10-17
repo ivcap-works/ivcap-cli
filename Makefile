@@ -143,8 +143,9 @@ addlicense:
 mcp-inspector:
 	npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server default-server
 
-mcp-inspector-sse:
-	npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server sse-8077
+mcp-inspector-http:
+	npx @modelcontextprotocol/inspector --config mcp-inspector.config.json --server streamable-http-8077
+
 
 tv:
 	gource -f --title "ivcap-cli" --seconds-per-day 0.1 --auto-skip-seconds 0.1 --bloom-intensity 0.05 \

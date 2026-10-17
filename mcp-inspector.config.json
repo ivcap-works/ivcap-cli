@@ -7,8 +7,8 @@
         "mcp"
       ]
     },
-    "sse-8077": {
-      "type": "sse",
+    "streamable-http-8077": {
+      "type": "streamable-http",
       "url": "http://localhost:8077/mcp"
     }
   }
