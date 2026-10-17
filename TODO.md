@@ -52,7 +52,5 @@ Open issues and ideas for ivcap-cli, collected as they come up. Remove an item w
 ## Housekeeping
 
 - Commit `a495746` mixes two features and has a typo in its message. Split and reword before pushing.
-- `.gitignore` line `ivcap-*` hides new `ivcap-*.SKILL.md` files, so they need `git add -f`. Add
-  `!skills/**/ivcap-*.SKILL.md`.
 - Optional: a percentage progress bar for `ivcap genome download`. HEAD gets 405 and the POST has no
   `Content-Length`, so it would need the download-summary estimate.
