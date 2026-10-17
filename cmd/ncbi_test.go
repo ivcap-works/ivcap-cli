@@ -448,7 +448,7 @@ func TestRunNcbiImport(t *testing.T) {
 	}
 	roCrate, _ := aspects[1].body["ro_crate"].(map[string]any)
 	graph, _ := roCrate["@graph"].([]any)
-	if roCrate["@context"] != roCrateContext || len(graph) != 4 {
+	if roCrate["@context"] != roCrateContext || len(graph) != 5 {
 		t.Errorf("unexpected embedded RO-Crate: %+v", roCrate)
 	}
 	descriptor, _ := graph[0].(map[string]any)
@@ -464,7 +464,7 @@ func TestRunNcbiImport(t *testing.T) {
 		t.Errorf("unexpected RO-Crate root dataset: %v", root)
 	}
 	var foundEscapedPath bool
-	for _, raw := range graph[2:] {
+	for _, raw := range graph[2:4] {
 		file, _ := raw.(map[string]any)
 		if file["@type"] != "File" || file["contentSize"] == nil || file["encodingFormat"] == nil {
 			t.Errorf("incomplete RO-Crate file entity: %v", file)
@@ -475,6 +475,14 @@ func TestRunNcbiImport(t *testing.T) {
 	}
 	if !foundEscapedPath {
 		t.Error("RO-Crate file paths were not URI-escaped")
+	}
+	if rootLicense, _ := root["license"].(map[string]any); rootLicense["@id"] != ncbiDataLicense.ID {
+		t.Errorf("RO-Crate root does not point at the NCBI data policy: %v", root["license"])
+	}
+	licenseEntity, _ := graph[4].(map[string]any)
+	if licenseEntity["@id"] != ncbiDataLicense.ID || licenseEntity["@type"] != "CreativeWork" ||
+		licenseEntity["name"] == nil || licenseEntity["description"] == nil {
+		t.Errorf("unexpected RO-Crate license entity: %v", licenseEntity)
 	}
 	var result ncbiImportOutput
 	if err := json.Unmarshal(out.Bytes(), &result); err != nil {

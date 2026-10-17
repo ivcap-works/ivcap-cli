@@ -11,6 +11,10 @@ left behind. The same --include, --chromosomes, --assembly-version and --fast-zi
 as 'ncbi genome download' control the package. The imported artifact receives an assembly report
 aspect and an RO-Crate 1.2 archive manifest aspect.
 
+The manifest records a license for the data. NCBI states none: it places no restrictions itself,
+but submitters may claim rights that it cannot assess. By default the manifest therefore links to
+NCBI's data usage policy, which is a pointer and not a license grant. Use --license to state another.
+
 If an aspect request fails after upload, the error names the uploaded artifact so it can be repaired.
 
 ```
@@ -30,10 +34,11 @@ ivcap ncbi genome import ACCESSION [flags]
 ```
       --assembly-version string   Version policy: 'current', 'latest' or 'all' [use the version given in ACCESSION]
       --chromosomes strings       Limit the genome FASTA to these chromosomes (comma-separated, or 'all')
-      --chunk-size int            Chunk size for splitting large files (default 10000000)
+      --chunk-size int            Chunk size in bytes for splitting large files: at least 65536, or -1 to upload without chunking (default 10000000)
       --fast-zip-validation       Only check the zip's directory after the download, not every file in it
   -h, --help                      help for import
       --include strings           Files to include (comma-separated): genome, rna, protein, cds, gff3, gtf, gbff, seq-report, all, none (default [genome])
+      --license string            License of the imported data, recorded in the manifest: an SPDX identifier such as CC0-1.0, a license URL, or 'undefined' [a link to NCBI's data usage policy, which states no license]
       --manifest-schema string    Schema URN for the RO-Crate manifest aspect (default "urn:ivcap:schema:artifact.archive-manifest.1")
   -n, --name string               Artifact name [zip file name]
   -p, --policy string             Policy controlling access to the artifact and aspects

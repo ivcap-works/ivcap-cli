@@ -54,3 +54,6 @@ you asked for are present.
   matched several versions. Pass one assembly accession (with its version) chosen via `ncbi genome reports`.
 - `no genome assemblies match the request` - check the accession and version, then look it up again.
 - `... already exists; use --force to overwrite it` - choose another path, or ask the user before using `--force`.
+
+## Related
+To store the genome in IVCAP instead of a local file, use `skills://ivcap-ncbi-genome-import/SKILL.md`.

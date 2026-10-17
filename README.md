@@ -67,7 +67,7 @@ Commands:
   context       Manage deployment access, projects, and accounts
   datafabric    Query the datafabric and create and manage aspects within
   job           Create and manage jobs
-  ncbi          Look up and download genomes from NCBI
+  ncbi          Look up, download and import genomes from NCBI
   nextflow      Commands for working with Nextflow-based services
   package       Push/pull and manage service packages
   queue         Create and manage queues
@@ -506,6 +506,18 @@ To download the content associated with the artifact.
 Successfully wrote 50855 bytes to /tmp/out.png
 ```
 
+When `artifact create` uploads a local file named `*.zip`, `*.tar`, `*.tar.gz` or `*.tgz` it also adds a
+manifest aspect: an RO-Crate 1.2 JSON-LD document listing the files in the archive (schema
+`urn:ivcap:schema:artifact.archive-manifest.1`). Only the file name decides, so other ZIP-based formats such
+as `.docx` are not indexed. Use `--without-manifest` to skip it, or `--manifest-schema` to use another schema
+URN. `--license` records the license of the content in the manifest: an SPDX identifier such as `CC-BY-4.0`, a
+license URL, or `undefined`, the default. The manifest is a convenience: if an archive cannot be indexed, or the aspect cannot be added, a
+warning is printed and the upload still completes; run the same command again to retry the manifest, which
+never adds a second one. Content read from stdin is not indexed.
+
+`--chunk-size` (bytes per upload request) must be at least 65536, or -1 to upload without chunking, which
+needs a known size and so does not work for stdin.
+
 Follow this [link](./docs/ivcap_artifact.md) for more details about the `artifact` command.
 
 ### Collections <a name="collection"></a>
@@ -780,9 +792,10 @@ Follow this [link](./docs/ivcap_package.md) for more details about the `package`
 
 ### NCBI <a name="ncbi"></a>
 
-The `ncbi` command looks up genome assemblies at [NCBI Datasets](https://www.ncbi.nlm.nih.gov/datasets/)
-and downloads their data packages. It talks to NCBI directly, so it needs no context and no login. It is
-built on the [ivcap-ncbi-genome-download](https://github.com/ivcap-works/ivcap-ncbi-genome-download) library.
+The `ncbi` command looks up genome assemblies at [NCBI Datasets](https://www.ncbi.nlm.nih.gov/datasets/),
+downloads their data packages and imports them into IVCAP. `reports` and `download` talk to NCBI directly,
+so they need no context and no login; `import` also needs a logged-in IVCAP context. It is built on the
+[ivcap-ncbi-genome-download](https://github.com/ivcap-works/ivcap-ncbi-genome-download) library.
 
 Look up the assemblies behind an accession, either an assembly accession such as `GCF_000001735.4` or a
 BioProject such as `PRJNA10719` (which expands to its assemblies):
@@ -796,6 +809,28 @@ Download the data package of one genome:
 ```
 ivcap ncbi genome download GCF_000001735.4 --include genome,gff3,seq-report -f TAIR10.1.zip
 ```
+
+Import a genome into IVCAP instead of keeping a local file:
+
+```
+ivcap ncbi genome import GCF_000001735.4 --include genome,gff3,seq-report
+```
+
+* `import` takes the same package options as `download`. The package goes to a temporary file that is removed
+  afterwards, and is uploaded as an artifact (named `<ACCESSION>.zip` unless `--name` is given).
+* Two aspects are added to that artifact: the NCBI assembly report (schema
+  `urn:ivcap:schema:ncbi.assembly-data-report.1`) and an RO-Crate 1.2 manifest of the files in the package
+  (schema `urn:ivcap:schema:artifact.archive-manifest.1`). `--report-schema` and `--manifest-schema` override
+  the schema URNs, and `--policy` sets the policy for the artifact and both aspects.
+* The manifest records a license for the data. NCBI itself states none: it places no restrictions on use or
+  distribution, but submitters may claim rights that it cannot assess. So by default the manifest links to
+  NCBI's data usage policy, which is a pointer and not a license grant. `--license` states another one (an
+  SPDX identifier, a license URL, or `undefined`).
+* `import` checks the accession, the license and the chunk size before it downloads anything, and it stops
+  if NCBI answers the report and the download request with different assemblies.
+* `--output json|yaml` prints the artifact URN and the two aspect IDs. If an aspect cannot be added after the
+  upload, the error names the artifact.
+* Running `import` again creates a new artifact.
 
 * A download covers **exactly one genome**. Pass an assembly accession (`GCF_...` or `GCA_...`); a BioProject
   is rejected because it can name many genomes. Use `ncbi genome reports` to find the assembly first.

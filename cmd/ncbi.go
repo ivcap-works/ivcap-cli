@@ -60,6 +60,7 @@ var (
 	ncbiImportChunkSize      int64
 	ncbiImportReportSchema   string
 	ncbiImportManifestSchema string
+	ncbiImportLicense        string
 
 	// ncbi genome reports
 	ncbiRepVersion  string
@@ -106,11 +107,14 @@ func init() {
 		"Only check the zip's directory after the download, not every file in it")
 	i.StringVarP(&ncbiImportName, "name", "n", "", "Artifact name [zip file name]")
 	i.StringVarP(&ncbiImportPolicy, "policy", "p", "", "Policy controlling access to the artifact and aspects")
-	i.Int64Var(&ncbiImportChunkSize, "chunk-size", DEF_CHUNK_SIZE, "Chunk size for splitting large files")
+	i.Int64Var(&ncbiImportChunkSize, "chunk-size", DEF_CHUNK_SIZE, fmt.Sprintf("Chunk size in bytes for splitting large files: at least %d, or -1 to upload without chunking", MIN_CHUNK_SIZE))
 	i.StringVar(&ncbiImportReportSchema, "report-schema", ncbiAssemblyReportSchema,
 		"Schema URN for the assembly report aspect")
 	i.StringVar(&ncbiImportManifestSchema, "manifest-schema", artifactArchiveManifestSchema,
 		"Schema URN for the RO-Crate manifest aspect")
+	i.StringVar(&ncbiImportLicense, "license", "",
+		"License of the imported data, recorded in the manifest: an SPDX identifier such as CC0-1.0, a license URL, "+
+			"or 'undefined' [a link to NCBI's data usage policy, which states no license]")
 
 	r := ncbiReportsCmd.Flags()
 	r.StringVar(&ncbiRepVersion, "assembly-version", "",
@@ -192,6 +196,10 @@ left behind. The same --include, --chromosomes, --assembly-version and --fast-zi
 as 'ncbi genome download' control the package. The imported artifact receives an assembly report
 aspect and an RO-Crate 1.2 archive manifest aspect.
 
+The manifest records a license for the data. NCBI states none: it places no restrictions itself,
+but submitters may claim rights that it cannot assess. By default the manifest therefore links to
+NCBI's data usage policy, which is a pointer and not a license grant. Use --license to state another.
+
 If an aspect request fails after upload, the error names the uploaded artifact so it can be repaired.`,
 		Example: `  ivcap ncbi genome import GCF_000001735.4
   ivcap ncbi genome import GCF_000001735.4 --include genome,gff3,seq-report
@@ -211,6 +219,7 @@ If an aspect request fails after upload, the error names the uploaded artifact s
 				ChunkSize:       ncbiImportChunkSize,
 				ReportSchema:    ncbiImportReportSchema,
 				ManifestSchema:  ncbiImportManifestSchema,
+				License:         ncbiImportLicense,
 				Format:          outputFormat,
 				Silent:          silent,
 			}
@@ -228,7 +237,7 @@ Accessions may be assembly accessions (GCF_... or GCA_...) or BioProject accessi
 a BioProject expands to its assemblies. Use this to find the assembly you want to download.
 
 With --output json|yaml the full reports are printed. Each report follows the JSON Schema at
-https://github.com/ivcap-works/ivcap-ncbi-genome-download/tree/main/schema`,
+https://github.com/ivcap-works/ivcap-ncbi-genome-download/tree/v0.2.0/schema`,
 		Example: `  ivcap ncbi genome reports GCF_000001735.4
   ivcap --output json ncbi genome reports GCF_000001735.4
   ivcap ncbi genome reports PRJNA10719 --reference`,
@@ -457,6 +466,44 @@ const (
 	ncbiAssemblyReportSchema = "urn:ivcap:schema:ncbi.assembly-data-report.1"
 )
 
+// ncbiDataLicense is what an import records as the license when --license is not given. NCBI
+// states no license: it places no restrictions itself, but submitters may claim rights that it
+// cannot assess, so this is a pointer to its policy and not a license grant.
+// Source: https://www.ncbi.nlm.nih.gov/home/about/policies/ (section on molecular data usage).
+var ncbiDataLicense = roCrateLicense{
+	ID:   "https://www.ncbi.nlm.nih.gov/home/about/policies/",
+	Name: "NCBI Website and Data Usage Policies and Disclaimers",
+	Description: "NCBI itself places no restrictions on the use or distribution of this data, and does not accept " +
+		"data whose submitter requested restrictions. Individual submitters may still claim patent, copyright or " +
+		"other rights, which NCBI cannot assess; it gives no unrestricted permission on their behalf. " +
+		"This is a pointer to that policy, not a license grant.",
+}
+
+// BioProject accessions (PRJNA..., PRJEB..., PRJDB...) can name many genomes.
+var ncbiBioProject = regexp.MustCompile(`(?i)^PRJ[A-Z]{2}[0-9]+$`)
+
+func resolveNcbiLicense(value string) (roCrateLicense, error) {
+	if strings.TrimSpace(value) == "" {
+		return ncbiDataLicense, nil
+	}
+	return resolveLicense(value)
+}
+
+// ncbiTooManyAssemblies explains that an accession matched several assemblies.
+func ncbiTooManyAssemblies(accession string, reports []ncbigenome.AssemblyDataReport) error {
+	shown := make([]string, 0, 5)
+	for i, r := range reports {
+		if i == 5 {
+			shown = append(shown, "...")
+			break
+		}
+		shown = append(shown, r.Accession)
+	}
+	return fmt.Errorf("%w: %s matches %d assemblies (%s); pass one assembly accession, and use "+
+		"'ivcap ncbi genome reports %s' to see them", ncbigenome.ErrNotSingleGenome, accession, len(reports),
+		strings.Join(shown, ", "), accession)
+}
+
 type ncbiImportOpts struct {
 	Accession       string
 	Includes        []string
@@ -468,6 +515,7 @@ type ncbiImportOpts struct {
 	ChunkSize       int64
 	ReportSchema    string
 	ManifestSchema  string
+	License         string
 	Format          string // "", "json" or "yaml"
 	Silent          bool
 }
@@ -493,6 +541,19 @@ func runNcbiImport(
 	if o.ManifestSchema == "" {
 		return errors.New("manifest schema must not be empty")
 	}
+	// Fail before downloading anything. The package is a file, so its size is always known.
+	if err := validateChunkSize(o.ChunkSize, 0); err != nil {
+		return err
+	}
+	lic, err := resolveNcbiLicense(o.License)
+	if err != nil {
+		return err
+	}
+	if ncbiBioProject.MatchString(o.Accession) {
+		return fmt.Errorf("%w: %s is a BioProject accession and can name many genomes; use "+
+			"'ivcap ncbi genome reports' to see which assemblies it has, then pass one assembly accession",
+			ncbigenome.ErrNotSingleGenome, o.Accession)
+	}
 
 	req, err := ncbiDownloadRequest(ncbiDownloadOpts{
 		Accession:       o.Accession,
@@ -511,8 +572,11 @@ func runNcbiImport(
 	if err != nil {
 		return ncbiCLIErr(err)
 	}
-	if len(reports) != 1 {
-		return ncbiCLIErr(ncbigenome.ErrNotSingleGenome)
+	switch {
+	case len(reports) == 0:
+		return ncbiCLIErr(ncbigenome.ErrNoAssemblies)
+	case len(reports) > 1:
+		return ncbiTooManyAssemblies(o.Accession, reports)
 	}
 	reportBytes, err := ncbiAspectJSON(reports[0], o.ReportSchema)
 	if err != nil {
@@ -531,6 +595,10 @@ func runNcbiImport(
 	done()
 	if err != nil {
 		return ncbiCLIErr(err)
+	}
+	if res.Accession != reports[0].Accession {
+		return fmt.Errorf("the assembly report is for %s but the downloaded package is for %s (NCBI changed "+
+			"between the two requests); nothing was imported, run the import again", reports[0].Accession, res.Accession)
 	}
 	if res.Warning != "" && !o.Silent {
 		fmt.Fprintln(stderr, "Warning:", res.Warning)
@@ -562,6 +630,7 @@ func runNcbiImport(
 			Name:        fmt.Sprintf("NCBI genome data package %s", reports[0].Accession),
 			Description: "NCBI Datasets genome data package imported into IVCAP.",
 			Published:   published,
+			License:     lic,
 		}, entries),
 	})
 	if err != nil {
@@ -577,6 +646,10 @@ func runNcbiImport(
 	if artifactName == "" {
 		artifactName = res.Accession + ".zip"
 	}
+	uploadSilent := o.Silent || o.Format != ""
+	if !uploadSilent {
+		fmt.Fprintf(stderr, "Uploading %s (%s) to IVCAP\n", artifactName, ncbiBytes(info.Size()))
+	}
 	resp, err := sdk.CreateArtifact(ctxt, &sdk.CreateArtifactRequest{
 		Name: artifactName, Size: info.Size(), Policy: o.Policy,
 	}, "application/zip", info.Size(), nil, adapter, logger)
@@ -591,7 +664,7 @@ func runNcbiImport(
 	if err != nil {
 		return fmt.Errorf("cannot parse upload URL for artifact %s: %w", artifactID, err)
 	}
-	if err := sdk.UploadArtifact(ctxt, f, info.Size(), 0, o.ChunkSize, uploadPath, adapter, true, logger); err != nil {
+	if err := sdk.UploadArtifact(ctxt, f, info.Size(), 0, o.ChunkSize, uploadPath, adapter, uploadSilent, logger); err != nil {
 		return fmt.Errorf("cannot upload artifact %s: %w", artifactID, err)
 	}
 

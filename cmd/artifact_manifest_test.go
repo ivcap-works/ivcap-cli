@@ -48,15 +48,15 @@ func TestArchiveManifestForFile(t *testing.T) {
 			if aspect.Schema != artifactArchiveManifestSchema || aspect.Profile != roCrateProfile || aspect.ROCrate.Context != roCrateContext {
 				t.Errorf("unexpected manifest envelope: %+v", aspect)
 			}
-			if len(aspect.ROCrate.Graph) != len(files)+2 {
-				t.Fatalf("graph has %d entities, want %d", len(aspect.ROCrate.Graph), len(files)+2)
+			if len(aspect.ROCrate.Graph) != len(files)+3 { // descriptor, root, files, license
+				t.Fatalf("graph has %d entities, want %d", len(aspect.ROCrate.Graph), len(files)+3)
 			}
 			root := aspect.ROCrate.Graph[1]
 			if root.ID != "./" || root.Type != "Dataset" || root.DatePublished != "2026-10-17" || len(root.HasPart) != len(files) {
 				t.Errorf("unexpected root entity: %+v", root)
 			}
 			var escaped bool
-			for _, entity := range aspect.ROCrate.Graph[2:] {
+			for _, entity := range aspect.ROCrate.Graph[2 : 2+len(files)] {
 				if entity.Type != "File" || entity.ContentSize == "" || entity.EncodingFormat == "" {
 					t.Errorf("incomplete file entity: %+v", entity)
 				}
@@ -127,11 +127,22 @@ func TestPrepareArtifactManifestDefaults(t *testing.T) {
 		t.Fatalf("stdin should upload without a manifest: content=%q err=%v", content, err)
 	}
 
-	extensionless := filepath.Join(t.TempDir(), "archive-data")
-	writeManifestTestArchive(t, extensionless, "tar", map[string]string{"file.txt": "content"})
-	content, err = prepareArtifactManifest(extensionless)
-	if err != nil || len(content) == 0 {
-		t.Fatalf("extensionless TAR should be detected: len=%d err=%v", len(content), err)
+	// Only the file name decides: extensionless files and other ZIP-based formats get no manifest.
+	for _, other := range []string{"archive-data", "report.docx", "library.jar"} {
+		otherPath := filepath.Join(t.TempDir(), other)
+		writeManifestTestArchive(t, otherPath, "zip", map[string]string{"file.txt": "content"})
+		content, err = prepareArtifactManifest(otherPath)
+		if err != nil || content != nil {
+			t.Fatalf("%s must not get a manifest: content=%q err=%v", other, content, err)
+		}
+	}
+	for archiveName, format := range map[string]string{"a.zip": "zip", "a.tar": "tar", "a.tar.gz": "tar.gz", "a.tgz": "tar.gz", "UPPER.ZIP": "zip"} {
+		archivePath := filepath.Join(t.TempDir(), archiveName)
+		writeManifestTestArchive(t, archivePath, format, map[string]string{"file.txt": "content"})
+		content, err = prepareArtifactManifest(archivePath)
+		if err != nil || len(content) == 0 {
+			t.Fatalf("%s should get a manifest: len=%d err=%v", archiveName, len(content), err)
+		}
 	}
 
 	broken := filepath.Join(t.TempDir(), "broken.zip")
@@ -202,5 +213,55 @@ func writeManifestTestArchive(t *testing.T, archive, format string, files map[st
 	}
 	if err := os.WriteFile(archive, buf.Bytes(), 0600); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestManifestForUploadWarnsInsteadOfFailing(t *testing.T) {
+	oldWithout, oldSchema, oldName := artifactWithoutManifest, artifactManifestSchema, name
+	t.Cleanup(func() {
+		artifactWithoutManifest, artifactManifestSchema, name = oldWithout, oldSchema, oldName
+	})
+	artifactWithoutManifest, artifactManifestSchema, name = false, artifactArchiveManifestSchema, ""
+
+	dir := t.TempDir()
+	good := filepath.Join(dir, "good.zip")
+	writeManifestTestArchive(t, good, "zip", map[string]string{"file.txt": "content"})
+	broken := filepath.Join(dir, "broken.tar.gz")
+	if err := os.WriteFile(broken, []byte("not an archive"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	unsafe := filepath.Join(dir, "unsafe.zip")
+	writeManifestTestArchive(t, unsafe, "zip", map[string]string{"../escape.txt": "bad"})
+	plain := filepath.Join(dir, "plain.txt")
+	if err := os.WriteFile(plain, []byte("plain"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	var warn bytes.Buffer
+	if got := manifestForUpload(good, &warn); len(got) == 0 || warn.Len() != 0 {
+		t.Errorf("a good archive must get a manifest and no warning: len=%d warning=%q", len(got), warn.String())
+	}
+	for _, bad := range []string{broken, unsafe} {
+		warn.Reset()
+		if got := manifestForUpload(bad, &warn); got != nil {
+			t.Errorf("%s: no manifest expected, got %d bytes", filepath.Base(bad), len(got))
+		}
+		if !strings.Contains(warn.String(), "Warning:") || !strings.Contains(warn.String(), bad) {
+			t.Errorf("%s: expected a warning naming the file, got %q", filepath.Base(bad), warn.String())
+		}
+	}
+	warn.Reset()
+	if got := manifestForUpload(plain, &warn); got != nil || warn.Len() != 0 {
+		t.Errorf("an ordinary file needs neither a manifest nor a warning: %q %q", got, warn.String())
+	}
+}
+
+func TestWarnManifestNotAttached(t *testing.T) {
+	var warn bytes.Buffer
+	warnManifestNotAttached(&warn, "urn:ivcap:artifact:abc", io.ErrUnexpectedEOF)
+	for _, want := range []string{"Warning:", "urn:ivcap:artifact:abc", "unexpected EOF", "again"} {
+		if !strings.Contains(warn.String(), want) {
+			t.Errorf("warning lacks %q: %q", want, warn.String())
+		}
 	}
 }

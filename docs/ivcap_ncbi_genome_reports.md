@@ -10,7 +10,7 @@ Accessions may be assembly accessions (GCF_... or GCA_...) or BioProject accessi
 a BioProject expands to its assemblies. Use this to find the assembly you want to download.
 
 With --output json|yaml the full reports are printed. Each report follows the JSON Schema at
-https://github.com/ivcap-works/ivcap-ncbi-genome-download/tree/main/schema
+https://github.com/ivcap-works/ivcap-ncbi-genome-download/tree/v0.2.0/schema
 
 ```
 ivcap ncbi genome reports ACCESSION... [flags]

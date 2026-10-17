@@ -5,7 +5,7 @@
   "description": "An NCBI Datasets assembly report stored as an IVCAP DataFabric aspect.",
   "allOf": [
     {
-      "$ref": "https://raw.githubusercontent.com/ivcap-works/ivcap-ncbi-genome-download/main/schema/assembly-data-report.schema.json"
+      "$ref": "https://raw.githubusercontent.com/ivcap-works/ivcap-ncbi-genome-download/v0.2.0/schema/assembly-data-report.schema.json"
     },
     {
       "type": "object",
@@ -15,7 +15,7 @@
           "const": "urn:ivcap:schema:ncbi.assembly-data-report.1"
         },
         "json_schema": {
-          "const": "https://raw.githubusercontent.com/ivcap-works/ivcap-ncbi-genome-download/main/schema/assembly-data-report.schema.json"
+          "const": "https://raw.githubusercontent.com/ivcap-works/ivcap-ncbi-genome-download/v0.2.0/schema/assembly-data-report.schema.json"
         },
         "accession": {
           "type": "string",

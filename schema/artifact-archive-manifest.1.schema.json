@@ -40,6 +40,7 @@
         "name": { "type": "string" },
         "description": { "type": "string" },
         "identifier": { "type": "string" },
+        "license": { "$ref": "#/$defs/reference" },
         "datePublished": { "type": "string", "format": "date" },
         "hasPart": {
           "type": "array",
