@@ -42,7 +42,7 @@ import (
 var (
 	ncbiAPIKey string
 
-	// ncbi genome download
+	// genome download
 	ncbiFile            string
 	ncbiForce           bool
 	ncbiIncludes        []string
@@ -50,7 +50,7 @@ var (
 	ncbiAssemblyVersion string
 	ncbiFastZip         bool
 
-	// ncbi genome import
+	// genome import
 	ncbiImportIncludes       []string
 	ncbiImportChromosomes    []string
 	ncbiImportVersion        string
@@ -62,7 +62,7 @@ var (
 	ncbiImportManifestSchema string
 	ncbiImportLicense        string
 
-	// ncbi genome reports
+	// genome reports
 	ncbiRepVersion  string
 	ncbiRepRef      bool
 	ncbiRepAnnot    bool
@@ -75,13 +75,12 @@ var (
 )
 
 func init() {
-	rootCmd.AddCommand(ncbiCmd)
-	ncbiCmd.AddCommand(ncbiGenomeCmd)
-	ncbiGenomeCmd.AddCommand(ncbiDownloadCmd)
-	ncbiGenomeCmd.AddCommand(ncbiImportCmd)
-	ncbiGenomeCmd.AddCommand(ncbiReportsCmd)
+	rootCmd.AddCommand(genomeCmd)
+	genomeCmd.AddCommand(ncbiDownloadCmd)
+	genomeCmd.AddCommand(ncbiImportCmd)
+	genomeCmd.AddCommand(ncbiReportsCmd)
 
-	ncbiCmd.PersistentFlags().StringVar(&ncbiAPIKey, "ncbi-api-key", "",
+	genomeCmd.PersistentFlags().StringVar(&ncbiAPIKey, "ncbi-api-key", "",
 		"NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]")
 
 	d := ncbiDownloadCmd.Flags()
@@ -131,19 +130,14 @@ func init() {
 }
 
 var (
-	ncbiCmd = &cobra.Command{
-		Use:   "ncbi",
+	genomeCmd = &cobra.Command{
+		Use:   "genome",
 		Short: "Look up, download and import genomes from NCBI",
 		Long: `Look up genome assemblies at NCBI, download their data packages and import them into IVCAP.
 
 The download and reports commands only talk to NCBI Datasets
 (https://www.ncbi.nlm.nih.gov/datasets/), so they need no IVCAP context or login. Import uploads
 an existing package to the active IVCAP deployment and attaches report and manifest aspects.`,
-	}
-
-	ncbiGenomeCmd = &cobra.Command{
-		Use:   "genome",
-		Short: "Genome assemblies at NCBI",
 	}
 
 	ncbiDownloadCmd = &cobra.Command{
@@ -153,7 +147,7 @@ an existing package to the active IVCAP deployment and attaches report and manif
 
 ACCESSION must be an assembly accession (GCF_... or GCA_...), with or without a version. A
 BioProject accession is rejected, because a project can name many genomes: use
-'ivcap ncbi genome reports' to see which assemblies it has, then pass one of them.
+'ivcap genome reports' to see which assemblies it has, then pass one of them.
 
 The package contains the genomic FASTA by default; add annotation files and reports with
 --include. By default it is written to ./<ACCESSION>.zip and the command refuses to replace an
@@ -163,9 +157,9 @@ With --output json|yaml the result (accession, file, size and the list of files 
 is printed in machine-readable form.
 
 --timeout does not apply to the transfer itself; stop it with Ctrl-C.`,
-		Example: `  ivcap ncbi genome download GCF_000001735.4
-  ivcap ncbi genome download GCF_000001735.4 --include genome,gff3,seq-report -f TAIR10.1.zip
-  ivcap --output json ncbi genome download GCF_000001735.4 --include all`,
+		Example: `  ivcap genome download GCF_000001735.4
+  ivcap genome download GCF_000001735.4 --include genome,gff3,seq-report -f TAIR10.1.zip
+  ivcap --output json genome download GCF_000001735.4 --include all`,
 		Args: exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctxt, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -193,7 +187,7 @@ is printed in machine-readable form.
 
 The package is downloaded to a temporary file which is removed after upload; no local package is
 left behind. The same --include, --chromosomes, --assembly-version and --fast-zip-validation options
-as 'ncbi genome download' control the package. The imported artifact receives an assembly report
+as 'genome download' control the package. The imported artifact receives an assembly report
 aspect and an RO-Crate 1.2 archive manifest aspect.
 
 The manifest records a license for the data. NCBI states none: it places no restrictions itself,
@@ -201,9 +195,9 @@ but submitters may claim rights that it cannot assess. By default the manifest t
 NCBI's data usage policy, which is a pointer and not a license grant. Use --license to state another.
 
 If an aspect request fails after upload, the error names the uploaded artifact so it can be repaired.`,
-		Example: `  ivcap ncbi genome import GCF_000001735.4
-  ivcap ncbi genome import GCF_000001735.4 --include genome,gff3,seq-report
-  ivcap --output json ncbi genome import GCF_000001735.4 --policy urn:ivcap:policy:...`,
+		Example: `  ivcap genome import GCF_000001735.4
+  ivcap genome import GCF_000001735.4 --include genome,gff3,seq-report
+  ivcap --output json genome import GCF_000001735.4 --policy urn:ivcap:policy:...`,
 		Args: exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctxt, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -238,9 +232,9 @@ a BioProject expands to its assemblies. Use this to find the assembly you want t
 
 With --output json|yaml the full reports are printed. Each report follows the JSON Schema at
 https://github.com/ivcap-works/ivcap-ncbi-genome-download/tree/v0.2.0/schema`,
-		Example: `  ivcap ncbi genome reports GCF_000001735.4
-  ivcap --output json ncbi genome reports GCF_000001735.4
-  ivcap ncbi genome reports PRJNA10719 --reference`,
+		Example: `  ivcap genome reports GCF_000001735.4
+  ivcap --output json genome reports GCF_000001735.4
+  ivcap genome reports PRJNA10719 --reference`,
 		Args: minimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctxt, stop := signal.NotifyContext(context.Background(), os.Interrupt)
@@ -500,7 +494,7 @@ func ncbiTooManyAssemblies(accession string, reports []ncbigenome.AssemblyDataRe
 		shown = append(shown, r.Accession)
 	}
 	return fmt.Errorf("%w: %s matches %d assemblies (%s); pass one assembly accession, and use "+
-		"'ivcap ncbi genome reports %s' to see them", ncbigenome.ErrNotSingleGenome, accession, len(reports),
+		"'ivcap genome reports %s' to see them", ncbigenome.ErrNotSingleGenome, accession, len(reports),
 		strings.Join(shown, ", "), accession)
 }
 
@@ -551,7 +545,7 @@ func runNcbiImport(
 	}
 	if ncbiBioProject.MatchString(o.Accession) {
 		return fmt.Errorf("%w: %s is a BioProject accession and can name many genomes; use "+
-			"'ivcap ncbi genome reports' to see which assemblies it has, then pass one assembly accession",
+			"'ivcap genome reports' to see which assemblies it has, then pass one assembly accession",
 			ncbigenome.ErrNotSingleGenome, o.Accession)
 	}
 
@@ -855,7 +849,7 @@ func ncbiCLIErr(err error) error {
 	}
 	msg := err.Error()
 	fixed := strings.ReplaceAll(msg, "use AssemblyReports to see which assemblies it has",
-		"use 'ivcap ncbi genome reports' to see which assemblies it has")
+		"use 'ivcap genome reports' to see which assemblies it has")
 	if fixed == msg {
 		return err
 	}

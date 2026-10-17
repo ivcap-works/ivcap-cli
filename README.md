@@ -21,7 +21,7 @@ __IVCAP__ has an extensive REST API which is usually called directly from applic
   * [Queues](#queue)
   * [Secrets](#secret)
   * [Package](#package)
-  * [NCBI](#ncbi)
+  * [Genomes](#genome)
 * [Agent / automation usage](#agent--automation-usage)
   * [MCP-Provisioned Skills (Resources + Prompts)](#mcp-provisioned-skills-resources--prompts)
 * [Build from source](#build)
@@ -66,8 +66,8 @@ Commands:
   collection    Create and manage collections
   context       Manage deployment access, projects, and accounts
   datafabric    Query the datafabric and create and manage aspects within
+  genome        Look up, download and import genomes from NCBI
   job           Create and manage jobs
-  ncbi          Look up, download and import genomes from NCBI
   nextflow      Commands for working with Nextflow-based services
   package       Push/pull and manage service packages
   queue         Create and manage queues
@@ -790,9 +790,9 @@ registry.kube-system.svc.cluster.local/0f0e3f57-80f7-4899-9b69-459af2efd789/pyth
 
 Follow this [link](./docs/ivcap_package.md) for more details about the `package` command.
 
-### NCBI <a name="ncbi"></a>
+### Genomes <a name="genome"></a>
 
-The `ncbi` command looks up genome assemblies at [NCBI Datasets](https://www.ncbi.nlm.nih.gov/datasets/),
+The `genome` command looks up genome assemblies at [NCBI Datasets](https://www.ncbi.nlm.nih.gov/datasets/),
 downloads their data packages and imports them into IVCAP. `reports` and `download` talk to NCBI directly,
 so they need no context and no login; `import` also needs a logged-in IVCAP context. It is built on the
 [ivcap-ncbi-genome-download](https://github.com/ivcap-works/ivcap-ncbi-genome-download) library.
@@ -801,19 +801,19 @@ Look up the assemblies behind an accession, either an assembly accession such as
 BioProject such as `PRJNA10719` (which expands to its assemblies):
 
 ```
-ivcap ncbi genome reports GCF_000001735.4
+ivcap genome reports GCF_000001735.4
 ```
 
 Download the data package of one genome:
 
 ```
-ivcap ncbi genome download GCF_000001735.4 --include genome,gff3,seq-report -f TAIR10.1.zip
+ivcap genome download GCF_000001735.4 --include genome,gff3,seq-report -f TAIR10.1.zip
 ```
 
 Import a genome into IVCAP instead of keeping a local file:
 
 ```
-ivcap ncbi genome import GCF_000001735.4 --include genome,gff3,seq-report
+ivcap genome import GCF_000001735.4 --include genome,gff3,seq-report
 ```
 
 * `import` takes the same package options as `download`. The package goes to a temporary file that is removed
@@ -833,7 +833,7 @@ ivcap ncbi genome import GCF_000001735.4 --include genome,gff3,seq-report
 * Running `import` again creates a new artifact.
 
 * A download covers **exactly one genome**. Pass an assembly accession (`GCF_...` or `GCA_...`); a BioProject
-  is rejected because it can name many genomes. Use `ncbi genome reports` to find the assembly first.
+  is rejected because it can name many genomes. Use `ivcap genome reports` to find the assembly first.
 * `--include` chooses the files in the package: `genome` (the default), `rna`, `protein`, `cds`, `gff3`,
   `gtf`, `gbff`, `seq-report`, `all` or `none`.
 * Without `-f` the package is written to `./<ACCESSION>.zip`. The command refuses to replace an existing
@@ -843,7 +843,7 @@ ivcap ncbi genome import GCF_000001735.4 --include genome,gff3,seq-report
   library.
 * NCBI limits request rates. An NCBI API key raises the limit: set `NCBI_API_KEY` or use `--ncbi-api-key`.
 
-Follow this [link](./docs/ivcap_ncbi.md) for more details about the `ncbi` command.
+Follow this [link](./docs/ivcap_genome.md) for more details about the `genome` command.
 
 ## Agent / automation usage
 

@@ -136,7 +136,7 @@ func TestLicenseFlagDefaults(t *testing.T) {
 	}
 	// An empty import license means "the NCBI data policy".
 	if f := ncbiImportCmd.Flags().Lookup("license"); f == nil || f.DefValue != "" {
-		t.Errorf("ncbi genome import: --license must default to empty, got %+v", f)
+		t.Errorf("genome import: --license must default to empty, got %+v", f)
 	}
 }
 

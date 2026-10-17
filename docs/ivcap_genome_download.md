@@ -1,4 +1,4 @@
-## ivcap ncbi genome download
+## ivcap genome download
 
 Download the data package of one genome assembly as a zip file
 
@@ -8,7 +8,7 @@ Download the NCBI Datasets data package of exactly one genome assembly.
 
 ACCESSION must be an assembly accession (GCF_... or GCA_...), with or without a version. A
 BioProject accession is rejected, because a project can name many genomes: use
-'ivcap ncbi genome reports' to see which assemblies it has, then pass one of them.
+'ivcap genome reports' to see which assemblies it has, then pass one of them.
 
 The package contains the genomic FASTA by default; add annotation files and reports with
 --include. By default it is written to ./<ACCESSION>.zip and the command refuses to replace an
@@ -20,15 +20,15 @@ is printed in machine-readable form.
 --timeout does not apply to the transfer itself; stop it with Ctrl-C.
 
 ```
-ivcap ncbi genome download ACCESSION [flags] [-f file|-]
+ivcap genome download ACCESSION [flags] [-f file|-]
 ```
 
 ### Examples
 
 ```
-  ivcap ncbi genome download GCF_000001735.4
-  ivcap ncbi genome download GCF_000001735.4 --include genome,gff3,seq-report -f TAIR10.1.zip
-  ivcap --output json ncbi genome download GCF_000001735.4 --include all
+  ivcap genome download GCF_000001735.4
+  ivcap genome download GCF_000001735.4 --include genome,gff3,seq-report -f TAIR10.1.zip
+  ivcap --output json genome download GCF_000001735.4 --include all
 ```
 
 ### Options
@@ -58,5 +58,5 @@ ivcap ncbi genome download ACCESSION [flags] [-f file|-]
 
 ### SEE ALSO
 
-* [ivcap ncbi genome](ivcap_ncbi_genome.md)	 - Genome assemblies at NCBI
+* [ivcap genome](ivcap_genome.md)	 - Look up, download and import genomes from NCBI
 

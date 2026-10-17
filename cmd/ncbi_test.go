@@ -334,7 +334,7 @@ func TestRunNcbiDownloadRejectsMoreThanOneGenome(t *testing.T) {
 	if !errors.Is(err, ncbigenome.ErrNotSingleGenome) {
 		t.Fatalf("a BioProject must be rejected as not a single genome, got %v", err)
 	}
-	if !strings.Contains(err.Error(), "ivcap ncbi genome reports") || strings.Contains(err.Error(), "AssemblyReports") {
+	if !strings.Contains(err.Error(), "ivcap genome reports") || strings.Contains(err.Error(), "AssemblyReports") {
 		t.Errorf("the hint must name the CLI command, not the Go API: %v", err)
 	}
 	if _, statErr := os.Stat(dest); statErr == nil {
@@ -554,7 +554,7 @@ func TestRunNcbiReportsEmpty(t *testing.T) {
 // -o/--output is the global output-format flag; the ncbi commands must inherit
 // it and must not define their own (as 'nextflow job-result' does).
 func TestNcbiCommandWiring(t *testing.T) {
-	for _, path := range [][]string{{"ncbi", "genome", "download"}, {"ncbi", "genome", "import"}, {"ncbi", "genome", "reports"}} {
+	for _, path := range [][]string{{"genome", "download"}, {"genome", "import"}, {"genome", "reports"}} {
 		c, _, err := rootCmd.Find(path)
 		if err != nil || c == nil || c.Name() != path[len(path)-1] {
 			t.Fatalf("command %v not found: %v", path, err)
@@ -566,11 +566,11 @@ func TestNcbiCommandWiring(t *testing.T) {
 			t.Errorf("%v must inherit the global -o/--output", path)
 		}
 	}
-	c, _, _ := rootCmd.Find([]string{"ncbi", "genome", "download"})
+	c, _, _ := rootCmd.Find([]string{"genome", "download"})
 	if f := c.Flags().Lookup("file"); f == nil || f.Shorthand != "f" {
 		t.Error("download must take the destination as -f/--file, like 'artifact download'")
 	}
-	c, _, _ = rootCmd.Find([]string{"ncbi", "genome", "import"})
+	c, _, _ = rootCmd.Find([]string{"genome", "import"})
 	if c.Flags().Lookup("file") != nil || c.Flags().Lookup("force") != nil {
 		t.Error("import must not expose local download --file/--force flags")
 	}
@@ -595,7 +595,33 @@ func TestNcbiCLIErr(t *testing.T) {
 	if !errors.Is(got, ncbigenome.ErrNotSingleGenome) {
 		t.Error("the library error must stay reachable through errors.Is")
 	}
-	if !strings.Contains(got.Error(), "'ivcap ncbi genome reports'") || strings.Contains(got.Error(), "AssemblyReports") {
+	if !strings.Contains(got.Error(), "'ivcap genome reports'") || strings.Contains(got.Error(), "AssemblyReports") {
 		t.Errorf("wording was not adapted: %v", got)
+	}
+}
+
+// The commands used to live under 'ivcap ncbi genome'. 'genome' is top level now and the
+// then empty 'ncbi' command is gone.
+func TestGenomeIsTopLevelAndNcbiIsGone(t *testing.T) {
+	for _, c := range rootCmd.Commands() {
+		if c.Name() == "ncbi" {
+			t.Error("the 'ncbi' command must not exist any more")
+		}
+	}
+	genome, _, err := rootCmd.Find([]string{"genome"})
+	if err != nil || genome.Name() != "genome" || genome.Parent() != rootCmd {
+		t.Fatalf("'genome' must be a top-level command, got %v (%v)", genome, err)
+	}
+	var subs []string
+	for _, c := range genome.Commands() {
+		subs = append(subs, c.Name())
+	}
+	if strings.Join(subs, ",") != "download,import,reports" {
+		t.Errorf("genome subcommands = %v, want download, import and reports", subs)
+	}
+	for _, sub := range genome.Commands() {
+		if sub.InheritedFlags().Lookup("ncbi-api-key") == nil {
+			t.Errorf("genome %s must inherit --ncbi-api-key", sub.Name())
+		}
 	}
 }

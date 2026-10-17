@@ -1,4 +1,4 @@
-## ivcap ncbi genome reports
+## ivcap genome reports
 
 Show the NCBI genome assembly reports for assembly or BioProject accessions
 
@@ -13,15 +13,15 @@ With --output json|yaml the full reports are printed. Each report follows the JS
 https://github.com/ivcap-works/ivcap-ncbi-genome-download/tree/v0.2.0/schema
 
 ```
-ivcap ncbi genome reports ACCESSION... [flags]
+ivcap genome reports ACCESSION... [flags]
 ```
 
 ### Examples
 
 ```
-  ivcap ncbi genome reports GCF_000001735.4
-  ivcap --output json ncbi genome reports GCF_000001735.4
-  ivcap ncbi genome reports PRJNA10719 --reference
+  ivcap genome reports GCF_000001735.4
+  ivcap --output json genome reports GCF_000001735.4
+  ivcap genome reports PRJNA10719 --reference
 ```
 
 ### Options
@@ -54,5 +54,5 @@ ivcap ncbi genome reports ACCESSION... [flags]
 
 ### SEE ALSO
 
-* [ivcap ncbi genome](ivcap_ncbi_genome.md)	 - Genome assemblies at NCBI
+* [ivcap genome](ivcap_genome.md)	 - Look up, download and import genomes from NCBI
 

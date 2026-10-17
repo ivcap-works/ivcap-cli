@@ -207,7 +207,7 @@ func TestRunNcbiImportRejectsBioProjectUpFront(t *testing.T) {
 		if !errors.Is(err, ncbigenome.ErrNotSingleGenome) {
 			t.Errorf("%s: want ErrNotSingleGenome, got %v", accession, err)
 		}
-		mustContain(t, err, "BioProject", "ivcap ncbi genome reports")
+		mustContain(t, err, "BioProject", "ivcap genome reports")
 		if n := f.total(); n != 0 {
 			t.Errorf("%s: nothing may be requested before the accession is checked, got %d requests", accession, n)
 		}
@@ -223,7 +223,7 @@ func TestRunNcbiImportRejectsSeveralAssemblies(t *testing.T) {
 	if !errors.Is(err, ncbigenome.ErrNotSingleGenome) {
 		t.Errorf("want ErrNotSingleGenome, got %v", err)
 	}
-	mustContain(t, err, "GCF_000001735.4", "GCF_000001736.1", "2 assemblies", "ivcap ncbi genome reports")
+	mustContain(t, err, "GCF_000001735.4", "GCF_000001736.1", "2 assemblies", "ivcap genome reports")
 	if f.count("POST /genome/download") != 0 || f.count("POST /1/artifacts") != 0 {
 		t.Errorf("nothing may be downloaded or created, got %v", f.requests)
 	}

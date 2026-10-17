@@ -68,8 +68,8 @@ nav:
   - collection: ivcap_collection.md
   - context: ivcap_context.md
   - datafabric: ivcap_datafabric.md
+  - genome: ivcap_genome.md
   - job: ivcap_job.md
-  - ncbi: ivcap_ncbi.md
   - nextflow: ivcap_nextflow.md
   - package: ivcap_package.md
   - queue: ivcap_queue.md

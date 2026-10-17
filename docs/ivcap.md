@@ -31,9 +31,9 @@ ivcap [flags]
 * [ivcap collection](ivcap_collection.md)	 - Create and manage collections
 * [ivcap context](ivcap_context.md)	 - Manage deployment access, projects, and accounts
 * [ivcap datafabric](ivcap_datafabric.md)	 - Query the datafabric and create and manage aspects within
+* [ivcap genome](ivcap_genome.md)	 - Look up, download and import genomes from NCBI
 * [ivcap job](ivcap_job.md)	 - Create and manage jobs
 * [ivcap mcp](ivcap_mcp.md)	 - Start an MCP server for accessing all tools on an IVCAP platform
-* [ivcap ncbi](ivcap_ncbi.md)	 - Look up, download and import genomes from NCBI
 * [ivcap nextflow](ivcap_nextflow.md)	 - Commands for working with Nextflow-based services
 * [ivcap package](ivcap_package.md)	 - Push/pull and manage service packages
 * [ivcap queue](ivcap_queue.md)	 - Create and manage queues

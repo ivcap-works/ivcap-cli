@@ -1,4 +1,4 @@
-## ivcap ncbi
+## ivcap genome
 
 Look up, download and import genomes from NCBI
 
@@ -13,7 +13,7 @@ an existing package to the active IVCAP deployment and attaches report and manif
 ### Options
 
 ```
-  -h, --help                  help for ncbi
+  -h, --help                  help for genome
       --ncbi-api-key string   NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]
 ```
 
@@ -32,5 +32,7 @@ an existing package to the active IVCAP deployment and attaches report and manif
 ### SEE ALSO
 
 * [ivcap](ivcap.md)	 - A command line tool to interact with a IVCAP deployment
-* [ivcap ncbi genome](ivcap_ncbi_genome.md)	 - Genome assemblies at NCBI
+* [ivcap genome download](ivcap_genome_download.md)	 - Download the data package of one genome assembly as a zip file
+* [ivcap genome import](ivcap_genome_import.md)	 - Import an NCBI genome package into IVCAP
+* [ivcap genome reports](ivcap_genome_reports.md)	 - Show the NCBI genome assembly reports for assembly or BioProject accessions
 

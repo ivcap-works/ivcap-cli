@@ -8,10 +8,10 @@ Open issues and ideas for ivcap-cli, collected as they come up. Remove an item w
   then upload content to it. A failure in between leaves an artifact that exists but is empty or partial,
   and nothing lets a client tell a good artifact from a broken one afterwards. The API should create the
   artifact together with its content, or only mark it available once the content is complete, so that a
-  failed upload leaves nothing behind. This affects `artifact create`, `ncbi genome import` and the Nextflow
+  failed upload leaves nothing behind. This affects `artifact create`, `ivcap genome import` and the Nextflow
   package upload. There is also no `ivcap artifact delete`, so broken artifacts stay.
 
-## ncbi genome import
+## genome import
 
 - **Repair a failed import (parked until the platform fix above).** A failure after the artifact record is
   created leaves the artifact behind, and the temporary package and the aspect documents are deleted when
@@ -54,5 +54,5 @@ Open issues and ideas for ivcap-cli, collected as they come up. Remove an item w
 - Commit `a495746` mixes two features and has a typo in its message. Split and reword before pushing.
 - `.gitignore` line `ivcap-*` hides new `ivcap-*.SKILL.md` files, so they need `git add -f`. Add
   `!skills/**/ivcap-*.SKILL.md`.
-- Optional: a percentage progress bar for `ncbi genome download`. HEAD gets 405 and the POST has no
+- Optional: a percentage progress bar for `ivcap genome download`. HEAD gets 405 and the POST has no
   `Content-Length`, so it would need the download-summary estimate.

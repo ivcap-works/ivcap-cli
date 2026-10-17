@@ -1,4 +1,4 @@
-## ivcap ncbi genome import
+## ivcap genome import
 
 Import an NCBI genome package into IVCAP
 
@@ -8,7 +8,7 @@ Import an NCBI genome data package as an IVCAP artifact.
 
 The package is downloaded to a temporary file which is removed after upload; no local package is
 left behind. The same --include, --chromosomes, --assembly-version and --fast-zip-validation options
-as 'ncbi genome download' control the package. The imported artifact receives an assembly report
+as 'genome download' control the package. The imported artifact receives an assembly report
 aspect and an RO-Crate 1.2 archive manifest aspect.
 
 The manifest records a license for the data. NCBI states none: it places no restrictions itself,
@@ -18,15 +18,15 @@ NCBI's data usage policy, which is a pointer and not a license grant. Use --lice
 If an aspect request fails after upload, the error names the uploaded artifact so it can be repaired.
 
 ```
-ivcap ncbi genome import ACCESSION [flags]
+ivcap genome import ACCESSION [flags]
 ```
 
 ### Examples
 
 ```
-  ivcap ncbi genome import GCF_000001735.4
-  ivcap ncbi genome import GCF_000001735.4 --include genome,gff3,seq-report
-  ivcap --output json ncbi genome import GCF_000001735.4 --policy urn:ivcap:policy:...
+  ivcap genome import GCF_000001735.4
+  ivcap genome import GCF_000001735.4 --include genome,gff3,seq-report
+  ivcap --output json genome import GCF_000001735.4 --policy urn:ivcap:policy:...
 ```
 
 ### Options
@@ -60,5 +60,5 @@ ivcap ncbi genome import ACCESSION [flags]
 
 ### SEE ALSO
 
-* [ivcap ncbi genome](ivcap_ncbi_genome.md)	 - Genome assemblies at NCBI
+* [ivcap genome](ivcap_genome.md)	 - Look up, download and import genomes from NCBI
 
