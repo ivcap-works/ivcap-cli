@@ -24,7 +24,7 @@ Query the datafabric and create and manage aspects within
 
 * [ivcap](ivcap.md)	 - A command line tool to interact with a IVCAP deployment
 * [ivcap datafabric add](ivcap_datafabric_add.md)	 - Add aspect of a specific schema to an entity
-* [ivcap datafabric get](ivcap_datafabric_get.md)	 - Get a specific aspect record
+* [ivcap datafabric get](ivcap_datafabric_get.md)	 - Get the content of a specific aspect
 * [ivcap datafabric query](ivcap_datafabric_query.md)	 - Query the datafabric for any combination of entity, schema and time.
 * [ivcap datafabric retract](ivcap_datafabric_retract.md)	 - Retract a specific aspect record
 * [ivcap datafabric update](ivcap_datafabric_update.md)	 - Update an aspect record for an entity and a specific schema

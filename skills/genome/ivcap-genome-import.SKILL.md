@@ -17,7 +17,8 @@ This command **creates data on the active IVCAP deployment**: one artifact and t
 - Pass one **assembly accession** (`GCF_...` or `GCA_...`). BioProject accessions (`PRJNA...`) are rejected.
   If unsure which assembly is wanted, look it up first with `ivcap genome reports`.
 - Use `--output json` when you will parse the result.
-- Use a `--policy` only if the user gave one; do not invent a policy URN.
+- The artifact and both aspects get the open policies by default, because the data is public NCBI data. Use `--policy`
+  only to restrict access or if the user gave one; do not invent a policy URN.
 - Do not run it twice for the same genome: every run creates a new artifact.
 - A package can be large (genome, gff3 and seq-report for TAIR10.1 is about 60 MB compressed), so the
   download and upload can take a while. The package is stored in a temporary file that is removed afterwards.

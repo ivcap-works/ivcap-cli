@@ -15,6 +15,9 @@ The manifest records a license for the data. NCBI states none: it places no rest
 but submitters may claim rights that it cannot assess. By default the manifest therefore links to
 NCBI's data usage policy, which is a pointer and not a license grant. Use --license to state another.
 
+The imported data is public NCBI data, so the artifact and both aspects get the open policies
+(ivcap.open.artifact and ivcap.open.metadata). Use --policy to give all three another policy.
+
 If an aspect request fails after upload, the error names the uploaded artifact so it can be repaired.
 
 ```
@@ -42,7 +45,7 @@ ivcap genome import ACCESSION [flags]
       --manifest-schema string    Schema URN for the RO-Crate manifest aspect (default "urn:ivcap:schema:artifact.archive-manifest.1")
   -n, --name string               Artifact name [zip file name]
       --ncbi-api-key string       NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]
-  -p, --policy string             Policy controlling access to the artifact and aspects
+  -p, --policy string             Policy for the artifact and both aspects [urn:ivcap:policy:ivcap.open.artifact and urn:ivcap:policy:ivcap.open.metadata, as the data is public]
       --report-schema string      Schema URN for the assembly report aspect (default "urn:ivcap:schema:ncbi.assembly-data-report.1")
 ```
 

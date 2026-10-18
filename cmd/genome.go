@@ -108,7 +108,7 @@ func init() {
 	i.BoolVar(&genomeImportFastZip, "fast-zip-validation", false,
 		"Only check the zip's directory after the download, not every file in it")
 	i.StringVarP(&genomeImportName, "name", "n", "", "Artifact name [zip file name]")
-	i.StringVarP(&genomeImportPolicy, "policy", "p", "", "Policy controlling access to the artifact and aspects")
+	i.StringVarP(&genomeImportPolicy, "policy", "p", "", "Policy for the artifact and both aspects ["+genomeOpenArtifactPolicy+" and "+genomeOpenAspectPolicy+", as the data is public]")
 	i.Int64Var(&genomeImportChunkSize, "chunk-size", DEF_CHUNK_SIZE, fmt.Sprintf("Chunk size in bytes for splitting large files: at least %d, or -1 to upload without chunking", MIN_CHUNK_SIZE))
 	i.StringVar(&genomeImportReportSchema, "report-schema", ncbiAssemblyReportSchema,
 		"Schema URN for the assembly report aspect")
@@ -197,6 +197,9 @@ aspect and an RO-Crate 1.2 archive manifest aspect.
 The manifest records a license for the data. NCBI states none: it places no restrictions itself,
 but submitters may claim rights that it cannot assess. By default the manifest therefore links to
 NCBI's data usage policy, which is a pointer and not a license grant. Use --license to state another.
+
+The imported data is public NCBI data, so the artifact and both aspects get the open policies
+(ivcap.open.artifact and ivcap.open.metadata). Use --policy to give all three another policy.
 
 If an aspect request fails after upload, the error names the uploaded artifact so it can be repaired.`,
 		Example: `  ivcap genome import GCF_000001735.4
@@ -490,6 +493,24 @@ const (
 		"every version of each assembly"
 )
 
+// An import caches public data, so by default its artifact and aspects get the open policies. The
+// policy names follow IVCAP's pattern: urn:ivcap:policy:ivcap.base.<kind> is the default of each kind of
+// record and ivcap.open.<kind> its open counterpart. Both names below were checked on a deployment
+// (develop.ivcap.net, October 2026): a created artifact and a created aspect report them as their policy.
+const (
+	genomeOpenArtifactPolicy = "urn:ivcap:policy:ivcap.open.artifact"
+	genomeOpenAspectPolicy   = "urn:ivcap:policy:ivcap.open.metadata"
+)
+
+// genomePolicies returns the policy of the artifact and the policy of the aspects of an import: the open
+// policies by default, or the one given with --policy for all of them.
+func genomePolicies(policy string) (artifactPolicy, aspectPolicy string) {
+	if strings.TrimSpace(policy) != "" {
+		return policy, policy
+	}
+	return genomeOpenArtifactPolicy, genomeOpenAspectPolicy
+}
+
 // ncbiDataLicense is what an import records as the license when --license is not given. NCBI
 // states no license: it places no restrictions itself, but submitters may claim rights that it
 // cannot assess, so this is a pointer to its policy and not a license grant.
@@ -670,12 +691,13 @@ func runGenomeImport(
 	if artifactName == "" {
 		artifactName = res.Accession + ".zip"
 	}
+	artifactPolicy, aspectPolicy := genomePolicies(o.Policy)
 	uploadSilent := o.Silent || o.Format != ""
 	if !uploadSilent {
 		fmt.Fprintf(stderr, "Uploading %s (%s) to IVCAP\n", artifactName, genomeBytes(info.Size()))
 	}
 	resp, err := sdk.CreateArtifact(ctxt, &sdk.CreateArtifactRequest{
-		Name: artifactName, Size: info.Size(), Policy: o.Policy,
+		Name: artifactName, Size: info.Size(), Policy: artifactPolicy,
 	}, "application/zip", info.Size(), nil, adapter, logger)
 	if err != nil {
 		return fmt.Errorf("cannot create artifact for NCBI package %s: %w", res.Accession, err)
@@ -692,11 +714,11 @@ func runGenomeImport(
 		return fmt.Errorf("cannot upload artifact %s: %w", artifactID, err)
 	}
 
-	reportAspect, err := addAspectContent(ctxt, artifactID, o.ReportSchema, o.Policy, reportBytes, adapter)
+	reportAspect, err := addAspectContent(ctxt, artifactID, o.ReportSchema, aspectPolicy, reportBytes, adapter)
 	if err != nil {
 		return fmt.Errorf("artifact %s was uploaded, but its report aspect could not be added: %w", artifactID, err)
 	}
-	manifestAspect, err := addAspectContent(ctxt, artifactID, o.ManifestSchema, o.Policy, manifestBytes, adapter)
+	manifestAspect, err := addAspectContent(ctxt, artifactID, o.ManifestSchema, aspectPolicy, manifestBytes, adapter)
 	if err != nil {
 		return fmt.Errorf("artifact %s and report aspect %s were created, but the manifest aspect could not be added: %w",
 			artifactID, reportAspect, err)

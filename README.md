@@ -826,6 +826,9 @@ ivcap genome import GCF_000001735.4 --include genome,gff3,seq-report
   distribution, but submitters may claim rights that it cannot assess. So by default the manifest links to
   NCBI's data usage policy, which is a pointer and not a license grant. `--license` states another one (an
   SPDX identifier, a license URL, or `undefined`).
+* The artifact and both aspects get the open policies (`urn:ivcap:policy:ivcap.open.artifact` and
+  `urn:ivcap:policy:ivcap.open.metadata`), because the imported data is public NCBI data. `--policy` gives all
+  three another policy.
 * `import` checks the accession, the license and the chunk size before it downloads anything, and it stops
   if NCBI answers the report and the download request with different assemblies.
 * `--output json|yaml` prints the artifact URN and the two aspect IDs. If an aspect cannot be added after the

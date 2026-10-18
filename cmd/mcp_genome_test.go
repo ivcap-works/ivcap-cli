@@ -144,3 +144,27 @@ func TestMcpGenomeList(t *testing.T) {
 		}
 	}
 }
+
+func TestMcpGenomeImportPolicies(t *testing.T) {
+	f := newImportFixture(t)
+	if _, err := mcpGenomeImportWith(context.Background(), ncbiTestClient(f.srv), &f.adapter,
+		mcppkg.GenomeImportArgs{Accession: "GCF_000001735.4"}); err != nil {
+		t.Fatal(err)
+	}
+	f.mu.Lock()
+	if f.artifactPolicy != genomeOpenArtifactPolicy || len(f.aspectPolicies) != 2 || f.aspectPolicies[0] != genomeOpenAspectPolicy {
+		t.Errorf("without a policy argument the open policies apply, got %q and %v", f.artifactPolicy, f.aspectPolicies)
+	}
+	f.mu.Unlock()
+
+	f = newImportFixture(t)
+	if _, err := mcpGenomeImportWith(context.Background(), ncbiTestClient(f.srv), &f.adapter,
+		mcppkg.GenomeImportArgs{Accession: "GCF_000001735.4", Policy: "urn:ivcap:policy:custom"}); err != nil {
+		t.Fatal(err)
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.artifactPolicy != "urn:ivcap:policy:custom" || f.aspectPolicies[0] != "urn:ivcap:policy:custom" {
+		t.Errorf("a policy argument must override the open policies, got %q and %v", f.artifactPolicy, f.aspectPolicies)
+	}
+}

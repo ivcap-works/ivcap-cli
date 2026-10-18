@@ -24,6 +24,10 @@ but submitters may claim rights that it cannot assess. By default the manifest t
 NCBI's data usage policy, which is a pointer and not a license grant. Use --license to state another.
 
 .PP
+The imported data is public NCBI data, so the artifact and both aspects get the open policies
+(ivcap.open.artifact and ivcap.open.metadata). Use --policy to give all three another policy.
+
+.PP
 If an aspect request fails after upload, the error names the uploaded artifact so it can be repaired.
 
 
@@ -69,7 +73,7 @@ If an aspect request fails after upload, the error names the uploaded artifact s
 
 .PP
 \fB-p\fP, \fB--policy\fP=""
-	Policy controlling access to the artifact and aspects
+	Policy for the artifact and both aspects [urn:ivcap:policy:ivcap.open.artifact and urn:ivcap:policy:ivcap.open.metadata, as the data is public]
 
 .PP
 \fB--report-schema\fP="urn:ivcap:schema:ncbi.assembly-data-report.1"

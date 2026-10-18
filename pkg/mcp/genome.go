@@ -151,7 +151,7 @@ func addGenomeImportTool(s *server.MCPServer) {
 			},
 			"policy": map[string]any{
 				"type":        "string",
-				"description": "Policy controlling access to the artifact and its aspects. Only use one the user gave.",
+				"description": "Policy controlling access to the artifact and its aspects. By default the open policies are used, because the imported data is public NCBI data. Only set this to restrict access, or if the user gave one.",
 			},
 			"license": map[string]any{
 				"type": "string",

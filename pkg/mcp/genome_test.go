@@ -281,6 +281,9 @@ func TestGenomeImportToolExplainsItsOptions(t *testing.T) {
 				t.Error("'all' must not be offered as an assembly_version: an import needs exactly one version")
 			}
 		}
+		if !strings.Contains(desc("policy"), "open") {
+			t.Errorf("the description of policy must say that the open policies are the default: %s", desc("policy"))
+		}
 		if !strings.Contains(desc("accession"), "version") {
 			t.Errorf("the description of accession must say that a version suffix picks a version: %s", desc("accession"))
 		}

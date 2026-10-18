@@ -56,6 +56,10 @@ type importFixture struct {
 	reportsFor   func(call int) string // body of the n-th (1-based) dataset_report reply
 	failUpload   bool
 	failAspectAt int // 1-based number of the aspect request that fails; 0 = none
+
+	// the policies the import asked for
+	artifactPolicy string
+	aspectPolicies []string
 }
 
 func newImportFixture(t *testing.T) *importFixture {
@@ -80,6 +84,7 @@ func newImportFixture(t *testing.T) *importFixture {
 			w.Header().Set("Content-Type", "application/zip")
 			_, _ = w.Write(zipBytes)
 		case r.Method == http.MethodPost && r.URL.Path == "/1/artifacts":
+			f.artifactPolicy = r.Header.Get("X-Policy")
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = fmt.Fprintf(w, `{"id":%q,"data-href":%q}`, importTestArtifact, f.srv.URL+"/upload/package")
 		case r.Method == http.MethodPatch && r.URL.Path == "/upload/package":
@@ -92,6 +97,7 @@ func newImportFixture(t *testing.T) *importFixture {
 			w.WriteHeader(http.StatusNoContent)
 		case r.Method == http.MethodPost && r.URL.Path == "/1/aspects":
 			f.aspectPosts++
+			f.aspectPolicies = append(f.aspectPolicies, r.URL.Query().Get("policy"))
 			var body map[string]any
 			_ = json.NewDecoder(r.Body).Decode(&body)
 			if f.aspectPosts == f.failAspectAt {
@@ -316,6 +322,52 @@ func TestGenomeImportFlagDefaultsMatchTheSchemas(t *testing.T) {
 	} {
 		if f := genomeImportCmd.Flags().Lookup(flag); f == nil || f.DefValue != want {
 			t.Errorf("--%s must default to %q, got %+v", flag, want, f)
+		}
+	}
+}
+
+func TestRunGenomeImportUsesTheOpenPoliciesByDefault(t *testing.T) {
+	f := newImportFixture(t)
+	if _, _, err := f.run(baseImportOpts()); err != nil {
+		t.Fatal(err)
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.artifactPolicy != genomeOpenArtifactPolicy {
+		t.Errorf("the artifact must get the open artifact policy, got %q", f.artifactPolicy)
+	}
+	if len(f.aspectPolicies) != 2 || f.aspectPolicies[0] != genomeOpenAspectPolicy || f.aspectPolicies[1] != genomeOpenAspectPolicy {
+		t.Errorf("both aspects must get the open aspect policy, got %v", f.aspectPolicies)
+	}
+}
+
+func TestRunGenomeImportPolicyFlagOverridesTheOpenPolicies(t *testing.T) {
+	f := newImportFixture(t)
+	o := baseImportOpts()
+	o.Policy = "urn:ivcap:policy:custom"
+	if _, _, err := f.run(o); err != nil {
+		t.Fatal(err)
+	}
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.artifactPolicy != "urn:ivcap:policy:custom" || len(f.aspectPolicies) != 2 ||
+		f.aspectPolicies[0] != "urn:ivcap:policy:custom" || f.aspectPolicies[1] != "urn:ivcap:policy:custom" {
+		t.Errorf("--policy must apply to the artifact and both aspects, got %q and %v", f.artifactPolicy, f.aspectPolicies)
+	}
+}
+
+func TestGenomePolicies(t *testing.T) {
+	for _, empty := range []string{"", "   "} {
+		if a, m := genomePolicies(empty); a != genomeOpenArtifactPolicy || m != genomeOpenAspectPolicy {
+			t.Errorf("%q must give the open policies, got %q and %q", empty, a, m)
+		}
+	}
+	if a, m := genomePolicies("urn:ivcap:policy:x"); a != "urn:ivcap:policy:x" || m != "urn:ivcap:policy:x" {
+		t.Errorf("a given policy applies to both, got %q and %q", a, m)
+	}
+	for _, p := range []string{genomeOpenArtifactPolicy, genomeOpenAspectPolicy} {
+		if !strings.HasPrefix(p, "urn:ivcap:policy:ivcap.open.") {
+			t.Errorf("not an open policy URN: %s", p)
 		}
 	}
 }
