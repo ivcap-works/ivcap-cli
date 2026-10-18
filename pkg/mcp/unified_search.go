@@ -17,7 +17,6 @@ package mcp
 import (
 	"context"
 	"fmt"
-	"sort"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -50,7 +49,7 @@ func addUnifiedSearchTool(s *server.MCPServer) {
 			},
 			"skills": map[string]any{
 				"type":        "string",
-				"description": "Optional search string for embedded skill playbooks. Searches skill names and descriptions.",
+				"description": "Optional search string for embedded skill playbooks. Free-text query; results are ranked by relevance (BM25) over skill names, descriptions and bodies, best match first.",
 			},
 			"limit": map[string]any{
 				"type":        "integer",
@@ -151,9 +150,10 @@ func searchServices(ctx context.Context, query string, limit int, page *string) 
 	return string(res.AsBytes()), nil
 }
 
-// searchSkillsLocal performs substring matching against embedded skills locally.
+// searchSkillsLocal ranks the embedded skills against query using BM25 (see
+// skillsdoc.Search), best match first, and returns at most limit of them.
 // Does NOT require authentication/platform access.
-// Pass query="*" to list all available skills.
+// Pass query="*" to list all available skills (sorted by name).
 func searchSkillsLocal(query string, limit int) ([]*skillsManifestItem, error) {
 	if limit == 0 {
 		limit = 10
@@ -171,37 +171,31 @@ func searchSkillsLocal(query string, limit int) ([]*skillsManifestItem, error) {
 		return nil, err
 	}
 
-	// Simple substring matching on name and description (or list all if query is "*")
-	var results []*skillsManifestItem
-	queryLower := strings.ToLower(query)
-	for _, d := range docs {
-		matches := listAll ||
-			strings.Contains(strings.ToLower(d.Name), queryLower) ||
-			strings.Contains(strings.ToLower(d.Description), queryLower)
-		if matches {
-			results = append(results, &skillsManifestItem{
-				Name:        d.Name,
-				URI:         skillDocURI(d.Name),
-				Version:     d.Version,
-				Description: d.Description,
-			})
-		}
-		if !listAll && len(results) >= limit {
-			break
+	// LoadAllSkillDocs returns docs sorted by name, which is the order we want
+	// for "list all"; otherwise rank by relevance.
+	ranked := docs
+	if !listAll {
+		hits := skillsdoc.Search(docs, query)
+		ranked = make([]*skillsdoc.SkillDoc, 0, len(hits))
+		for _, h := range hits {
+			ranked = append(ranked, h.Doc)
 		}
 	}
-
-	if len(results) == 0 {
+	if len(ranked) == 0 {
 		return nil, fmt.Errorf("no skills found matching %q", query)
 	}
-
-	// Sort by name for stable output
-	sort.Slice(results, func(i, j int) bool { return results[i].Name < results[j].Name })
-
-	// For "list all" mode, respect limit on final results
-	if listAll && len(results) > limit {
-		results = results[:limit]
+	if limit > 0 && len(ranked) > limit {
+		ranked = ranked[:limit]
 	}
 
+	results := make([]*skillsManifestItem, 0, len(ranked))
+	for _, d := range ranked {
+		results = append(results, &skillsManifestItem{
+			Name:        d.Name,
+			URI:         skillDocURI(d.Name),
+			Version:     d.Version,
+			Description: d.Description,
+		})
+	}
 	return results, nil
 }

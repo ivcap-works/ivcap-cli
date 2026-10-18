@@ -1,6 +1,6 @@
 ## ivcap skills
 
-List and show agent skill docs embedded in this CLI release
+List, search and show agent skill docs embedded in this CLI release
 
 ### Synopsis
 
@@ -33,5 +33,6 @@ Each skill file must start with YAML front-matter. Expected head-matter schema:
 
 * [ivcap](ivcap.md)	 - A command line tool to interact with a IVCAP deployment
 * [ivcap skills list](ivcap_skills_list.md)	 - List available skills
+* [ivcap skills search](ivcap_skills_search.md)	 - Search skills, best match first
 * [ivcap skills show](ivcap_skills_show.md)	 - Show a skill doc (prints exact embedded SKILL.md content)
 
