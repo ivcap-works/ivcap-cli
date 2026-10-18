@@ -30,12 +30,13 @@ ivcap genome reports ACCESSION... [flags]
       --annotated                 Limit to annotated genomes
       --assembly-level strings    Limit to assembly levels (comma-separated): chromosome, complete, contig, scaffold
       --assembly-source string    Limit to 'refseq' (GCF_) or 'genbank' (GCA_) assemblies (default "all")
-      --assembly-version string   Version policy: 'current', 'latest' or 'all' [use the versions given]
+      --assembly-version string   Version policy [a versioned ACCESSION is used as given, an unversioned one means its current version]: 'current' (same as 'latest') ignores any version and returns the current one; 'all' returns every version of each assembly
       --exclude-atypical          Exclude atypical assemblies
       --exclude-multi-isolate     Exclude assemblies from multi-isolate projects
       --from-type                 Only return records with type material
   -h, --help                      help for reports
       --mag string                Limit to metagenome assembled genomes ('only') or remove them ('exclude') (default "all")
+      --ncbi-api-key string       NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]
       --reference                 Limit to reference genomes
 ```
 
@@ -45,7 +46,6 @@ ivcap genome reports ACCESSION... [flags]
       --access-token string   Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]
       --context string        Context (deployment) to use
       --debug                 Set logging level to DEBUG
-      --ncbi-api-key string   NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]
       --no-history            Do not store history
   -o, --output string         Set format for displaying output [json, yaml]
       --silent                Do not show any progress information

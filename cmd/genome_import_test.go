@@ -114,8 +114,8 @@ func newImportFixture(t *testing.T) *importFixture {
 	return f
 }
 
-func baseImportOpts() ncbiImportOpts {
-	return ncbiImportOpts{
+func baseImportOpts() genomeImportOpts {
+	return genomeImportOpts{
 		Accession:      "GCF_000001735.4",
 		ChunkSize:      -1,
 		ReportSchema:   ncbiAssemblyReportSchema,
@@ -125,9 +125,9 @@ func baseImportOpts() ncbiImportOpts {
 	}
 }
 
-func (f *importFixture) run(o ncbiImportOpts) (stdout, stderr string, err error) {
+func (f *importFixture) run(o genomeImportOpts) (stdout, stderr string, err error) {
 	var out, errOut bytes.Buffer
-	err = runNcbiImport(context.Background(), ncbiTestClient(f.srv), o, &f.adapter, &out, &errOut)
+	err = runGenomeImport(context.Background(), ncbiTestClient(f.srv), o, &f.adapter, &out, &errOut)
 	return out.String(), errOut.String(), err
 }
 
@@ -168,7 +168,7 @@ func mustContain(t *testing.T, err error, wants ...string) {
 	}
 }
 
-func TestRunNcbiImportUploadFailure(t *testing.T) {
+func TestRunGenomeImportUploadFailure(t *testing.T) {
 	f := newImportFixture(t)
 	f.failUpload = true
 	_, _, err := f.run(baseImportOpts())
@@ -179,7 +179,7 @@ func TestRunNcbiImportUploadFailure(t *testing.T) {
 	f.expectNoLeftovers()
 }
 
-func TestRunNcbiImportReportAspectFailure(t *testing.T) {
+func TestRunGenomeImportReportAspectFailure(t *testing.T) {
 	f := newImportFixture(t)
 	f.failAspectAt = 1
 	_, _, err := f.run(baseImportOpts())
@@ -190,7 +190,7 @@ func TestRunNcbiImportReportAspectFailure(t *testing.T) {
 	f.expectNoLeftovers()
 }
 
-func TestRunNcbiImportManifestAspectFailure(t *testing.T) {
+func TestRunGenomeImportManifestAspectFailure(t *testing.T) {
 	f := newImportFixture(t)
 	f.failAspectAt = 2
 	_, _, err := f.run(baseImportOpts())
@@ -198,7 +198,7 @@ func TestRunNcbiImportManifestAspectFailure(t *testing.T) {
 	f.expectNoLeftovers()
 }
 
-func TestRunNcbiImportRejectsBioProjectUpFront(t *testing.T) {
+func TestRunGenomeImportRejectsBioProjectUpFront(t *testing.T) {
 	for _, accession := range []string{"PRJNA10719", "prjeb1234", "PRJDB5"} {
 		f := newImportFixture(t)
 		o := baseImportOpts()
@@ -214,7 +214,7 @@ func TestRunNcbiImportRejectsBioProjectUpFront(t *testing.T) {
 	}
 }
 
-func TestRunNcbiImportRejectsSeveralAssemblies(t *testing.T) {
+func TestRunGenomeImportRejectsSeveralAssemblies(t *testing.T) {
 	f := newImportFixture(t)
 	f.reportsFor = func(int) string {
 		return `{"reports":[` + importTestReport + `,{"accession":"GCF_000001736.1"}]}`
@@ -229,7 +229,7 @@ func TestRunNcbiImportRejectsSeveralAssemblies(t *testing.T) {
 	}
 }
 
-func TestRunNcbiImportNoAssemblies(t *testing.T) {
+func TestRunGenomeImportNoAssemblies(t *testing.T) {
 	f := newImportFixture(t)
 	f.reportsFor = func(int) string { return `{"reports":[]}` }
 	_, _, err := f.run(baseImportOpts())
@@ -241,7 +241,7 @@ func TestRunNcbiImportNoAssemblies(t *testing.T) {
 	}
 }
 
-func TestRunNcbiImportReportAndPackageMustAgree(t *testing.T) {
+func TestRunGenomeImportReportAndPackageMustAgree(t *testing.T) {
 	f := newImportFixture(t)
 	// the first lookup (the report) and every later one (the download) disagree
 	f.reportsFor = func(call int) string {
@@ -258,7 +258,7 @@ func TestRunNcbiImportReportAndPackageMustAgree(t *testing.T) {
 	f.expectNoLeftovers()
 }
 
-func TestRunNcbiImportRejectsBadLicenseUpFront(t *testing.T) {
+func TestRunGenomeImportRejectsBadLicenseUpFront(t *testing.T) {
 	f := newImportFixture(t)
 	o := baseImportOpts()
 	o.License = "not a license!"
@@ -269,7 +269,7 @@ func TestRunNcbiImportRejectsBadLicenseUpFront(t *testing.T) {
 	}
 }
 
-func TestRunNcbiImportLicenseOverride(t *testing.T) {
+func TestRunGenomeImportLicenseOverride(t *testing.T) {
 	f := newImportFixture(t)
 	o := baseImportOpts()
 	o.License = "CC0-1.0"
@@ -292,7 +292,7 @@ func TestRunNcbiImportLicenseOverride(t *testing.T) {
 	}
 }
 
-func TestRunNcbiImportHumanOutput(t *testing.T) {
+func TestRunGenomeImportHumanOutput(t *testing.T) {
 	f := newImportFixture(t)
 	o := baseImportOpts()
 	o.Format, o.Silent = "", false
@@ -309,12 +309,12 @@ func TestRunNcbiImportHumanOutput(t *testing.T) {
 	f.expectNoLeftovers()
 }
 
-func TestNcbiImportFlagDefaultsMatchTheSchemas(t *testing.T) {
+func TestGenomeImportFlagDefaultsMatchTheSchemas(t *testing.T) {
 	for flag, want := range map[string]string{
 		"report-schema":   ncbiAssemblyReportSchema,
 		"manifest-schema": artifactArchiveManifestSchema,
 	} {
-		if f := ncbiImportCmd.Flags().Lookup(flag); f == nil || f.DefValue != want {
+		if f := genomeImportCmd.Flags().Lookup(flag); f == nil || f.DefValue != want {
 			t.Errorf("--%s must default to %q, got %+v", flag, want, f)
 		}
 	}

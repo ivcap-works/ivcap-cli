@@ -834,14 +834,34 @@ ivcap genome import GCF_000001735.4 --include genome,gff3,seq-report
 
 * A download covers **exactly one genome**. Pass an assembly accession (`GCF_...` or `GCA_...`); a BioProject
   is rejected because it can name many genomes. Use `ivcap genome reports` to find the assembly first.
-* `--include` chooses the files in the package: `genome` (the default), `rna`, `protein`, `cds`, `gff3`,
-  `gtf`, `gbff`, `seq-report`, `all` or `none`.
+* `--include` chooses the files in the package: `genome` (genomic FASTA, the default), `rna` (transcripts),
+  `protein` (amino acid sequences), `cds` (nucleotide coding sequences), `gff3` or `gtf` (annotation), `gbff`
+  (GenBank flat file), `seq-report` (per-sequence report), `all` (every type, on its own) or `none` (metadata
+  only, on its own).
+* `--assembly-version` decides which version is used. By default a versioned accession such as `GCF_000001735.4`
+  is used as given and an unversioned one means its current version. `current` (the same as `latest`) ignores
+  the version in the accession and takes the current one. `all` selects every version, which `download` and
+  `import` reject unless there is exactly one, so it is only useful with `reports`.
+* `--chromosomes` limits the genome FASTA to the named chromosomes, or `all`; the names are passed to NCBI
+  unchanged.
 * Without `-f` the package is written to `./<ACCESSION>.zip`. The command refuses to replace an existing
   file unless `--force` is given, and `-f -` writes the zip to stdout.
 * `--output json|yaml` prints the result of a download (accession, file, size and the list of files in the
   package), or the full reports for `reports`. Each report follows the JSON Schema published with the
   library.
 * NCBI limits request rates. An NCBI API key raises the limit: set `NCBI_API_KEY` or use `--ncbi-api-key`.
+
+List the genomes that have been imported:
+
+```
+ivcap genome list
+```
+
+`list` shows one row per import that has an assembly report aspect: the accession from the report, the report
+aspect, and the artifact the aspect belongs to. The two URNs are shown as short `@n` references that other
+commands accept in place of the URN; `--no-history` shows the full URNs instead. `--output json|yaml` prints the same rows, with the organism and assembly name of each report, as `genomes`, plus `next_page`
+when there are more results, which `--page` takes to continue. It only talks to IVCAP, so it needs a context and
+login but no NCBI access.
 
 Follow this [link](./docs/ivcap_genome.md) for more details about the `genome` command.
 

@@ -40,8 +40,17 @@ Each entry is a genome assembly report. Pick the one you want and note its `acce
 ivcap --output json genome download GCF_000001735.4 --include genome,gff3,seq-report -f ./GCF_000001735.4.zip
 ```
 
-`--include` takes a comma-separated list of: `genome`, `rna`, `protein`, `cds`, `gff3`, `gtf`, `gbff`,
-`seq-report`, `all`, `none`. The default is `genome`. Annotation files only exist for annotated assemblies.
+`--include` takes a comma-separated list. `genome` (genomic FASTA) is the default. `rna` (transcripts), `protein`
+(amino acid sequences), `cds` (nucleotide coding sequences), `gff3` and `gtf` (annotation), `gbff` (GenBank flat
+file) and `seq-report` (per-sequence report) add files. `all` (every type) and `none` (metadata only) must be used
+alone. Annotation files only exist for annotated assemblies.
+
+`--assembly-version`: by default a versioned accession (`GCF_000001735.4`) is used as given and an unversioned one
+means its current version. `current` (the same as `latest`) ignores the version in the accession and takes the
+current one. `all` selects every version and is rejected for a download unless there is exactly one, so use it only
+with `ivcap genome reports`.
+
+`--chromosomes` limits the genome FASTA to the named chromosomes, or `all`.
 
 ### 3) Read the result
 

@@ -52,9 +52,9 @@ func TestResolveLicense(t *testing.T) {
 	}
 }
 
-func TestResolveNcbiLicense(t *testing.T) {
+func TestResolveGenomeLicense(t *testing.T) {
 	for _, empty := range []string{"", "  "} {
-		got, err := resolveNcbiLicense(empty)
+		got, err := resolveGenomeLicense(empty)
 		if err != nil || got != ncbiDataLicense {
 			t.Errorf("%q: want the NCBI policy, got %+v (%v)", empty, got, err)
 		}
@@ -63,13 +63,13 @@ func TestResolveNcbiLicense(t *testing.T) {
 		!strings.Contains(ncbiDataLicense.Description, "not a license grant") {
 		t.Errorf("the NCBI policy entity must point at NCBI and say that it grants no license: %+v", ncbiDataLicense)
 	}
-	if got, err := resolveNcbiLicense("undefined"); err != nil || got.ID != "#license-undefined" {
+	if got, err := resolveGenomeLicense("undefined"); err != nil || got.ID != "#license-undefined" {
 		t.Errorf("an explicit 'undefined' must win over the NCBI default: %+v (%v)", got, err)
 	}
-	if got, err := resolveNcbiLicense("CC0-1.0"); err != nil || got.ID != "https://spdx.org/licenses/CC0-1.0" {
+	if got, err := resolveGenomeLicense("CC0-1.0"); err != nil || got.ID != "https://spdx.org/licenses/CC0-1.0" {
 		t.Errorf("an explicit license must win over the NCBI default: %+v (%v)", got, err)
 	}
-	if _, err := resolveNcbiLicense("not a license!"); err == nil {
+	if _, err := resolveGenomeLicense("not a license!"); err == nil {
 		t.Error("an invalid license must be rejected")
 	}
 }
@@ -135,7 +135,7 @@ func TestLicenseFlagDefaults(t *testing.T) {
 		}
 	}
 	// An empty import license means "the NCBI data policy".
-	if f := ncbiImportCmd.Flags().Lookup("license"); f == nil || f.DefValue != "" {
+	if f := genomeImportCmd.Flags().Lookup("license"); f == nil || f.DefValue != "" {
 		t.Errorf("genome import: --license must default to empty, got %+v", f)
 	}
 }

@@ -32,6 +32,7 @@ import (
 
 	adpt "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 	ncbigenome "github.com/ivcap-works/ivcap-ncbi-genome-download"
+	"github.com/spf13/cobra"
 	log "go.uber.org/zap"
 )
 
@@ -78,8 +79,8 @@ func ncbiTestClient(srv *httptest.Server) *ncbigenome.Client {
 	return ncbigenome.New(ncbigenome.Options{BaseURL: srv.URL, MaxRetries: -1})
 }
 
-func TestNcbiDownloadRequest(t *testing.T) {
-	req, err := ncbiDownloadRequest(ncbiDownloadOpts{
+func TestGenomeDownloadRequest(t *testing.T) {
+	req, err := genomeDownloadRequest(genomeDownloadOpts{
 		Accession:       "GCF_000001735.4",
 		Includes:        []string{"genome", "gff3"},
 		Chromosomes:     []string{"1"},
@@ -102,16 +103,16 @@ func TestNcbiDownloadRequest(t *testing.T) {
 		t.Errorf("chromosomes = %v", req.Chromosomes)
 	}
 
-	if _, err := ncbiDownloadRequest(ncbiDownloadOpts{Accession: "GCF_1.1", Includes: []string{"bogus"}}); err == nil {
+	if _, err := genomeDownloadRequest(genomeDownloadOpts{Accession: "GCF_1.1", Includes: []string{"bogus"}}); err == nil {
 		t.Error("an unknown --include value was accepted")
 	}
-	if _, err := ncbiDownloadRequest(ncbiDownloadOpts{Accession: "GCF_1.1", AssemblyVersion: "sometimes"}); err == nil {
+	if _, err := genomeDownloadRequest(genomeDownloadOpts{Accession: "GCF_1.1", AssemblyVersion: "sometimes"}); err == nil {
 		t.Error("an unknown --assembly-version value was accepted")
 	}
 }
 
-func TestNcbiReportsRequest(t *testing.T) {
-	req, err := ncbiReportsRequest(ncbiReportsOpts{
+func TestGenomeReportsRequest(t *testing.T) {
+	req, err := genomeReportsRequest(genomeReportsOpts{
 		Accessions:          []string{"PRJNA10719", "GCF_000001735.4"},
 		AssemblyVersion:     "all",
 		Reference:           true,
@@ -140,63 +141,63 @@ func TestNcbiReportsRequest(t *testing.T) {
 		t.Errorf("levels = %v", f.AssemblyLevels)
 	}
 
-	for name, o := range map[string]ncbiReportsOpts{
+	for name, o := range map[string]genomeReportsOpts{
 		"version": {AssemblyVersion: "x", Source: "all", MAG: "all"},
 		"source":  {Source: "ensembl", MAG: "all"},
 		"level":   {Source: "all", MAG: "all", Levels: []string{"huge"}},
 		"mag":     {Source: "all", MAG: "maybe"},
 	} {
-		if _, err := ncbiReportsRequest(o); err == nil {
+		if _, err := genomeReportsRequest(o); err == nil {
 			t.Errorf("an invalid %s value was accepted", name)
 		}
 	}
 }
 
-func TestNcbiDestination(t *testing.T) {
-	got, err := ncbiDestination("gcf_000001735.4", "")
+func TestGenomeDestination(t *testing.T) {
+	got, err := genomeDestination("gcf_000001735.4", "")
 	if err != nil || got != "GCF_000001735.4.zip" {
 		t.Errorf("default destination = %q (%v)", got, err)
 	}
 	// The accession must never steer the default path out of the working directory.
 	for _, bad := range []string{"../x", "a/b", "GCF 1", ""} {
-		if _, err := ncbiDestination(bad, ""); err == nil {
+		if _, err := genomeDestination(bad, ""); err == nil {
 			t.Errorf("accession %q produced a default path", bad)
 		}
 	}
-	if got, _ := ncbiDestination("GCF_1.1", "./out/../x.zip"); got != "x.zip" {
+	if got, _ := genomeDestination("GCF_1.1", "./out/../x.zip"); got != "x.zip" {
 		t.Errorf("explicit path was not cleaned: %q", got)
 	}
-	if got, _ := ncbiDestination("GCF_1.1", "-"); got != "-" {
+	if got, _ := genomeDestination("GCF_1.1", "-"); got != "-" {
 		t.Errorf("stdout marker changed: %q", got)
 	}
 }
 
-func TestNcbiCheckOverwrite(t *testing.T) {
+func TestGenomeCheckOverwrite(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "x.zip")
-	if err := ncbiCheckOverwrite(p, false); err != nil {
+	if err := genomeCheckOverwrite(p, false); err != nil {
 		t.Errorf("a missing file must be fine: %v", err)
 	}
 	if err := os.WriteFile(p, []byte("x"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := ncbiCheckOverwrite(p, false); err == nil || !strings.Contains(err.Error(), "--force") {
+	if err := genomeCheckOverwrite(p, false); err == nil || !strings.Contains(err.Error(), "--force") {
 		t.Errorf("an existing file must be refused with a hint, got %v", err)
 	}
-	if err := ncbiCheckOverwrite(p, true); err != nil {
+	if err := genomeCheckOverwrite(p, true); err != nil {
 		t.Errorf("--force must allow overwriting: %v", err)
 	}
-	if err := ncbiCheckOverwrite("-", false); err != nil {
+	if err := genomeCheckOverwrite("-", false); err != nil {
 		t.Errorf("stdout must always be allowed: %v", err)
 	}
 }
 
-func TestNcbiProgressOff(t *testing.T) {
+func TestGenomeProgressOff(t *testing.T) {
 	var buf bytes.Buffer
 	for _, c := range []struct {
 		quiet  bool
 		format string
 	}{{true, ""}, {false, "json"}, {false, "yaml"}} {
-		onProgress, done := ncbiProgress(c.quiet, c.format, &buf)
+		onProgress, done := genomeProgress(c.quiet, c.format, &buf)
 		if onProgress != nil {
 			t.Errorf("quiet=%v format=%q must not show progress", c.quiet, c.format)
 		}
@@ -208,15 +209,15 @@ func TestNcbiProgressOff(t *testing.T) {
 }
 
 // YAML marshalling ignores json tags, so printing a library type directly would
-// rename its keys. printNcbiStructured converts through JSON to keep them.
-func TestNcbiStructuredOutputKeepsJSONNames(t *testing.T) {
+// rename its keys. printGenomeStructured converts through JSON to keep them.
+func TestGenomeStructuredOutputKeepsJSONNames(t *testing.T) {
 	report := ncbigenome.AssemblyDataReport{
 		Accession:    "GCF_000001735.4",
 		AssemblyInfo: &ncbigenome.AssemblyInfo{AssemblyName: "TAIR10.1"},
 	}
 
 	var js bytes.Buffer
-	if err := printNcbiStructured(&js, []ncbigenome.AssemblyDataReport{report}, "json"); err != nil {
+	if err := printGenomeStructured(&js, []ncbigenome.AssemblyDataReport{report}, "json"); err != nil {
 		t.Fatal(err)
 	}
 	var reports []map[string]any
@@ -232,7 +233,7 @@ func TestNcbiStructuredOutputKeepsJSONNames(t *testing.T) {
 	}
 
 	var ym bytes.Buffer
-	if err := printNcbiStructured(&ym, report, "yaml"); err != nil {
+	if err := printGenomeStructured(&ym, report, "yaml"); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"accession: GCF_000001735.4", "assembly_info:", "assembly_name: TAIR10.1"} {
@@ -242,7 +243,7 @@ func TestNcbiStructuredOutputKeepsJSONNames(t *testing.T) {
 	}
 }
 
-func TestRunNcbiDownloadToFile(t *testing.T) {
+func TestRunGenomeDownloadToFile(t *testing.T) {
 	contents := map[string]string{
 		"ncbi_dataset/data/assembly_data_report.jsonl":  "{}\n",
 		"ncbi_dataset/data/GCF_000001735.4/genomic.gff": "##gff-version 3\n",
@@ -253,11 +254,11 @@ func TestRunNcbiDownloadToFile(t *testing.T) {
 	ctxt := context.Background()
 
 	dest := filepath.Join(t.TempDir(), "out.zip")
-	o := ncbiDownloadOpts{Accession: "GCF_000001735.4", File: dest, Includes: []string{"genome", "gff3"}, Silent: true}
+	o := genomeDownloadOpts{Accession: "GCF_000001735.4", File: dest, Includes: []string{"genome", "gff3"}, Silent: true}
 
 	// Human output: the file is the package, and the manifest table lists its files.
 	var out, errOut bytes.Buffer
-	if err := runNcbiDownload(ctxt, client, o, &out, &errOut); err != nil {
+	if err := runGenomeDownload(ctxt, client, o, &out, &errOut); err != nil {
 		t.Fatal(err)
 	}
 	got, err := os.ReadFile(filepath.Clean(dest))
@@ -272,19 +273,19 @@ func TestRunNcbiDownloadToFile(t *testing.T) {
 	}
 
 	// A second run must not replace the file silently.
-	err = runNcbiDownload(ctxt, client, o, &out, &errOut)
+	err = runGenomeDownload(ctxt, client, o, &out, &errOut)
 	if err == nil || !strings.Contains(err.Error(), "--force") {
 		t.Errorf("an existing file must be refused with a hint, got %v", err)
 	}
 	o.Force = true
-	if err := runNcbiDownload(ctxt, client, o, &out, &errOut); err != nil {
+	if err := runGenomeDownload(ctxt, client, o, &out, &errOut); err != nil {
 		t.Errorf("--force must allow overwriting: %v", err)
 	}
 
 	// Structured output carries the result and the manifest.
 	out.Reset()
 	o.Format = "json"
-	if err := runNcbiDownload(ctxt, client, o, &out, &errOut); err != nil {
+	if err := runGenomeDownload(ctxt, client, o, &out, &errOut); err != nil {
 		t.Fatal(err)
 	}
 	var res map[string]any
@@ -301,14 +302,14 @@ func TestRunNcbiDownloadToFile(t *testing.T) {
 	}
 }
 
-func TestRunNcbiDownloadToStdout(t *testing.T) {
+func TestRunGenomeDownloadToStdout(t *testing.T) {
 	zipBytes := ncbiTestZip(t, map[string]string{"a.txt": "x"})
 	srv := ncbiTestServer(t, `{"reports":[{"accession":"GCF_000001735.4"}]}`, zipBytes)
 	client := ncbiTestClient(srv)
 
 	var out, errOut bytes.Buffer
-	o := ncbiDownloadOpts{Accession: "GCF_000001735.4", File: "-", Silent: true}
-	if err := runNcbiDownload(context.Background(), client, o, &out, &errOut); err != nil {
+	o := genomeDownloadOpts{Accession: "GCF_000001735.4", File: "-", Silent: true}
+	if err := runGenomeDownload(context.Background(), client, o, &out, &errOut); err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(out.Bytes(), zipBytes) {
@@ -317,20 +318,20 @@ func TestRunNcbiDownloadToStdout(t *testing.T) {
 
 	// stdout is taken by the package, so a structured result cannot share it.
 	o.Format = "json"
-	err := runNcbiDownload(context.Background(), client, o, &out, &errOut)
+	err := runGenomeDownload(context.Background(), client, o, &out, &errOut)
 	if err == nil || !strings.Contains(err.Error(), "stdout") {
 		t.Errorf("'-f -' with --output must be refused, got %v", err)
 	}
 }
 
-func TestRunNcbiDownloadRejectsMoreThanOneGenome(t *testing.T) {
+func TestRunGenomeDownloadRejectsMoreThanOneGenome(t *testing.T) {
 	srv := ncbiTestServer(t, `{"reports":[]}`, nil)
 	client := ncbiTestClient(srv)
 	dest := filepath.Join(t.TempDir(), "x.zip")
 
 	var out, errOut bytes.Buffer
-	o := ncbiDownloadOpts{Accession: "PRJNA10719", File: dest, Silent: true}
-	err := runNcbiDownload(context.Background(), client, o, &out, &errOut)
+	o := genomeDownloadOpts{Accession: "PRJNA10719", File: dest, Silent: true}
+	err := runGenomeDownload(context.Background(), client, o, &out, &errOut)
 	if !errors.Is(err, ncbigenome.ErrNotSingleGenome) {
 		t.Fatalf("a BioProject must be rejected as not a single genome, got %v", err)
 	}
@@ -342,7 +343,7 @@ func TestRunNcbiDownloadRejectsMoreThanOneGenome(t *testing.T) {
 	}
 }
 
-func TestRunNcbiImport(t *testing.T) {
+func TestRunGenomeImport(t *testing.T) {
 	zipBytes := ncbiTestZip(t, map[string]string{
 		"ncbi_dataset/data/GCF_000001735.4/genomic.fna": ">chr1\nACGT\n",
 		"ncbi_dataset/data/assembly data report.jsonl":  "{}\n",
@@ -405,7 +406,7 @@ func TestRunNcbiImport(t *testing.T) {
 	t.Cleanup(func() { logger = oldLogger })
 
 	var out bytes.Buffer
-	err := runNcbiImport(context.Background(), ncbiClient, ncbiImportOpts{
+	err := runGenomeImport(context.Background(), ncbiClient, genomeImportOpts{
 		Accession:       "GCF_000001735.4",
 		Includes:        []string{"genome", "gff3"},
 		Chromosomes:     []string{"chr1"},
@@ -484,7 +485,7 @@ func TestRunNcbiImport(t *testing.T) {
 		licenseEntity["name"] == nil || licenseEntity["description"] == nil {
 		t.Errorf("unexpected RO-Crate license entity: %v", licenseEntity)
 	}
-	var result ncbiImportOutput
+	var result genomeImportOutput
 	if err := json.Unmarshal(out.Bytes(), &result); err != nil {
 		t.Fatalf("invalid result JSON: %v\n%s", err, out.String())
 	}
@@ -493,7 +494,7 @@ func TestRunNcbiImport(t *testing.T) {
 	}
 }
 
-func TestRunNcbiReports(t *testing.T) {
+func TestRunGenomeReports(t *testing.T) {
 	reports := `{"reports":[` +
 		`{"accession":"GCF_000001735.4","source_database":"SOURCE_DATABASE_REFSEQ",` +
 		`"organism":{"organism_name":"Arabidopsis thaliana"},` +
@@ -502,10 +503,10 @@ func TestRunNcbiReports(t *testing.T) {
 	srv := ncbiTestServer(t, reports, nil)
 	client := ncbiTestClient(srv)
 	ctxt := context.Background()
-	o := ncbiReportsOpts{Accessions: []string{"PRJNA10719"}, Source: "all", MAG: "all"}
+	o := genomeReportsOpts{Accessions: []string{"PRJNA10719"}, Source: "all", MAG: "all"}
 
 	var out bytes.Buffer
-	if err := runNcbiReports(ctxt, client, o, &out); err != nil {
+	if err := runGenomeReports(ctxt, client, o, &out); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"GCF_000001735.4", "Arabidopsis thaliana", "TAIR10.1", "REFSEQ", "2018-03-15", "GCA_000001735.2"} {
@@ -516,7 +517,7 @@ func TestRunNcbiReports(t *testing.T) {
 
 	out.Reset()
 	o.Format = "json"
-	if err := runNcbiReports(ctxt, client, o, &out); err != nil {
+	if err := runGenomeReports(ctxt, client, o, &out); err != nil {
 		t.Fatal(err)
 	}
 	var got []map[string]any
@@ -528,13 +529,13 @@ func TestRunNcbiReports(t *testing.T) {
 	}
 }
 
-func TestRunNcbiReportsEmpty(t *testing.T) {
+func TestRunGenomeReportsEmpty(t *testing.T) {
 	srv := ncbiTestServer(t, `{"reports":[]}`, nil)
 	client := ncbiTestClient(srv)
-	o := ncbiReportsOpts{Accessions: []string{"GCF_000001735.4"}, Source: "all", MAG: "all"}
+	o := genomeReportsOpts{Accessions: []string{"GCF_000001735.4"}, Source: "all", MAG: "all"}
 
 	var out bytes.Buffer
-	if err := runNcbiReports(context.Background(), client, o, &out); err != nil {
+	if err := runGenomeReports(context.Background(), client, o, &out); err != nil {
 		t.Fatal(err)
 	}
 	if !strings.Contains(out.String(), "No matching assemblies") {
@@ -543,7 +544,7 @@ func TestRunNcbiReportsEmpty(t *testing.T) {
 
 	out.Reset()
 	o.Format = "json"
-	if err := runNcbiReports(context.Background(), client, o, &out); err != nil {
+	if err := runGenomeReports(context.Background(), client, o, &out); err != nil {
 		t.Fatal(err)
 	}
 	if strings.TrimSpace(out.String()) != "[]" {
@@ -553,7 +554,7 @@ func TestRunNcbiReportsEmpty(t *testing.T) {
 
 // -o/--output is the global output-format flag; the ncbi commands must inherit
 // it and must not define their own (as 'nextflow job-result' does).
-func TestNcbiCommandWiring(t *testing.T) {
+func TestGenomeCommandWiring(t *testing.T) {
 	for _, path := range [][]string{{"genome", "download"}, {"genome", "import"}, {"genome", "reports"}} {
 		c, _, err := rootCmd.Find(path)
 		if err != nil || c == nil || c.Name() != path[len(path)-1] {
@@ -581,17 +582,17 @@ func TestNcbiCommandWiring(t *testing.T) {
 	}
 }
 
-func TestNcbiCLIErr(t *testing.T) {
-	if ncbiCLIErr(nil) != nil {
+func TestGenomeCLIErr(t *testing.T) {
+	if genomeCLIErr(nil) != nil {
 		t.Error("nil must stay nil")
 	}
 	plain := errors.New("unrelated")
-	if got := ncbiCLIErr(plain); got != plain {
+	if got := genomeCLIErr(plain); got != plain {
 		t.Errorf("an unrelated error must pass through unchanged, got %v", got)
 	}
 
 	lib := errors.Join(ncbigenome.ErrNotSingleGenome, errors.New("use AssemblyReports to see which assemblies it has"))
-	got := ncbiCLIErr(lib)
+	got := genomeCLIErr(lib)
 	if !errors.Is(got, ncbigenome.ErrNotSingleGenome) {
 		t.Error("the library error must stay reachable through errors.Is")
 	}
@@ -616,12 +617,105 @@ func TestGenomeIsTopLevelAndNcbiIsGone(t *testing.T) {
 	for _, c := range genome.Commands() {
 		subs = append(subs, c.Name())
 	}
-	if strings.Join(subs, ",") != "download,import,reports" {
-		t.Errorf("genome subcommands = %v, want download, import and reports", subs)
+	if strings.Join(subs, ",") != "download,import,list,reports" {
+		t.Errorf("genome subcommands = %v, want download, import, list and reports", subs)
 	}
 	for _, sub := range genome.Commands() {
-		if sub.InheritedFlags().Lookup("ncbi-api-key") == nil {
-			t.Errorf("genome %s must inherit --ncbi-api-key", sub.Name())
+		hasKeyFlag := sub.Flags().Lookup("ncbi-api-key") != nil
+		if talksToNcbi := sub.Name() != "list"; hasKeyFlag != talksToNcbi {
+			t.Errorf("genome %s: --ncbi-api-key present = %v, want %v", sub.Name(), hasKeyFlag, talksToNcbi)
 		}
+	}
+}
+
+// The options of the genome commands must say what their values mean, not just list them.
+func TestGenomeFlagHelpExplainsTheOptions(t *testing.T) {
+	usage := func(c *cobra.Command, name string) string {
+		f := c.Flags().Lookup(name)
+		if f == nil {
+			t.Fatalf("flag --%s not found", name)
+		}
+		return f.Usage
+	}
+	for _, c := range []*cobra.Command{genomeDownloadCmd, genomeImportCmd} {
+		for _, want := range []string{"FASTA", "annotation", "metadata only", "use alone"} {
+			if u := usage(c, "include"); !strings.Contains(u, want) {
+				t.Errorf("%s --include must explain %q: %s", c.Name(), want, u)
+			}
+		}
+		for _, want := range []string{"current", "latest", "exactly one"} {
+			if u := usage(c, "assembly-version"); !strings.Contains(u, want) {
+				t.Errorf("%s --assembly-version must mention %q: %s", c.Name(), want, u)
+			}
+		}
+	}
+	if u := usage(genomeReportsCmd, "assembly-version"); !strings.Contains(u, "every version") {
+		t.Errorf("reports --assembly-version must say that 'all' returns every version: %s", u)
+	}
+}
+
+// fakeBar stands in for the download's progress bar and records how it was used.
+type fakeBar struct {
+	written  int64
+	finished int
+}
+
+func (b *fakeBar) Write(p []byte) (int, error) { b.written += int64(len(p)); return len(p), nil }
+func (b *fakeBar) Add64(n int64) error         { b.written += n; return nil }
+func (b *fakeBar) Finish() error               { b.finished++; return nil }
+
+// The download's bar has no known size and so is a spinner. Left unfinished it keeps redrawing
+// over the output that follows, which in an import is the upload.
+func TestGenomeProgressFinishesTheSpinner(t *testing.T) {
+	old := genomeNewBar
+	t.Cleanup(func() { genomeNewBar = old })
+	var bar *fakeBar
+	var description string
+	var size int64
+	genomeNewBar = func(d string, s int64) io.Writer {
+		bar, description, size = &fakeBar{}, d, s
+		return bar
+	}
+
+	var stderr bytes.Buffer
+	onProgress, done := genomeProgress(false, "", &stderr)
+	onProgress(100)
+	onProgress(250)
+	done()
+	if bar == nil || bar.written != 250 {
+		t.Fatalf("the bar must follow the progress of the download, got %+v", bar)
+	}
+	if bar.finished != 1 {
+		t.Errorf("the spinner must be finished exactly once, got %d", bar.finished)
+	}
+	if description != "... downloading package" || size != -1 {
+		t.Errorf("unexpected bar: %q, size %d", description, size)
+	}
+	if stderr.String() != "\n" {
+		t.Errorf("the output must move past the bar with one newline, got %q", stderr.String())
+	}
+
+	// no progress means no bar: nothing to finish and nothing to print
+	stderr.Reset()
+	bar = nil
+	_, done = genomeProgress(false, "", &stderr)
+	done()
+	if bar != nil || stderr.Len() != 0 {
+		t.Errorf("without progress there must be no bar and no output: %+v %q", bar, stderr.String())
+	}
+
+	// quiet or machine-readable output never draws a bar
+	for _, c := range []struct {
+		quiet  bool
+		format string
+	}{{true, ""}, {false, "json"}, {false, "yaml"}} {
+		cb, d := genomeProgress(c.quiet, c.format, &stderr)
+		if cb != nil {
+			t.Errorf("quiet=%v format=%q must not report progress", c.quiet, c.format)
+		}
+		d()
+	}
+	if bar != nil || stderr.Len() != 0 {
+		t.Errorf("no bar may be drawn for quiet or structured output: %+v %q", bar, stderr.String())
 	}
 }

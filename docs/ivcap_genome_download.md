@@ -34,13 +34,14 @@ ivcap genome download ACCESSION [flags] [-f file|-]
 ### Options
 
 ```
-      --assembly-version string   Version policy: 'current', 'latest' or 'all' [use the version given in ACCESSION]
-      --chromosomes strings       Limit the genome FASTA to these chromosomes (comma-separated, or 'all')
+      --assembly-version string   Version policy [a versioned ACCESSION is used as given, an unversioned one means its current version]: 'current' (same as 'latest') ignores the version in ACCESSION and takes the current one; 'all' selects every version and is rejected here unless there is exactly one
+      --chromosomes strings       Limit the genome FASTA to these chromosomes (comma-separated names, or 'all'); the names are passed to NCBI unchanged
       --fast-zip-validation       Only check the zip's directory after the download, not every file in it
   -f, --file string               File to write the package to [<ACCESSION>.zip], or - for stdout
       --force                     Overwrite the file if it already exists
   -h, --help                      help for download
-      --include strings           Files to include (comma-separated): genome, rna, protein, cds, gff3, gtf, gbff, seq-report, all, none (default [genome])
+      --include strings           Files to include, comma-separated: genome (genomic FASTA), rna (transcripts), protein (amino acid sequences), cds (nucleotide coding sequences), gff3 or gtf (annotation), gbff (GenBank flat file), seq-report (per-sequence report), all (every type, use alone) or none (metadata only, use alone) (default [genome])
+      --ncbi-api-key string       NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]
 ```
 
 ### Options inherited from parent commands
@@ -49,7 +50,6 @@ ivcap genome download ACCESSION [flags] [-f file|-]
       --access-token string   Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]
       --context string        Context (deployment) to use
       --debug                 Set logging level to DEBUG
-      --ncbi-api-key string   NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]
       --no-history            Do not store history
   -o, --output string         Set format for displaying output [json, yaml]
       --silent                Do not show any progress information

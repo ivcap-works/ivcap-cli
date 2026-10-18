@@ -29,11 +29,11 @@ If an aspect request fails after upload, the error names the uploaded artifact s
 
 .SH OPTIONS
 \fB--assembly-version\fP=""
-	Version policy: 'current', 'latest' or 'all' [use the version given in ACCESSION]
+	Version policy [a versioned ACCESSION is used as given, an unversioned one means its current version]: 'current' (same as 'latest') ignores the version in ACCESSION and takes the current one; 'all' selects every version and is rejected here unless there is exactly one
 
 .PP
 \fB--chromosomes\fP=[]
-	Limit the genome FASTA to these chromosomes (comma-separated, or 'all')
+	Limit the genome FASTA to these chromosomes (comma-separated names, or 'all'); the names are passed to NCBI unchanged
 
 .PP
 \fB--chunk-size\fP=10000000
@@ -49,7 +49,7 @@ If an aspect request fails after upload, the error names the uploaded artifact s
 
 .PP
 \fB--include\fP=[genome]
-	Files to include (comma-separated): genome, rna, protein, cds, gff3, gtf, gbff, seq-report, all, none
+	Files to include, comma-separated: genome (genomic FASTA), rna (transcripts), protein (amino acid sequences), cds (nucleotide coding sequences), gff3 or gtf (annotation), gbff (GenBank flat file), seq-report (per-sequence report), all (every type, use alone) or none (metadata only, use alone)
 
 .PP
 \fB--license\fP=""
@@ -62,6 +62,10 @@ If an aspect request fails after upload, the error names the uploaded artifact s
 .PP
 \fB-n\fP, \fB--name\fP=""
 	Artifact name [zip file name]
+
+.PP
+\fB--ncbi-api-key\fP=""
+	NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]
 
 .PP
 \fB-p\fP, \fB--policy\fP=""
@@ -83,10 +87,6 @@ If an aspect request fails after upload, the error names the uploaded artifact s
 .PP
 \fB--debug\fP[=false]
 	Set logging level to DEBUG
-
-.PP
-\fB--ncbi-api-key\fP=""
-	NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]
 
 .PP
 \fB--no-history\fP[=false]

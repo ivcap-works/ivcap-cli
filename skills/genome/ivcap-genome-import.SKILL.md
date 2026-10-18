@@ -1,7 +1,7 @@
 ---
 name: ivcap-genome-import
 version: 0.1.0
-description: Import one NCBI genome package into IVCAP as an artifact with an assembly report aspect and a manifest aspect.
+description: Import one NCBI genome into IVCAP as an artifact with an assembly report aspect and a manifest aspect, making it available on the platform.
 requires:
   bins: ["ivcap"]
 ---
@@ -35,7 +35,8 @@ This command **creates data on the active IVCAP deployment**: one artifact and t
 ivcap --output json genome import GCF_000001735.4 --include genome,gff3,seq-report
 ```
 
-`--include` takes the same values as `ivcap genome download`. `--name` sets the artifact name
+`--include`, `--assembly-version` and `--chromosomes` work as for `ivcap genome download` (see its skill); `all` is no use
+for `--assembly-version` here, because an import needs exactly one version. `--name` sets the artifact name
 (default `<ACCESSION>.zip`).
 
 ### 2) Read the result
@@ -62,3 +63,10 @@ The metadata list of the artifact shows the schemas of its aspects: the assembly
 - `artifact ... was uploaded, but its ... aspect could not be added` - the artifact exists but an aspect is
   missing. Tell the user the artifact URN and which aspect failed. Do not re-run the import, because that
   creates a second artifact.
+
+## Via MCP
+The MCP server (`ivcap mcp`) offers the same as the tool `genome_import`. Its arguments are `accession` (required),
+`include` (a list), `chromosomes` (a list), `assembly_version` (`current` or `latest`), `name`, `policy` and `license`, and it returns
+`artifact`, `accession`, `bytes`, `report_aspect` and `manifest_aspect`. The same rules apply: confirm with the user
+first, and do not run it twice for the same genome. The import has no overall timeout, so a large genome can take
+several minutes; cancel the call to stop it.

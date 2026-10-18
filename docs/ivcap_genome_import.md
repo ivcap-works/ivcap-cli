@@ -32,15 +32,16 @@ ivcap genome import ACCESSION [flags]
 ### Options
 
 ```
-      --assembly-version string   Version policy: 'current', 'latest' or 'all' [use the version given in ACCESSION]
-      --chromosomes strings       Limit the genome FASTA to these chromosomes (comma-separated, or 'all')
+      --assembly-version string   Version policy [a versioned ACCESSION is used as given, an unversioned one means its current version]: 'current' (same as 'latest') ignores the version in ACCESSION and takes the current one; 'all' selects every version and is rejected here unless there is exactly one
+      --chromosomes strings       Limit the genome FASTA to these chromosomes (comma-separated names, or 'all'); the names are passed to NCBI unchanged
       --chunk-size int            Chunk size in bytes for splitting large files: at least 65536, or -1 to upload without chunking (default 10000000)
       --fast-zip-validation       Only check the zip's directory after the download, not every file in it
   -h, --help                      help for import
-      --include strings           Files to include (comma-separated): genome, rna, protein, cds, gff3, gtf, gbff, seq-report, all, none (default [genome])
+      --include strings           Files to include, comma-separated: genome (genomic FASTA), rna (transcripts), protein (amino acid sequences), cds (nucleotide coding sequences), gff3 or gtf (annotation), gbff (GenBank flat file), seq-report (per-sequence report), all (every type, use alone) or none (metadata only, use alone) (default [genome])
       --license string            License of the imported data, recorded in the manifest: an SPDX identifier such as CC0-1.0, a license URL, or 'undefined' [a link to NCBI's data usage policy, which states no license]
       --manifest-schema string    Schema URN for the RO-Crate manifest aspect (default "urn:ivcap:schema:artifact.archive-manifest.1")
   -n, --name string               Artifact name [zip file name]
+      --ncbi-api-key string       NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]
   -p, --policy string             Policy controlling access to the artifact and aspects
       --report-schema string      Schema URN for the assembly report aspect (default "urn:ivcap:schema:ncbi.assembly-data-report.1")
 ```
@@ -51,7 +52,6 @@ ivcap genome import ACCESSION [flags]
       --access-token string   Access token to use for authentication with API server [IVCAP_ACCESS_TOKEN]
       --context string        Context (deployment) to use
       --debug                 Set logging level to DEBUG
-      --ncbi-api-key string   NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]
       --no-history            Do not store history
   -o, --output string         Set format for displaying output [json, yaml]
       --silent                Do not show any progress information

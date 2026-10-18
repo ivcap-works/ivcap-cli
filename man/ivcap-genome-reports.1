@@ -35,7 +35,7 @@ https://github.com/ivcap-works/ivcap-ncbi-genome-download/tree/v0.2.0/schema
 
 .PP
 \fB--assembly-version\fP=""
-	Version policy: 'current', 'latest' or 'all' [use the versions given]
+	Version policy [a versioned ACCESSION is used as given, an unversioned one means its current version]: 'current' (same as 'latest') ignores any version and returns the current one; 'all' returns every version of each assembly
 
 .PP
 \fB--exclude-atypical\fP[=false]
@@ -58,6 +58,10 @@ https://github.com/ivcap-works/ivcap-ncbi-genome-download/tree/v0.2.0/schema
 	Limit to metagenome assembled genomes ('only') or remove them ('exclude')
 
 .PP
+\fB--ncbi-api-key\fP=""
+	NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]
+
+.PP
 \fB--reference\fP[=false]
 	Limit to reference genomes
 
@@ -73,10 +77,6 @@ https://github.com/ivcap-works/ivcap-ncbi-genome-download/tree/v0.2.0/schema
 .PP
 \fB--debug\fP[=false]
 	Set logging level to DEBUG
-
-.PP
-\fB--ncbi-api-key\fP=""
-	NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]
 
 .PP
 \fB--no-history\fP[=false]

@@ -62,7 +62,7 @@ func TestValidateChunkSize(t *testing.T) {
 }
 
 // A bad chunk size must be caught before the (possibly large) NCBI download starts.
-func TestRunNcbiImportRejectsBadChunkSizeBeforeDownloading(t *testing.T) {
+func TestRunGenomeImportRejectsBadChunkSizeBeforeDownloading(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		t.Errorf("no request expected, got %s %s", r.Method, r.URL.String())
 		http.NotFound(w, r)
@@ -75,7 +75,7 @@ func TestRunNcbiImportRejectsBadChunkSizeBeforeDownloading(t *testing.T) {
 	t.Cleanup(func() { logger = oldLogger })
 
 	for _, chunk := range []int64{0, 1, MIN_CHUNK_SIZE - 1, -2} {
-		err := runNcbiImport(context.Background(), client, ncbiImportOpts{
+		err := runGenomeImport(context.Background(), client, genomeImportOpts{
 			Accession:      "GCF_000001735.4",
 			ChunkSize:      chunk,
 			ReportSchema:   ncbiAssemblyReportSchema,

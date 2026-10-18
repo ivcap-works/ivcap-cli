@@ -16,6 +16,7 @@ package mcp
 
 import (
 	"errors"
+	"strings"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	mcpserver "github.com/mark3labs/mcp-go/server"
@@ -72,6 +73,11 @@ type Config struct {
 
 	// LogDir specifies the directory for MCP log files (defaults to /tmp).
 	LogDir string
+
+	// GenomeImport and GenomeList implement the genome_import and genome_list tools. Their logic
+	// lives in cmd/ with the 'ivcap genome' commands. A tool is only offered when its hook is set.
+	GenomeImport GenomeImportFunc
+	GenomeList   GenomeListFunc
 }
 
 // NewServer constructs an MCP server exposing IVCAP tools.
@@ -96,6 +102,8 @@ func NewServer(cfg Config) *mcpserver.MCPServer {
 		// Only expose the built-in discovery tool by default.
 		// After select_tools, we update the allowlist for this session.
 		mcpserver.WithToolFilter(filterToolsBySessionAllowlist),
+		// Tells clients (and through them the model) how to find things; many clients show it to the model.
+		mcpserver.WithInstructions(serverInstructions(cfg)),
 	)
 
 	// Always expose a single built-in tool for discovery.
@@ -114,6 +122,13 @@ func NewServer(cfg Config) *mcpserver.MCPServer {
 	addVerifyURLTool(s)
 	addNextflowCreateTool(s)
 	addNextflowRunTool(s)
+	// The genome tools are implemented in cmd/ and only offered when the CLI provides them.
+	if cfg.GenomeList != nil {
+		addGenomeListTool(s)
+	}
+	if cfg.GenomeImport != nil {
+		addGenomeImportTool(s)
+	}
 	addSkillsResourcesAndPrompts(s)
 	addSkillsBridgeTools(s) // Workaround for clients that don't expose resources/read to LLMs
 	addUnifiedSearchTool(s) // Combined tools + skills search to prevent LLM loop
@@ -128,3 +143,23 @@ func NewServer(cfg Config) *mcpserver.MCPServer {
 // This is process-scoped state; `ivcap mcp` runs one server per process.
 // Tests may overwrite this.
 var srvCfg Config
+
+// serverInstructions is what the server tells every client when it connects.
+func serverInstructions(cfg Config) string {
+	var b strings.Builder
+	b.WriteString("IVCAP MCP server.\n")
+	b.WriteString("- Built-in tools (artifact_*, aspect_*, service_*, job_status, nextflow_*" +
+		map[bool]string{true: ", genome_*", false: ""}[cfg.GenomeList != nil || cfg.GenomeImport != nil] +
+		") are always listed and callable directly. Prefer one of them when it fits the task. `search` finds deployed " +
+		"platform services and skills, and also returns matching built-in tools as builtin_tools.\n")
+	if cfg.GenomeList != nil {
+		b.WriteString("- Genomes: to answer which genomes are available on this IVCAP, call genome_list (accession, organism, assembly, " +
+			"artifact). It lists the genomes imported into the platform; a service search finds analysis services, not the genomes.\n")
+	}
+	if cfg.GenomeImport != nil {
+		b.WriteString("- genome_import downloads one NCBI genome into IVCAP. It WRITES data, so confirm with the user first.\n")
+	}
+	b.WriteString("- Skills (playbooks) cannot be read as MCP resources in every client: use search with skills='*' to list them " +
+		"and read_skill to read one before a non-trivial task.\n")
+	return b.String()
+}

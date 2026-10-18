@@ -40,93 +40,96 @@ import (
 // do. Download and reports need no IVCAP login; import also talks to IVCAP.
 
 var (
-	ncbiAPIKey string
+	genomeAPIKey string
 
 	// genome download
-	ncbiFile            string
-	ncbiForce           bool
-	ncbiIncludes        []string
-	ncbiChromosomes     []string
-	ncbiAssemblyVersion string
-	ncbiFastZip         bool
+	genomeFile            string
+	genomeForce           bool
+	genomeIncludes        []string
+	genomeChromosomes     []string
+	genomeAssemblyVersion string
+	genomeFastZip         bool
 
 	// genome import
-	ncbiImportIncludes       []string
-	ncbiImportChromosomes    []string
-	ncbiImportVersion        string
-	ncbiImportFastZip        bool
-	ncbiImportName           string
-	ncbiImportPolicy         string
-	ncbiImportChunkSize      int64
-	ncbiImportReportSchema   string
-	ncbiImportManifestSchema string
-	ncbiImportLicense        string
+	genomeImportIncludes       []string
+	genomeImportChromosomes    []string
+	genomeImportVersion        string
+	genomeImportFastZip        bool
+	genomeImportName           string
+	genomeImportPolicy         string
+	genomeImportChunkSize      int64
+	genomeImportReportSchema   string
+	genomeImportManifestSchema string
+	genomeImportLicense        string
 
 	// genome reports
-	ncbiRepVersion  string
-	ncbiRepRef      bool
-	ncbiRepAnnot    bool
-	ncbiRepSource   string
-	ncbiRepLevels   []string
-	ncbiRepMAG      string
-	ncbiRepAtypical bool
-	ncbiRepMulti    bool
-	ncbiRepFromType bool
+	genomeRepVersion  string
+	genomeRepRef      bool
+	genomeRepAnnot    bool
+	genomeRepSource   string
+	genomeRepLevels   []string
+	genomeRepMAG      string
+	genomeRepAtypical bool
+	genomeRepMulti    bool
+	genomeRepFromType bool
 )
 
 func init() {
 	rootCmd.AddCommand(genomeCmd)
-	genomeCmd.AddCommand(ncbiDownloadCmd)
-	genomeCmd.AddCommand(ncbiImportCmd)
-	genomeCmd.AddCommand(ncbiReportsCmd)
+	genomeCmd.AddCommand(genomeDownloadCmd)
+	genomeCmd.AddCommand(genomeImportCmd)
+	genomeCmd.AddCommand(genomeReportsCmd)
 
-	genomeCmd.PersistentFlags().StringVar(&ncbiAPIKey, "ncbi-api-key", "",
-		"NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]")
+	// 'genome list' only talks to IVCAP, so the NCBI API key is not offered there.
+	for _, c := range []*cobra.Command{genomeDownloadCmd, genomeImportCmd, genomeReportsCmd} {
+		c.Flags().StringVar(&genomeAPIKey, "ncbi-api-key", "",
+			"NCBI API key, which raises NCBI's rate limit [NCBI_API_KEY]")
+	}
 
-	d := ncbiDownloadCmd.Flags()
-	d.StringVarP(&ncbiFile, "file", "f", "", "File to write the package to [<ACCESSION>.zip], or - for stdout")
-	d.BoolVar(&ncbiForce, "force", false, "Overwrite the file if it already exists")
-	d.StringSliceVar(&ncbiIncludes, "include", []string{"genome"},
-		"Files to include (comma-separated): genome, rna, protein, cds, gff3, gtf, gbff, seq-report, all, none")
-	d.StringSliceVar(&ncbiChromosomes, "chromosomes", nil,
-		"Limit the genome FASTA to these chromosomes (comma-separated, or 'all')")
-	d.StringVar(&ncbiAssemblyVersion, "assembly-version", "",
-		"Version policy: 'current', 'latest' or 'all' [use the version given in ACCESSION]")
-	d.BoolVar(&ncbiFastZip, "fast-zip-validation", false,
+	d := genomeDownloadCmd.Flags()
+	d.StringVarP(&genomeFile, "file", "f", "", "File to write the package to [<ACCESSION>.zip], or - for stdout")
+	d.BoolVar(&genomeForce, "force", false, "Overwrite the file if it already exists")
+	d.StringSliceVar(&genomeIncludes, "include", []string{"genome"},
+		genomeIncludeHelp)
+	d.StringSliceVar(&genomeChromosomes, "chromosomes", nil,
+		genomeChromosomesHelp)
+	d.StringVar(&genomeAssemblyVersion, "assembly-version", "",
+		genomeOneVersionHelp)
+	d.BoolVar(&genomeFastZip, "fast-zip-validation", false,
 		"Only check the zip's directory after the download, not every file in it")
 
-	i := ncbiImportCmd.Flags()
-	i.StringSliceVar(&ncbiImportIncludes, "include", []string{"genome"},
-		"Files to include (comma-separated): genome, rna, protein, cds, gff3, gtf, gbff, seq-report, all, none")
-	i.StringSliceVar(&ncbiImportChromosomes, "chromosomes", nil,
-		"Limit the genome FASTA to these chromosomes (comma-separated, or 'all')")
-	i.StringVar(&ncbiImportVersion, "assembly-version", "",
-		"Version policy: 'current', 'latest' or 'all' [use the version given in ACCESSION]")
-	i.BoolVar(&ncbiImportFastZip, "fast-zip-validation", false,
+	i := genomeImportCmd.Flags()
+	i.StringSliceVar(&genomeImportIncludes, "include", []string{"genome"},
+		genomeIncludeHelp)
+	i.StringSliceVar(&genomeImportChromosomes, "chromosomes", nil,
+		genomeChromosomesHelp)
+	i.StringVar(&genomeImportVersion, "assembly-version", "",
+		genomeOneVersionHelp)
+	i.BoolVar(&genomeImportFastZip, "fast-zip-validation", false,
 		"Only check the zip's directory after the download, not every file in it")
-	i.StringVarP(&ncbiImportName, "name", "n", "", "Artifact name [zip file name]")
-	i.StringVarP(&ncbiImportPolicy, "policy", "p", "", "Policy controlling access to the artifact and aspects")
-	i.Int64Var(&ncbiImportChunkSize, "chunk-size", DEF_CHUNK_SIZE, fmt.Sprintf("Chunk size in bytes for splitting large files: at least %d, or -1 to upload without chunking", MIN_CHUNK_SIZE))
-	i.StringVar(&ncbiImportReportSchema, "report-schema", ncbiAssemblyReportSchema,
+	i.StringVarP(&genomeImportName, "name", "n", "", "Artifact name [zip file name]")
+	i.StringVarP(&genomeImportPolicy, "policy", "p", "", "Policy controlling access to the artifact and aspects")
+	i.Int64Var(&genomeImportChunkSize, "chunk-size", DEF_CHUNK_SIZE, fmt.Sprintf("Chunk size in bytes for splitting large files: at least %d, or -1 to upload without chunking", MIN_CHUNK_SIZE))
+	i.StringVar(&genomeImportReportSchema, "report-schema", ncbiAssemblyReportSchema,
 		"Schema URN for the assembly report aspect")
-	i.StringVar(&ncbiImportManifestSchema, "manifest-schema", artifactArchiveManifestSchema,
+	i.StringVar(&genomeImportManifestSchema, "manifest-schema", artifactArchiveManifestSchema,
 		"Schema URN for the RO-Crate manifest aspect")
-	i.StringVar(&ncbiImportLicense, "license", "",
+	i.StringVar(&genomeImportLicense, "license", "",
 		"License of the imported data, recorded in the manifest: an SPDX identifier such as CC0-1.0, a license URL, "+
 			"or 'undefined' [a link to NCBI's data usage policy, which states no license]")
 
-	r := ncbiReportsCmd.Flags()
-	r.StringVar(&ncbiRepVersion, "assembly-version", "",
-		"Version policy: 'current', 'latest' or 'all' [use the versions given]")
-	r.BoolVar(&ncbiRepRef, "reference", false, "Limit to reference genomes")
-	r.BoolVar(&ncbiRepAnnot, "annotated", false, "Limit to annotated genomes")
-	r.StringVar(&ncbiRepSource, "assembly-source", "all", "Limit to 'refseq' (GCF_) or 'genbank' (GCA_) assemblies")
-	r.StringSliceVar(&ncbiRepLevels, "assembly-level", nil,
+	r := genomeReportsCmd.Flags()
+	r.StringVar(&genomeRepVersion, "assembly-version", "",
+		genomeReportsVersionHelp)
+	r.BoolVar(&genomeRepRef, "reference", false, "Limit to reference genomes")
+	r.BoolVar(&genomeRepAnnot, "annotated", false, "Limit to annotated genomes")
+	r.StringVar(&genomeRepSource, "assembly-source", "all", "Limit to 'refseq' (GCF_) or 'genbank' (GCA_) assemblies")
+	r.StringSliceVar(&genomeRepLevels, "assembly-level", nil,
 		"Limit to assembly levels (comma-separated): chromosome, complete, contig, scaffold")
-	r.StringVar(&ncbiRepMAG, "mag", "all", "Limit to metagenome assembled genomes ('only') or remove them ('exclude')")
-	r.BoolVar(&ncbiRepAtypical, "exclude-atypical", false, "Exclude atypical assemblies")
-	r.BoolVar(&ncbiRepMulti, "exclude-multi-isolate", false, "Exclude assemblies from multi-isolate projects")
-	r.BoolVar(&ncbiRepFromType, "from-type", false, "Only return records with type material")
+	r.StringVar(&genomeRepMAG, "mag", "all", "Limit to metagenome assembled genomes ('only') or remove them ('exclude')")
+	r.BoolVar(&genomeRepAtypical, "exclude-atypical", false, "Exclude atypical assemblies")
+	r.BoolVar(&genomeRepMulti, "exclude-multi-isolate", false, "Exclude assemblies from multi-isolate projects")
+	r.BoolVar(&genomeRepFromType, "from-type", false, "Only return records with type material")
 }
 
 var (
@@ -137,10 +140,11 @@ var (
 
 The download and reports commands only talk to NCBI Datasets
 (https://www.ncbi.nlm.nih.gov/datasets/), so they need no IVCAP context or login. Import uploads
-an existing package to the active IVCAP deployment and attaches report and manifest aspects.`,
+an existing package to the active IVCAP deployment and attaches report and manifest aspects.
+List shows what has been imported and needs the same context and login as import.`,
 	}
 
-	ncbiDownloadCmd = &cobra.Command{
+	genomeDownloadCmd = &cobra.Command{
 		Use:   "download ACCESSION [flags] [-f file|-]",
 		Short: "Download the data package of one genome assembly as a zip file",
 		Long: `Download the NCBI Datasets data package of exactly one genome assembly.
@@ -164,23 +168,23 @@ is printed in machine-readable form.
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctxt, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 			defer stop()
-			o := ncbiDownloadOpts{
+			o := genomeDownloadOpts{
 				Accession:       args[0],
-				File:            ncbiFile,
-				Force:           ncbiForce,
-				Includes:        ncbiIncludes,
-				Chromosomes:     ncbiChromosomes,
-				AssemblyVersion: ncbiAssemblyVersion,
-				FastZip:         ncbiFastZip,
+				File:            genomeFile,
+				Force:           genomeForce,
+				Includes:        genomeIncludes,
+				Chromosomes:     genomeChromosomes,
+				AssemblyVersion: genomeAssemblyVersion,
+				FastZip:         genomeFastZip,
 				Format:          outputFormat,
 				Silent:          silent,
 			}
-			client := ncbiNewClient(ncbiAPIKey, silent, os.Stderr)
-			return runNcbiDownload(ctxt, client, o, os.Stdout, os.Stderr)
+			client := ncbiNewClient(genomeAPIKey, silent, os.Stderr)
+			return runGenomeDownload(ctxt, client, o, os.Stdout, os.Stderr)
 		},
 	}
 
-	ncbiImportCmd = &cobra.Command{
+	genomeImportCmd = &cobra.Command{
 		Use:   "import ACCESSION [flags]",
 		Short: "Import an NCBI genome package into IVCAP",
 		Long: `Import an NCBI genome data package as an IVCAP artifact.
@@ -202,27 +206,27 @@ If an aspect request fails after upload, the error names the uploaded artifact s
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctxt, stop := signal.NotifyContext(context.Background(), os.Interrupt)
 			defer stop()
-			o := ncbiImportOpts{
+			o := genomeImportOpts{
 				Accession:       args[0],
-				Includes:        ncbiImportIncludes,
-				Chromosomes:     ncbiImportChromosomes,
-				AssemblyVersion: ncbiImportVersion,
-				FastZip:         ncbiImportFastZip,
-				Name:            ncbiImportName,
-				Policy:          ncbiImportPolicy,
-				ChunkSize:       ncbiImportChunkSize,
-				ReportSchema:    ncbiImportReportSchema,
-				ManifestSchema:  ncbiImportManifestSchema,
-				License:         ncbiImportLicense,
+				Includes:        genomeImportIncludes,
+				Chromosomes:     genomeImportChromosomes,
+				AssemblyVersion: genomeImportVersion,
+				FastZip:         genomeImportFastZip,
+				Name:            genomeImportName,
+				Policy:          genomeImportPolicy,
+				ChunkSize:       genomeImportChunkSize,
+				ReportSchema:    genomeImportReportSchema,
+				ManifestSchema:  genomeImportManifestSchema,
+				License:         genomeImportLicense,
 				Format:          outputFormat,
 				Silent:          silent,
 			}
-			client := ncbiNewClient(ncbiAPIKey, silent, os.Stderr)
-			return runNcbiImport(ctxt, client, o, CreateAdapterWithTimeout(true, timeout), os.Stdout, os.Stderr)
+			client := ncbiNewClient(genomeAPIKey, silent, os.Stderr)
+			return runGenomeImport(ctxt, client, o, CreateAdapterWithTimeout(true, timeout), os.Stdout, os.Stderr)
 		},
 	}
 
-	ncbiReportsCmd = &cobra.Command{
+	genomeReportsCmd = &cobra.Command{
 		Use:   "reports ACCESSION... [flags]",
 		Short: "Show the NCBI genome assembly reports for assembly or BioProject accessions",
 		Long: `Look up the NCBI genome assembly report of each assembly named by the accessions.
@@ -244,21 +248,21 @@ https://github.com/ivcap-works/ivcap-ncbi-genome-download/tree/v0.2.0/schema`,
 				ctxt, cancel = context.WithTimeout(ctxt, time.Duration(timeout)*time.Second)
 				defer cancel()
 			}
-			o := ncbiReportsOpts{
+			o := genomeReportsOpts{
 				Accessions:          args,
-				AssemblyVersion:     ncbiRepVersion,
-				Reference:           ncbiRepRef,
-				Annotated:           ncbiRepAnnot,
-				Source:              ncbiRepSource,
-				Levels:              ncbiRepLevels,
-				MAG:                 ncbiRepMAG,
-				ExcludeAtypical:     ncbiRepAtypical,
-				ExcludeMultiIsolate: ncbiRepMulti,
-				FromType:            ncbiRepFromType,
+				AssemblyVersion:     genomeRepVersion,
+				Reference:           genomeRepRef,
+				Annotated:           genomeRepAnnot,
+				Source:              genomeRepSource,
+				Levels:              genomeRepLevels,
+				MAG:                 genomeRepMAG,
+				ExcludeAtypical:     genomeRepAtypical,
+				ExcludeMultiIsolate: genomeRepMulti,
+				FromType:            genomeRepFromType,
 				Format:              outputFormat,
 			}
-			client := ncbiNewClient(ncbiAPIKey, silent, os.Stderr)
-			return runNcbiReports(ctxt, client, o, os.Stdout)
+			client := ncbiNewClient(genomeAPIKey, silent, os.Stderr)
+			return runGenomeReports(ctxt, client, o, os.Stdout)
 		},
 	}
 )
@@ -285,7 +289,7 @@ func ncbiNewClient(apiKey string, quiet bool, stderr io.Writer) *ncbigenome.Clie
 
 // ---- download ---------------------------------------------------------------
 
-type ncbiDownloadOpts struct {
+type genomeDownloadOpts struct {
 	Accession       string
 	File            string // path, "-" for stdout, "" for ./<ACCESSION>.zip
 	Force           bool
@@ -297,8 +301,8 @@ type ncbiDownloadOpts struct {
 	Silent          bool
 }
 
-// ncbiDownloadRequest maps the flags onto a library request.
-func ncbiDownloadRequest(o ncbiDownloadOpts) (ncbigenome.Request, error) {
+// genomeDownloadRequest maps the flags onto a library request.
+func genomeDownloadRequest(o genomeDownloadOpts) (ncbigenome.Request, error) {
 	includes, err := ncbigenome.ParseIncludes(strings.Join(o.Includes, ","))
 	if err != nil {
 		return ncbigenome.Request{}, err
@@ -316,23 +320,23 @@ func ncbiDownloadRequest(o ncbiDownloadOpts) (ncbigenome.Request, error) {
 	}, nil
 }
 
-var ncbiFileSafeName = regexp.MustCompile(`^[A-Za-z0-9_.]+$`)
+var genomeFileSafeName = regexp.MustCompile(`^[A-Za-z0-9_.]+$`)
 
-// ncbiDestination returns where to write the package. Without --file it is a
+// genomeDestination returns where to write the package. Without --file it is a
 // file in the working directory named after the accession, and the accession is
 // checked first so it can never steer the path out of the working directory.
-func ncbiDestination(accession, file string) (string, error) {
+func genomeDestination(accession, file string) (string, error) {
 	if file != "" {
 		return filepath.Clean(file), nil
 	}
-	if !ncbiFileSafeName.MatchString(accession) {
+	if !genomeFileSafeName.MatchString(accession) {
 		return "", fmt.Errorf("%q is not a valid assembly accession", accession)
 	}
 	return strings.ToUpper(accession) + ".zip", nil
 }
 
-// ncbiCheckOverwrite refuses to replace an existing file unless force is set.
-func ncbiCheckOverwrite(path string, force bool) error {
+// genomeCheckOverwrite refuses to replace an existing file unless force is set.
+func genomeCheckOverwrite(path string, force bool) error {
 	if path == "-" || force {
 		return nil
 	}
@@ -346,9 +350,12 @@ func ncbiCheckOverwrite(path string, force bool) error {
 	return nil
 }
 
-// ncbiProgress returns a progress callback for the library and a function that
+// genomeNewBar makes the progress bar of a download. It is a variable so that tests can use a fake.
+var genomeNewBar = sdk.GetProgressBar
+
+// genomeProgress returns a progress callback for the library and a function that
 // ends the progress line. Both do nothing when progress output is not wanted.
-func ncbiProgress(quiet bool, format string, stderr io.Writer) (func(int64), func()) {
+func genomeProgress(quiet bool, format string, stderr io.Writer) (func(int64), func()) {
 	if quiet || format != "" {
 		return nil, func() {}
 	}
@@ -356,7 +363,7 @@ func ncbiProgress(quiet bool, format string, stderr io.Writer) (func(int64), fun
 	var last int64
 	onProgress := func(written int64) {
 		if bar == nil {
-			bar = sdk.GetProgressBar("... downloading package", -1)
+			bar = genomeNewBar("... downloading package", -1)
 		}
 		delta := written - last
 		last = written
@@ -370,14 +377,21 @@ func ncbiProgress(quiet bool, format string, stderr io.Writer) (func(int64), fun
 		_, _ = bar.Write(make([]byte, delta))
 	}
 	done := func() {
-		if bar != nil {
-			fmt.Fprintln(stderr) // move past the progress bar
+		if bar == nil {
+			return
 		}
+		// The size is unknown, so this bar is a spinner that redraws itself from a background
+		// goroutine until it is finished. Finish it, or it keeps spinning over everything that
+		// follows, such as the upload of an import.
+		if f, ok := bar.(interface{ Finish() error }); ok {
+			_ = f.Finish()
+		}
+		fmt.Fprintln(stderr) // move past the progress bar
 	}
 	return onProgress, done
 }
 
-type ncbiDownloadOutput struct {
+type genomeDownloadOutput struct {
 	Accession string               `json:"accession"`
 	File      string               `json:"file"`
 	Bytes     int64                `json:"bytes"`
@@ -385,12 +399,12 @@ type ncbiDownloadOutput struct {
 	Manifest  *ncbigenome.Manifest `json:"manifest,omitempty"`
 }
 
-func runNcbiDownload(ctxt context.Context, client *ncbigenome.Client, o ncbiDownloadOpts, stdout, stderr io.Writer) error {
-	req, err := ncbiDownloadRequest(o)
+func runGenomeDownload(ctxt context.Context, client *ncbigenome.Client, o genomeDownloadOpts, stdout, stderr io.Writer) error {
+	req, err := genomeDownloadRequest(o)
 	if err != nil {
 		return err
 	}
-	path, err := ncbiDestination(o.Accession, o.File)
+	path, err := genomeDestination(o.Accession, o.File)
 	if err != nil {
 		return err
 	}
@@ -398,11 +412,11 @@ func runNcbiDownload(ctxt context.Context, client *ncbigenome.Client, o ncbiDown
 	if toStdout && o.Format != "" {
 		return errors.New("'-f -' writes the package to stdout, so it cannot be combined with --output")
 	}
-	if err := ncbiCheckOverwrite(path, o.Force); err != nil {
+	if err := genomeCheckOverwrite(path, o.Force); err != nil {
 		return err
 	}
 
-	onProgress, done := ncbiProgress(o.Silent, o.Format, stderr)
+	onProgress, done := genomeProgress(o.Silent, o.Format, stderr)
 	req.OnProgress = onProgress
 
 	var res *ncbigenome.Result
@@ -413,7 +427,7 @@ func runNcbiDownload(ctxt context.Context, client *ncbigenome.Client, o ncbiDown
 	}
 	done()
 	if err != nil {
-		return ncbiCLIErr(err)
+		return genomeCLIErr(err)
 	}
 
 	if res.Warning != "" && !o.Silent {
@@ -421,17 +435,17 @@ func runNcbiDownload(ctxt context.Context, client *ncbigenome.Client, o ncbiDown
 	}
 	if toStdout {
 		if !o.Silent {
-			fmt.Fprintf(stderr, "Wrote %s of %s to stdout\n", ncbiBytes(res.Bytes), res.Accession)
+			fmt.Fprintf(stderr, "Wrote %s of %s to stdout\n", genomeBytes(res.Bytes), res.Accession)
 		}
 		return nil
 	}
-	return printNcbiDownload(stdout, res, path, o.Format)
+	return printGenomeDownload(stdout, res, path, o.Format)
 }
 
-func printNcbiDownload(w io.Writer, res *ncbigenome.Result, path, format string) error {
+func printGenomeDownload(w io.Writer, res *ncbigenome.Result, path, format string) error {
 	switch format {
 	case "json", "yaml":
-		return printNcbiStructured(w, ncbiDownloadOutput{
+		return printGenomeStructured(w, genomeDownloadOutput{
 			Accession: res.Accession,
 			File:      path,
 			Bytes:     res.Bytes,
@@ -439,7 +453,7 @@ func printNcbiDownload(w io.Writer, res *ncbigenome.Result, path, format string)
 			Manifest:  res.Manifest,
 		}, format)
 	}
-	fmt.Fprintf(w, "Downloaded %s to %s (%s)\n", res.Accession, path, ncbiBytes(res.Bytes))
+	fmt.Fprintf(w, "Downloaded %s to %s (%s)\n", res.Accession, path, genomeBytes(res.Bytes))
 	if res.Manifest != nil && len(res.Manifest.Files) > 0 {
 		t := table.NewWriter()
 		t.SetOutputMirror(w)
@@ -460,6 +474,22 @@ const (
 	ncbiAssemblyReportSchema = "urn:ivcap:schema:ncbi.assembly-data-report.1"
 )
 
+// Help texts of the options that several 'genome' commands share. The meanings are the ones the
+// library documents (Include, AssemblyVersion, Request.Chromosomes).
+const (
+	genomeIncludeHelp = "Files to include, comma-separated: genome (genomic FASTA), rna (transcripts), protein (amino acid " +
+		"sequences), cds (nucleotide coding sequences), gff3 or gtf (annotation), gbff (GenBank flat file), seq-report " +
+		"(per-sequence report), all (every type, use alone) or none (metadata only, use alone)"
+	genomeChromosomesHelp = "Limit the genome FASTA to these chromosomes (comma-separated names, or 'all'); " +
+		"the names are passed to NCBI unchanged"
+	genomeOneVersionHelp = "Version policy [a versioned ACCESSION is used as given, an unversioned one means its current " +
+		"version]: 'current' (same as 'latest') ignores the version in ACCESSION and takes the current one; 'all' selects " +
+		"every version and is rejected here unless there is exactly one"
+	genomeReportsVersionHelp = "Version policy [a versioned ACCESSION is used as given, an unversioned one means its " +
+		"current version]: 'current' (same as 'latest') ignores any version and returns the current one; 'all' returns " +
+		"every version of each assembly"
+)
+
 // ncbiDataLicense is what an import records as the license when --license is not given. NCBI
 // states no license: it places no restrictions itself, but submitters may claim rights that it
 // cannot assess, so this is a pointer to its policy and not a license grant.
@@ -476,15 +506,15 @@ var ncbiDataLicense = roCrateLicense{
 // BioProject accessions (PRJNA..., PRJEB..., PRJDB...) can name many genomes.
 var ncbiBioProject = regexp.MustCompile(`(?i)^PRJ[A-Z]{2}[0-9]+$`)
 
-func resolveNcbiLicense(value string) (roCrateLicense, error) {
+func resolveGenomeLicense(value string) (roCrateLicense, error) {
 	if strings.TrimSpace(value) == "" {
 		return ncbiDataLicense, nil
 	}
 	return resolveLicense(value)
 }
 
-// ncbiTooManyAssemblies explains that an accession matched several assemblies.
-func ncbiTooManyAssemblies(accession string, reports []ncbigenome.AssemblyDataReport) error {
+// genomeTooManyAssemblies explains that an accession matched several assemblies.
+func genomeTooManyAssemblies(accession string, reports []ncbigenome.AssemblyDataReport) error {
 	shown := make([]string, 0, 5)
 	for i, r := range reports {
 		if i == 5 {
@@ -498,7 +528,7 @@ func ncbiTooManyAssemblies(accession string, reports []ncbigenome.AssemblyDataRe
 		strings.Join(shown, ", "), accession)
 }
 
-type ncbiImportOpts struct {
+type genomeImportOpts struct {
 	Accession       string
 	Includes        []string
 	Chromosomes     []string
@@ -514,7 +544,7 @@ type ncbiImportOpts struct {
 	Silent          bool
 }
 
-type ncbiImportOutput struct {
+type genomeImportOutput struct {
 	Artifact       string `json:"artifact"`
 	Accession      string `json:"accession"`
 	Bytes          int64  `json:"bytes"`
@@ -522,10 +552,10 @@ type ncbiImportOutput struct {
 	ManifestAspect string `json:"manifest_aspect,omitempty"`
 }
 
-func runNcbiImport(
+func runGenomeImport(
 	ctxt context.Context,
 	client *ncbigenome.Client,
-	o ncbiImportOpts,
+	o genomeImportOpts,
 	adapter *adpt.Adapter,
 	stdout, stderr io.Writer,
 ) error {
@@ -539,7 +569,7 @@ func runNcbiImport(
 	if err := validateChunkSize(o.ChunkSize, 0); err != nil {
 		return err
 	}
-	lic, err := resolveNcbiLicense(o.License)
+	lic, err := resolveGenomeLicense(o.License)
 	if err != nil {
 		return err
 	}
@@ -549,7 +579,7 @@ func runNcbiImport(
 			ncbigenome.ErrNotSingleGenome, o.Accession)
 	}
 
-	req, err := ncbiDownloadRequest(ncbiDownloadOpts{
+	req, err := genomeDownloadRequest(genomeDownloadOpts{
 		Accession:       o.Accession,
 		Includes:        o.Includes,
 		Chromosomes:     o.Chromosomes,
@@ -564,15 +594,15 @@ func runNcbiImport(
 	// of any report file NCBI may include inside the downloaded package.
 	reports, err := client.AssemblyReports(ctxt, req)
 	if err != nil {
-		return ncbiCLIErr(err)
+		return genomeCLIErr(err)
 	}
 	switch {
 	case len(reports) == 0:
-		return ncbiCLIErr(ncbigenome.ErrNoAssemblies)
+		return genomeCLIErr(ncbigenome.ErrNoAssemblies)
 	case len(reports) > 1:
-		return ncbiTooManyAssemblies(o.Accession, reports)
+		return genomeTooManyAssemblies(o.Accession, reports)
 	}
-	reportBytes, err := ncbiAspectJSON(reports[0], o.ReportSchema)
+	reportBytes, err := genomeAspectJSON(reports[0], o.ReportSchema)
 	if err != nil {
 		return fmt.Errorf("cannot encode assembly report: %w", err)
 	}
@@ -583,12 +613,12 @@ func runNcbiImport(
 	}
 	defer os.RemoveAll(tmpDir)
 	path := filepath.Join(tmpDir, "package.zip")
-	onProgress, done := ncbiProgress(o.Silent, o.Format, stderr)
+	onProgress, done := genomeProgress(o.Silent, o.Format, stderr)
 	req.OnProgress = onProgress
 	res, err := client.DownloadToFile(ctxt, req, path)
 	done()
 	if err != nil {
-		return ncbiCLIErr(err)
+		return genomeCLIErr(err)
 	}
 	if res.Accession != reports[0].Accession {
 		return fmt.Errorf("the assembly report is for %s but the downloaded package is for %s (NCBI changed "+
@@ -642,7 +672,7 @@ func runNcbiImport(
 	}
 	uploadSilent := o.Silent || o.Format != ""
 	if !uploadSilent {
-		fmt.Fprintf(stderr, "Uploading %s (%s) to IVCAP\n", artifactName, ncbiBytes(info.Size()))
+		fmt.Fprintf(stderr, "Uploading %s (%s) to IVCAP\n", artifactName, genomeBytes(info.Size()))
 	}
 	resp, err := sdk.CreateArtifact(ctxt, &sdk.CreateArtifactRequest{
 		Name: artifactName, Size: info.Size(), Policy: o.Policy,
@@ -672,23 +702,23 @@ func runNcbiImport(
 			artifactID, reportAspect, err)
 	}
 
-	result := ncbiImportOutput{
+	result := genomeImportOutput{
 		Artifact: artifactID, Accession: reports[0].Accession, Bytes: info.Size(),
 		ReportAspect: reportAspect, ManifestAspect: manifestAspect,
 	}
 	if o.Format == "json" || o.Format == "yaml" {
-		return printNcbiStructured(stdout, result, o.Format)
+		return printGenomeStructured(stdout, result, o.Format)
 	}
 	if o.Silent {
 		_, err = fmt.Fprintln(stdout, artifactID)
 		return err
 	}
 	_, err = fmt.Fprintf(stdout, "Downloaded and imported %s as %s (%s)\nReport aspect: %s\nManifest aspect: %s\n",
-		result.Accession, artifactID, ncbiBytes(info.Size()), reportAspect, manifestAspect)
+		result.Accession, artifactID, genomeBytes(info.Size()), reportAspect, manifestAspect)
 	return err
 }
 
-func ncbiAspectJSON(value any, schema string) ([]byte, error) {
+func genomeAspectJSON(value any, schema string) ([]byte, error) {
 	b, err := json.Marshal(value)
 	if err != nil {
 		return nil, err
@@ -704,7 +734,7 @@ func ncbiAspectJSON(value any, schema string) ([]byte, error) {
 
 // ---- reports ----------------------------------------------------------------
 
-type ncbiReportsOpts struct {
+type genomeReportsOpts struct {
 	Accessions          []string
 	AssemblyVersion     string
 	Reference           bool
@@ -718,8 +748,8 @@ type ncbiReportsOpts struct {
 	Format              string // "", "json" or "yaml"
 }
 
-// ncbiReportsRequest maps the flags onto a library request.
-func ncbiReportsRequest(o ncbiReportsOpts) (ncbigenome.Request, error) {
+// genomeReportsRequest maps the flags onto a library request.
+func genomeReportsRequest(o genomeReportsOpts) (ncbigenome.Request, error) {
 	version, err := ncbigenome.ParseAssemblyVersion(o.AssemblyVersion)
 	if err != nil {
 		return ncbigenome.Request{}, err
@@ -752,8 +782,8 @@ func ncbiReportsRequest(o ncbiReportsOpts) (ncbigenome.Request, error) {
 	}, nil
 }
 
-func runNcbiReports(ctxt context.Context, client *ncbigenome.Client, o ncbiReportsOpts, stdout io.Writer) error {
-	req, err := ncbiReportsRequest(o)
+func runGenomeReports(ctxt context.Context, client *ncbigenome.Client, o genomeReportsOpts, stdout io.Writer) error {
+	req, err := genomeReportsRequest(o)
 	if err != nil {
 		return err
 	}
@@ -766,12 +796,12 @@ func runNcbiReports(ctxt context.Context, client *ncbigenome.Client, o ncbiRepor
 		if reports == nil {
 			reports = []ncbigenome.AssemblyDataReport{} // print [] rather than null
 		}
-		return printNcbiStructured(stdout, reports, o.Format)
+		return printGenomeStructured(stdout, reports, o.Format)
 	}
-	return printNcbiReportsTable(stdout, reports)
+	return printGenomeReportsTable(stdout, reports)
 }
 
-func printNcbiReportsTable(w io.Writer, reports []ncbigenome.AssemblyDataReport) error {
+func printGenomeReportsTable(w io.Writer, reports []ncbigenome.AssemblyDataReport) error {
 	if len(reports) == 0 {
 		_, err := fmt.Fprintln(w, "No matching assemblies.")
 		return err
@@ -780,13 +810,13 @@ func printNcbiReportsTable(w io.Writer, reports []ncbigenome.AssemblyDataReport)
 	t.SetOutputMirror(w)
 	t.AppendHeader(table.Row{"Accession", "Organism", "Assembly", "Level", "Status", "Source", "Released"})
 	for _, r := range reports {
-		t.AppendRow(ncbiReportRow(r))
+		t.AppendRow(genomeReportRow(r))
 	}
 	t.Render()
 	return nil
 }
 
-func ncbiReportRow(r ncbigenome.AssemblyDataReport) table.Row {
+func genomeReportRow(r ncbigenome.AssemblyDataReport) table.Row {
 	var organism, name, level, status, released string
 	if r.Organism != nil {
 		organism = r.Organism.OrganismName
@@ -803,11 +833,11 @@ func ncbiReportRow(r ncbigenome.AssemblyDataReport) table.Row {
 
 // ---- shared helpers -----------------------------------------------------------
 
-// printNcbiStructured prints v as indented JSON or YAML. The value is converted
+// printGenomeStructured prints v as indented JSON or YAML. The value is converted
 // through JSON first, as adapter.ReplyPrinter does, so both formats use the JSON
 // property names; YAML marshalling alone would ignore the json tags and rename
 // the keys.
-func printNcbiStructured(w io.Writer, v any, format string) error {
+func printGenomeStructured(w io.Writer, v any, format string) error {
 	b, err := json.Marshal(v)
 	if err != nil {
 		return err
@@ -824,26 +854,26 @@ func printNcbiStructured(w io.Writer, v any, format string) error {
 	return err
 }
 
-func ncbiBytes(n int64) string {
+func genomeBytes(n int64) string {
 	if n < 0 {
 		n = 0
 	}
 	return humanize.Bytes(uint64(n))
 }
 
-// ncbiCLIError carries a command-line wording of a library error while keeping
+// genomeCLIError carries a command-line wording of a library error while keeping
 // the original reachable through errors.Is and errors.As.
-type ncbiCLIError struct {
+type genomeCLIError struct {
 	msg string
 	err error
 }
 
-func (e *ncbiCLIError) Error() string { return e.msg }
-func (e *ncbiCLIError) Unwrap() error { return e.err }
+func (e *genomeCLIError) Error() string { return e.msg }
+func (e *genomeCLIError) Unwrap() error { return e.err }
 
-// ncbiCLIErr words library errors that name the Go API for command-line users:
+// genomeCLIErr words library errors that name the Go API for command-line users:
 // the library tells callers to use AssemblyReports, the CLI has a command for that.
-func ncbiCLIErr(err error) error {
+func genomeCLIErr(err error) error {
 	if err == nil {
 		return nil
 	}
@@ -853,5 +883,5 @@ func ncbiCLIErr(err error) error {
 	if fixed == msg {
 		return err
 	}
-	return &ncbiCLIError{msg: fixed, err: err}
+	return &genomeCLIError{msg: fixed, err: err}
 }

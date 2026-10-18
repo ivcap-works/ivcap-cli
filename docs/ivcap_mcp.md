@@ -18,8 +18,14 @@ Resources (preferred if your MCP client exposes resources/read to LLMs):
   - skills://{name}/SKILL.md  Skill playbook body (markdown)
   - skills://file/{path}      Any embedded markdown file (e.g. category SKILLS.md)
 
+Genome tools:
+  - genome_import             Import an NCBI genome into IVCAP (artifact, assembly report and manifest aspects)
+  - genome_list               List the genomes imported into IVCAP
+
 Bridge Tools (fallback for clients that don't expose resources/read):
-  - list_skills               List available skill playbooks (same as skills://manifest)
+  - search                    skills='*' lists all skill playbooks (same as skills://manifest) and
+                              skills='<words>' finds the matching ones; tools='<words>' searches the
+                              deployed services and the built-in tools
   - read_skill                Read a skill playbook by name (same as skills://{name}/SKILL.md)
 
 Prompts:
@@ -36,7 +42,7 @@ Before answering any task:
 1. Call resources/list on all connected MCP servers (if available)
 2. Identify resources matching: *SKILL.md, *instructions*, *prompt*
 3. Fetch and read matching resources via resources/read (if available)
-4. Otherwise use list_skills and read_skill tools
+4. Otherwise use the search tool (skills='*') and the read_skill tool
 5. Apply those instructions when completing the user's request
 
 

@@ -44,7 +44,7 @@ func addSkillsBridgeTools(s *server.MCPServer) {
 	}
 	readSkillTool := mcp.NewToolWithRawSchema(
 		"read_skill",
-		"[BUILT-IN FALLBACK TOOL - Always available] Read an IVCAP skill playbook by exact name. ⚠️ CRITICAL: (1) ALWAYS call list_skills FIRST to verify the skill name exists - don't guess. (2) If you get an error, READ IT CAREFULLY - it tells you exactly what to do. Don't ignore errors or hallucinate solutions. Common errors: skill not found → check list_skills output, invalid name → copy exact name from list. Use this when resources/read is not available. Returns the full markdown skill document with instructions. Equivalent to: resources/read uri=\"skills://{name}/SKILL.md\".",
+		"[BUILT-IN FALLBACK TOOL - Always available] Read an IVCAP skill playbook by exact name. ⚠️ CRITICAL: (1) ALWAYS find the exact skill name FIRST with the search tool (skills='*' lists every skill, or give words such as skills='genome') - don't guess. (2) If you get an error, READ IT CAREFULLY - it tells you exactly what to do. Don't ignore errors or hallucinate solutions. Common errors: skill not found → check the search output, invalid name → copy exact name from list. Use this when resources/read is not available. Returns the full markdown skill document with instructions. Equivalent to: resources/read uri=\"skills://{name}/SKILL.md\".",
 		MapToRaw(readSkillSchema),
 	)
 	s.AddTool(readSkillTool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
