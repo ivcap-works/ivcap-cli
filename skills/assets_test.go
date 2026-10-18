@@ -24,3 +24,10 @@ func TestEmbeddedAgentContextExists(t *testing.T) {
 		t.Fatalf("expected embedded CONTEXT.md, got error: %v", err)
 	}
 }
+
+func TestEmbeddedReferencesAreAvailable(t *testing.T) {
+	// SKILLS.md links to skills://file/references/auth.md; it must be embedded.
+	if _, err := fs.ReadFile(FS, "references/auth.md"); err != nil {
+		t.Fatalf("expected embedded references/auth.md, got error: %v", err)
+	}
+}

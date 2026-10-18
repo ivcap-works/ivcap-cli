@@ -788,8 +788,9 @@ This CLI is also frequently used by AI agents and automation.
   - `ivcap agent-context`
 - Skill docs are embedded into the CLI for offline, version-matched access:
   - `ivcap skills list`
+  - `ivcap skills search <query>` (BM25-ranked, best match first)
   - `ivcap skills show <skill-name>`
-  - (for programmatic usage) `ivcap --output json skills list|show ...`
+  - (for programmatic usage) `ivcap --output json skills list|search|show ...`
 
 ### MCP-Provisioned Skills (Resources + Prompts)
 

@@ -29,12 +29,19 @@ import (
 func init() {
 	rootCmd.AddCommand(skillsCmd)
 	skillsCmd.AddCommand(skillsListCmd)
+	skillsCmd.AddCommand(skillsSearchCmd)
 	skillsCmd.AddCommand(skillsShowCmd)
+
+	skillsSearchCmd.Flags().IntVarP(&skillsSearchLimit, "limit", "l", DEF_SKILLS_SEARCH_LIMIT, "max number of skills returned (0 = all matches)")
 }
+
+const DEF_SKILLS_SEARCH_LIMIT = 10
+
+var skillsSearchLimit int
 
 var skillsCmd = &cobra.Command{
 	Use:     "skills",
-	Short:   "List and show agent skill docs embedded in this CLI release",
+	Short:   "List, search and show agent skill docs embedded in this CLI release",
 	GroupID: agentSupportGroupID,
 	Long: `Skills are small, version-matched markdown documents embedded into this CLI.
 They are meant to be cheap and reliable for agents to access offline.
@@ -62,6 +69,58 @@ var skillsListCmd = &cobra.Command{
 				Path:       d.Path,
 				SHA256:     d.SHA256,
 			})
+		}
+
+		switch outputFormat {
+		case "json", "yaml":
+			payload, err := adpt.JsonPayloadFromAny(map[string]any{"skills": items}, logger)
+			if err != nil {
+				return err
+			}
+			return adpt.ReplyPrinter(payload, outputFormat == "yaml")
+		default:
+			for _, s := range items {
+				if _, err := fmt.Fprintf(os.Stdout, "%s\t%s\t%s\n", s.Name, s.Version, s.Description); err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+	},
+}
+
+var skillsSearchCmd = &cobra.Command{
+	Use:   "search <query>...",
+	Short: "Search skills, best match first",
+	Long: `Rank the embedded skills against a free-text query using BM25.
+
+Matches in a skill's name and description count for more than matches in its
+body. Only skills matching at least one query term are returned. The search is
+local and needs no network access or login.`,
+	Example: `  ivcap skills search upload a file
+  ivcap --output json skills search "debug nextflow pipeline" --limit 3`,
+	Args: minimumNArgs(1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		docs, err := skillsdoc.LoadAllSkillDocs(asset.FS)
+		if err != nil {
+			return err
+		}
+
+		results := skillsdoc.Search(docs, strings.Join(args, " "))
+		if skillsSearchLimit > 0 && len(results) > skillsSearchLimit {
+			results = results[:skillsSearchLimit]
+		}
+
+		// Like `list`, we do NOT include the full content.
+		type item struct {
+			skillsdoc.HeadMatter
+			Path   string  `json:"path" yaml:"path"`
+			SHA256 string  `json:"sha256" yaml:"sha256"`
+			Score  float64 `json:"score" yaml:"score"`
+		}
+		items := make([]item, 0, len(results))
+		for _, r := range results {
+			items = append(items, item{HeadMatter: r.Doc.HeadMatter, Path: r.Doc.Path, SHA256: r.Doc.SHA256, Score: r.Score})
 		}
 
 		switch outputFormat {
