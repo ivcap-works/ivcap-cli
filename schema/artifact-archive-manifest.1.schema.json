@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ivcap:schema:artifact.archive-manifest.1",
+  "title": "Artifact archive RO-Crate manifest aspect",
+  "description": "An IVCAP aspect envelope containing an RO-Crate 1.2 JSON-LD metadata document for files in an uploaded ZIP, TAR or TAR.GZ archive.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "profile", "ro_crate"],
+  "properties": {
+    "$schema": {
+      "const": "urn:ivcap:schema:artifact.archive-manifest.1"
+    },
+    "profile": {
+      "const": "https://w3id.org/ro/crate/1.2"
+    },
+    "ro_crate": {
+      "$ref": "#/$defs/roCrate"
+    }
+  },
+  "$defs": {
+    "reference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["@id"],
+      "properties": {
+        "@id": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "entity": {
+      "type": "object",
+      "required": ["@id", "@type"],
+      "properties": {
+        "@id": { "type": "string", "minLength": 1 },
+        "@type": { "type": "string", "minLength": 1 },
+        "about": { "$ref": "#/$defs/reference" },
+        "conformsTo": { "$ref": "#/$defs/reference" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "identifier": { "type": "string" },
+        "license": { "$ref": "#/$defs/reference" },
+        "datePublished": { "type": "string", "format": "date" },
+        "hasPart": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/reference" }
+        },
+        "contentSize": { "type": "string", "pattern": "^[0-9]+$" },
+        "encodingFormat": { "type": "string", "minLength": 1 }
+      }
+    },
+    "roCrate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["@context", "@graph"],
+      "properties": {
+        "@context": { "const": "https://w3id.org/ro/crate/1.2/context" },
+        "@graph": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/entity" },
+          "contains": {
+            "type": "object",
+            "required": ["@id", "@type", "about", "conformsTo"],
+            "properties": {
+              "@id": { "const": "ro-crate-metadata.json" },
+              "@type": { "const": "CreativeWork" },
+              "about": {
+                "properties": { "@id": { "const": "./" } }
+              },
+              "conformsTo": {
+                "properties": {
+                  "@id": { "const": "https://w3id.org/ro/crate/1.2" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

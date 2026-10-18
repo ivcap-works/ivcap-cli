@@ -85,7 +85,7 @@ The MCP server exposes embedded skill playbooks via both **MCP Resources** and *
 Many MCP clients (including Claude Desktop as of 2026-04) don't expose `resources/read` as a callable method to LLMs, even though the server correctly declares the capability. 
 
 **Use these tools as a workaround:**
-- `list_skills` - returns the same data as `skills://manifest`
+- `search` with `skills='*'` - lists all skills (the same data as `skills://manifest`); `skills='<words>'` finds the matching ones
 - `read_skill` - reads a skill by name (same as `skills://{name}/SKILL.md`)
 
 The `use-ivcap-best-practices` prompt automatically tries resources first, then falls back to tools.

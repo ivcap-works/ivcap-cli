@@ -72,6 +72,8 @@ github.com/invopop/jsonschema v0.13.0 h1:KvpoAJWEjR3uD9Kbm2HWJmqsEaHt8lBUpd0qHcI
 github.com/invopop/jsonschema v0.13.0/go.mod h1:ffZ5Km5SWWRAIN6wbDXItl95euhFz2uON45H2qjYt+0=
 github.com/ivcap-works/ivcap-core-api v0.44.0 h1:bLa+hLOlD/X5jWx44Ijv9WOfpbSzdis+P6p/tUdsdIo=
 github.com/ivcap-works/ivcap-core-api v0.44.0/go.mod h1:NbggH/FvNC8IPfHUaDBryKqfB5JPswoC0itpRUVqq6o=
+github.com/ivcap-works/ivcap-ncbi-genome-download v0.2.0 h1:3ws9yvdpJk6fjXVG2SsEaEzgPVUkWuZjadsW2Aoqg5k=
+github.com/ivcap-works/ivcap-ncbi-genome-download v0.2.0/go.mod h1:UtFO+kwAGBgY9yTZOyfcwbYIPDn4YQoopjvGpcqR4PA=
 github.com/jedib0t/go-pretty/v6 v6.6.8 h1:JnnzQeRz2bACBobIaa/r+nqjvws4yEhcmaZ4n1QzsEc=
 github.com/jedib0t/go-pretty/v6 v6.6.8/go.mod h1:YwC5CE4fJ1HFUDeivSV1r//AmANFHyqczZk+U6BDALU=
 github.com/josharian/intern v1.0.0/go.mod h1:5DoeVV0s6jJacbCEi61lwdGj/aVlrQvzHFFd8Hwg//Y=
