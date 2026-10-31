@@ -20,7 +20,7 @@ Open issues and ideas for ivcap-cli, collected as they come up. Remove an item w
      non-zero size,
   2. does not upload anything,
   3. attaches the report aspect, skipping it if the artifact already has one with that schema
-     (`findAspectID`).
+     (`sdk.FindAspectID`).
 
   Limits to note: the size cannot be compared with NCBI's package, because NCBI sends no `Content-Length`
   and the download-summary size is only an estimate. The manifest needs the package's file list, so it is

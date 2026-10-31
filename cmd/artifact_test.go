@@ -28,6 +28,7 @@ import (
 	log "go.uber.org/zap"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 )
 
 func TestListArtifact(t *testing.T) {
@@ -36,7 +37,7 @@ func TestListArtifact(t *testing.T) {
 	}
 
 	req := &sdk.ListRequest{Limit: 5}
-	_, err := sdk.ListArtifacts(context.Background(), req, adapter, tlogger)
+	_, err := artifact.ListArtifacts(context.Background(), req, adapter, tlogger)
 	if err != nil {
 		t.Fatalf("failed to list artifacts: %v", err)
 	}
@@ -52,13 +53,13 @@ func testAddArtifact(t *testing.T) {
 	}
 
 	reader, contentType, size := getReader(testArtifactFileName, contentType)
-	req := &sdk.CreateArtifactRequest{
+	req := &artifact.CreateArtifactRequest{
 		Name:       name,
 		Size:       size,
 		Collection: artifactCollection,
 		Policy:     policy,
 	}
-	resp, err := sdk.CreateArtifact(context.Background(), req, contentType, size, nil, adapter, logger)
+	resp, err := artifact.CreateArtifact(context.Background(), req, contentType, size, nil, adapter, logger)
 	if err != nil {
 		t.Fatalf("while creating record for '%s'- %v", testArtifactFileName, err)
 	}
@@ -84,8 +85,8 @@ func testGetArtifact(t *testing.T) {
 		t.Skip("artifactID not set ...")
 	}
 
-	req := &sdk.ReadArtifactRequest{Id: testArtifactID}
-	artifact, err := sdk.ReadArtifact(context.Background(), req, adapter, logger)
+	req := &artifact.ReadArtifactRequest{Id: testArtifactID}
+	artifact, err := artifact.ReadArtifact(context.Background(), req, adapter, logger)
 	if err != nil {
 		t.Fatalf("failed to get artifact: %v", err)
 	}

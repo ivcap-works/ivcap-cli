@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -108,7 +109,7 @@ func useAspectTestServer(t *testing.T, s *aspectTestServer) adpt.Adapter {
 	t.Cleanup(srv.Close)
 	oldLogger, oldSilent, oldFormat, oldPolicy, oldSchema := logger, silent, outputFormat, policy, artifactManifestSchema
 	logger = log.NewNop()
-	silent, outputFormat, policy, artifactManifestSchema = true, "", "", artifactArchiveManifestSchema
+	silent, outputFormat, policy, artifactManifestSchema = true, "", "", artifact.ArchiveManifestSchema
 	t.Cleanup(func() {
 		logger, silent, outputFormat, policy, artifactManifestSchema = oldLogger, oldSilent, oldFormat, oldPolicy, oldSchema
 	})
@@ -118,7 +119,7 @@ func useAspectTestServer(t *testing.T, s *aspectTestServer) adpt.Adapter {
 func TestAttachArtifactManifestIsIdempotent(t *testing.T) {
 	s := &aspectTestServer{}
 	adapter := useAspectTestServer(t, s)
-	content := []byte(`{"$schema":"` + artifactArchiveManifestSchema + `"}`)
+	content := []byte(`{"$schema":"` + artifact.ArchiveManifestSchema + `"}`)
 
 	for i := 1; i <= 3; i++ {
 		if err := attachArtifactManifest(context.Background(), testManifestEntity, content, &adapter); err != nil {
@@ -135,7 +136,7 @@ func TestAttachArtifactManifestIsIdempotent(t *testing.T) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	q := s.queries[0]
-	if q.Get("entity") != testManifestEntity || q.Get("schema") != artifactArchiveManifestSchema {
+	if q.Get("entity") != testManifestEntity || q.Get("schema") != artifact.ArchiveManifestSchema {
 		t.Errorf("lookup was not scoped to the artifact and schema: %v", q)
 	}
 }
@@ -143,7 +144,7 @@ func TestAttachArtifactManifestIsIdempotent(t *testing.T) {
 func TestAttachArtifactManifestIgnoresOtherSchemas(t *testing.T) {
 	// The API filters schemas by prefix, so a longer schema name can come back too.
 	s := &aspectTestServer{stored: [][3]string{
-		{"urn:ivcap:aspect:00000000-1111-1111-1111-111111111111", testManifestEntity, artifactArchiveManifestSchema + "0"},
+		{"urn:ivcap:aspect:00000000-1111-1111-1111-111111111111", testManifestEntity, artifact.ArchiveManifestSchema + "0"},
 	}}
 	adapter := useAspectTestServer(t, s)
 

@@ -46,7 +46,7 @@ func ListOrders(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter, l
 }
 
 func ListOrdersRaw(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	u, err := createListPath(cmd, orderPath(nil))
+	u, err := CreateListPath(cmd, orderPath(nil))
 	if err != nil {
 		return nil, err
 	}

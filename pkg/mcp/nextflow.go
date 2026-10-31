@@ -23,6 +23,7 @@ import (
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	nf "github.com/ivcap-works/ivcap-cli/pkg/nextflow"
 )
 
@@ -103,7 +104,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		defer cancel()
 
 		// Fetch artifact metadata to get the data URL
-		art, err := readArtifactFn(ctxt, &sdk.ReadArtifactRequest{Id: parsed.ArtifactID}, adpt, srvCfg.Logger)
+		art, err := readArtifactFn(ctxt, &artifact.ReadArtifactRequest{Id: parsed.ArtifactID}, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
 				return NewLoginRequiredResult(), nil

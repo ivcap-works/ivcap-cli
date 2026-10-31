@@ -26,6 +26,7 @@ import (
 	"github.com/araddon/dateparse"
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	api "github.com/ivcap-works/ivcap-core-api/http/aspect"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/jedib0t/go-pretty/v6/text"
@@ -544,8 +545,8 @@ func fetchCollectionItems(ctxt context.Context, collectionID string, adpt *a.Ada
 		disp := collectionItemDisplay{URN: itemURN}
 		// For artifact URNs, try to fetch a meaningful name.
 		if strings.HasPrefix(itemURN, "urn:ivcap:artifact:") {
-			req := &sdk.ReadArtifactRequest{Id: itemURN}
-			if art, aerr := sdk.ReadArtifact(ctxt, req, adpt, logger); aerr == nil {
+			req := &artifact.ReadArtifactRequest{Id: itemURN}
+			if art, aerr := artifact.ReadArtifact(ctxt, req, adpt, logger); aerr == nil {
 				if art.Name != nil && *art.Name != "" && *art.Name != itemURN {
 					disp.Name = *art.Name
 				}

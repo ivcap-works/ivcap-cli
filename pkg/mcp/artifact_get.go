@@ -29,8 +29,8 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 )
 
 type artifactGetArgs struct {
@@ -108,7 +108,7 @@ func addArtifactGetTool(s *server.MCPServer) {
 		ctxt, cancel := withTimeout(ctx)
 		defer cancel()
 
-		art, err := readArtifactFn(ctxt, &sdk.ReadArtifactRequest{Id: parsed.ID}, adpt, srvCfg.Logger)
+		art, err := readArtifactFn(ctxt, &artifact.ReadArtifactRequest{Id: parsed.ID}, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
 				return NewLoginRequiredResult(), nil

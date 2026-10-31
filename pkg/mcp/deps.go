@@ -20,6 +20,7 @@ import (
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 )
 
 // ---- Dependency injection seams (primarily for tests) --------------------------------------
@@ -33,9 +34,9 @@ var (
 	listServicesRawFn     = sdk.ListServicesRaw
 	readServiceRawFn      = sdk.ReadServiceRaw //lint:ignore U1000 used in tests
 	createServiceJobRawFn = sdk.CreateServiceJobRaw
-	createArtifactFn      = sdk.CreateArtifact
-	uploadArtifactFn      = sdk.UploadArtifact
-	readArtifactFn        = sdk.ReadArtifact
+	createArtifactFn      = artifact.CreateArtifact
+	uploadArtifactFn      = artifact.UploadArtifact
+	readArtifactFn        = artifact.ReadArtifact
 )
 
 // allow test stubbing (network helpers)

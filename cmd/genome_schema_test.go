@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"encoding/json"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -116,10 +117,10 @@ func TestReportSchemaMatchesCode(t *testing.T) {
 func TestManifestSchemaMatchesCode(t *testing.T) {
 	doc := readSchemaFile(t, "artifact-archive-manifest.1.schema.json")
 	runSchemaChecks(t, doc, []schemaCheck{
-		{"$id", []any{"$id"}, artifactArchiveManifestSchema},
-		{"$schema const", []any{"properties", "$schema", "const"}, artifactArchiveManifestSchema},
-		{"profile const", []any{"properties", "profile", "const"}, roCrateProfile},
-		{"RO-Crate @context const", []any{"$defs", "roCrate", "properties", "@context", "const"}, roCrateContext},
-		{"descriptor conformsTo", []any{"$defs", "roCrate", "properties", "@graph", "contains", "properties", "conformsTo", "properties", "@id", "const"}, roCrateProfile},
+		{"$id", []any{"$id"}, artifact.ArchiveManifestSchema},
+		{"$schema const", []any{"properties", "$schema", "const"}, artifact.ArchiveManifestSchema},
+		{"profile const", []any{"properties", "profile", "const"}, artifact.ROCrateProfile},
+		{"RO-Crate @context const", []any{"$defs", "roCrate", "properties", "@context", "const"}, artifact.ROCrateContext},
+		{"descriptor conformsTo", []any{"$defs", "roCrate", "properties", "@graph", "contains", "properties", "conformsTo", "properties", "@id", "const"}, artifact.ROCrateProfile},
 	})
 }

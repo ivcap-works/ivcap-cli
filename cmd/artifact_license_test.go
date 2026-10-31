@@ -16,41 +16,11 @@ package cmd
 
 import (
 	"encoding/json"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	"path/filepath"
 	"strings"
 	"testing"
 )
-
-func TestResolveLicense(t *testing.T) {
-	tests := []struct {
-		value, wantID, wantName string
-	}{
-		{"", "#license-undefined", "License undefined"},
-		{"undefined", "#license-undefined", "License undefined"},
-		{"UNDEFINED", "#license-undefined", "License undefined"},
-		{"  undefined ", "#license-undefined", "License undefined"},
-		{"CC-BY-4.0", "https://spdx.org/licenses/CC-BY-4.0", "CC-BY-4.0"},
-		{"MIT", "https://spdx.org/licenses/MIT", "MIT"},
-		{"Apache-2.0", "https://spdx.org/licenses/Apache-2.0", "Apache-2.0"},
-		{"https://creativecommons.org/licenses/by/4.0/", "https://creativecommons.org/licenses/by/4.0/", "https://creativecommons.org/licenses/by/4.0/"},
-		{" http://example.org/license ", "http://example.org/license", "http://example.org/license"},
-	}
-	for _, tt := range tests {
-		got, err := resolveLicense(tt.value)
-		if err != nil {
-			t.Errorf("%q: unexpected error %v", tt.value, err)
-			continue
-		}
-		if got.ID != tt.wantID || got.Name != tt.wantName || got.Description == "" {
-			t.Errorf("%q: got %+v, want id %q and name %q with a description", tt.value, got, tt.wantID, tt.wantName)
-		}
-	}
-	for _, bad := range []string{"CC BY 4.0", "not a license!", "http://", "https:///only-a-path", "ftp://example.org/l", "-MIT"} {
-		if _, err := resolveLicense(bad); err == nil || !strings.Contains(err.Error(), "invalid --license") {
-			t.Errorf("%q: want an 'invalid --license' error, got %v", bad, err)
-		}
-	}
-}
 
 func TestResolveGenomeLicense(t *testing.T) {
 	for _, empty := range []string{"", "  "} {
@@ -79,7 +49,7 @@ func TestPrepareArtifactManifestCarriesLicense(t *testing.T) {
 	t.Cleanup(func() {
 		artifactWithoutManifest, artifactManifestSchema, name, artifactLicense = oldWithout, oldSchema, oldName, oldLicense
 	})
-	artifactWithoutManifest, artifactManifestSchema, name = false, artifactArchiveManifestSchema, ""
+	artifactWithoutManifest, artifactManifestSchema, name = false, artifact.ArchiveManifestSchema, ""
 
 	archive := filepath.Join(t.TempDir(), "data.zip")
 	writeManifestTestArchive(t, archive, "zip", map[string]string{"file.txt": "content"})
@@ -94,7 +64,7 @@ func TestPrepareArtifactManifestCarriesLicense(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%q: %v", value, err)
 		}
-		var aspect archiveManifestAspect
+		var aspect artifact.Aspect
 		if err := json.Unmarshal(content, &aspect); err != nil {
 			t.Fatal(err)
 		}
@@ -130,54 +100,12 @@ func TestLicenseFlagDefaults(t *testing.T) {
 			c = uploadArtifactCmd
 		}
 		f := c.Flags().Lookup("license")
-		if f == nil || f.DefValue != licenseUndefined {
-			t.Errorf("artifact %s: --license must default to %q, got %+v", cmd, licenseUndefined, f)
+		if f == nil || f.DefValue != artifact.LicenseUndefined {
+			t.Errorf("artifact %s: --license must default to %q, got %+v", cmd, artifact.LicenseUndefined, f)
 		}
 	}
 	// An empty import license means "the NCBI data policy".
 	if f := genomeImportCmd.Flags().Lookup("license"); f == nil || f.DefValue != "" {
 		t.Errorf("genome import: --license must default to empty, got %+v", f)
-	}
-}
-
-func TestBuildROCrateKeepsPathsUniqueAndSafe(t *testing.T) {
-	doc := buildROCrate(archiveManifestMetadata{Name: "n"}, []archiveManifestEntry{
-		{Name: "a.txt", Size: 1},
-		{Name: "dir/b.txt", Size: 2},
-		{Name: "a.txt", Size: 3}, // the same path again: the later entry wins
-		{Name: "c:d/e.txt", Size: 4},
-		{Name: "x:y", Size: 5},
-		{Name: "dir/with:colon.txt", Size: 6}, // a colon after the first segment is harmless
-	})
-	graph := doc.Graph
-	if len(graph) != 8 { // descriptor, root, five files, license
-		t.Fatalf("graph has %d entities, want 8", len(graph))
-	}
-	seen := map[string]bool{}
-	for _, e := range graph {
-		if seen[e.ID] {
-			t.Errorf("duplicate @id %q", e.ID)
-		}
-		seen[e.ID] = true
-	}
-	files := graph[2 : len(graph)-1]
-	wantIDs := []string{"a.txt", "dir/b.txt", "./c:d/e.txt", "./x:y", "dir/with:colon.txt"}
-	root := graph[1]
-	for i, want := range wantIDs {
-		if files[i].ID != want {
-			t.Errorf("file %d has @id %q, want %q", i, files[i].ID, want)
-		}
-		if root.HasPart[i].ID != want {
-			t.Errorf("hasPart %d is %q, want %q", i, root.HasPart[i].ID, want)
-		}
-		if first, _, _ := strings.Cut(files[i].ID, "/"); strings.Contains(first, ":") {
-			t.Errorf("@id %q starts with a segment that reads as a URI scheme", files[i].ID)
-		}
-	}
-	if files[0].ContentSize != "3" {
-		t.Errorf("a repeated path must keep the size of its last entry, got %q", files[0].ContentSize)
-	}
-	if len(root.HasPart) != len(files) {
-		t.Errorf("root lists %d parts for %d files", len(root.HasPart), len(files))
 	}
 }

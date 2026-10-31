@@ -17,6 +17,7 @@ package client
 import (
 	"bytes"
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 
@@ -96,7 +97,7 @@ func ListAspect(ctxt context.Context,
 	adpt *adapter.Adapter,
 	logger *log.Logger,
 ) (*api.ListResponseBody, adapter.Payload, error) {
-	u, err := createListPath(&selector.ListRequest, aspectPath(nil, adpt))
+	u, err := CreateListPath(&selector.ListRequest, aspectPath(nil, adpt))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -124,6 +125,46 @@ func ListAspect(ctxt context.Context,
 	} else {
 		return nil, nil, err
 	}
+}
+
+// AddAspectContent adds an aspect with the given content to the entity and returns the ID of the new aspect.
+func AddAspectContent(
+	ctxt context.Context,
+	entity, schema, policy string,
+	content []byte,
+	adpt *adapter.Adapter,
+	logger *log.Logger,
+) (string, error) {
+	res, err := AddUpdateAspect(ctxt, true, entity, schema, policy, content, adpt, logger)
+	if err != nil {
+		return "", err
+	}
+	obj, err := res.AsObject()
+	if err != nil {
+		return "", fmt.Errorf("cannot parse aspect response: %w", err)
+	}
+	for _, key := range []string{"id", "record-id"} {
+		if id, ok := obj[key].(string); ok && id != "" {
+			return id, nil
+		}
+	}
+	return "", errors.New("aspect response is missing its id")
+}
+
+// FindAspectID returns the ID of an existing aspect with exactly this schema on the entity,
+// or "" when there is none. The schema filter of the API matches by prefix, so the result is
+// compared exactly.
+func FindAspectID(ctxt context.Context, entity, schema string, adpt *adapter.Adapter, logger *log.Logger) (string, error) {
+	list, _, err := ListAspect(ctxt, AspectSelector{Entity: entity, SchemaPrefix: schema}, adpt, logger)
+	if err != nil {
+		return "", fmt.Errorf("cannot check for an existing %s aspect: %w", schema, err)
+	}
+	for _, item := range list.Items {
+		if item.ID != nil && item.Schema != nil && *item.Schema == schema {
+			return *item.ID, nil
+		}
+	}
+	return "", nil
 }
 
 /**** UTILS ****/

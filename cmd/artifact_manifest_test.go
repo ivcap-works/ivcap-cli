@@ -19,7 +19,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/gzip"
-	"encoding/json"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	"io"
 	"os"
 	"path/filepath"
@@ -29,75 +29,13 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func TestArchiveManifestForFile(t *testing.T) {
-	files := map[string]string{"dir/a file.txt": "alpha", "data/sample.csv": "x,y\n1,2\n"}
-	for _, format := range []string{"zip", "tar", "tar.gz"} {
-		t.Run(format, func(t *testing.T) {
-			archive := filepath.Join(t.TempDir(), "archive."+format)
-			writeManifestTestArchive(t, archive, format, files)
-			content, err := archiveManifestForFile(archive, artifactArchiveManifestSchema, archiveManifestMetadata{
-				Identifier: "test-archive", Name: "Test archive", Published: "2026-10-17",
-			})
-			if err != nil {
-				t.Fatal(err)
-			}
-			var aspect archiveManifestAspect
-			if err := json.Unmarshal(content, &aspect); err != nil {
-				t.Fatal(err)
-			}
-			if aspect.Schema != artifactArchiveManifestSchema || aspect.Profile != roCrateProfile || aspect.ROCrate.Context != roCrateContext {
-				t.Errorf("unexpected manifest envelope: %+v", aspect)
-			}
-			if len(aspect.ROCrate.Graph) != len(files)+3 { // descriptor, root, files, license
-				t.Fatalf("graph has %d entities, want %d", len(aspect.ROCrate.Graph), len(files)+3)
-			}
-			root := aspect.ROCrate.Graph[1]
-			if root.ID != "./" || root.Type != "Dataset" || root.DatePublished != "2026-10-17" || len(root.HasPart) != len(files) {
-				t.Errorf("unexpected root entity: %+v", root)
-			}
-			var escaped bool
-			for _, entity := range aspect.ROCrate.Graph[2 : 2+len(files)] {
-				if entity.Type != "File" || entity.ContentSize == "" || entity.EncodingFormat == "" {
-					t.Errorf("incomplete file entity: %+v", entity)
-				}
-				escaped = escaped || strings.Contains(entity.ID, "%20")
-			}
-			if !escaped {
-				t.Error("file paths containing spaces were not URI-escaped")
-			}
-		})
-	}
-}
-
-func TestArchiveManifestRejectsUnsupportedAndUnsafeInputs(t *testing.T) {
-	if _, err := archiveManifestForFile("-", artifactArchiveManifestSchema, archiveManifestMetadata{}); err == nil || !strings.Contains(err.Error(), "local archive") {
-		t.Errorf("stdin must be rejected, got %v", err)
-	}
-	plain := filepath.Join(t.TempDir(), "plain.txt")
-	if err := os.WriteFile(plain, []byte("not an archive"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := archiveManifestForFile(plain, artifactArchiveManifestSchema, archiveManifestMetadata{}); err == nil || !strings.Contains(err.Error(), "not a supported") {
-		t.Errorf("plain file must be rejected, got %v", err)
-	}
-
-	unsafe := filepath.Join(t.TempDir(), "unsafe.zip")
-	writeManifestTestArchive(t, unsafe, "zip", map[string]string{"../escape.txt": "bad"})
-	if _, err := archiveManifestForFile(unsafe, artifactArchiveManifestSchema, archiveManifestMetadata{}); err == nil || !strings.Contains(err.Error(), "unsafe path") {
-		t.Errorf("unsafe member must be rejected, got %v", err)
-	}
-	if _, err := safeArchivePath(`C:\escape.txt`); err == nil {
-		t.Error("Windows absolute member path must be rejected")
-	}
-}
-
 func TestPrepareArtifactManifestDefaults(t *testing.T) {
 	oldWithout, oldSchema, oldName := artifactWithoutManifest, artifactManifestSchema, name
 	t.Cleanup(func() {
 		artifactWithoutManifest, artifactManifestSchema, name = oldWithout, oldSchema, oldName
 	})
 	artifactWithoutManifest = false
-	artifactManifestSchema = artifactArchiveManifestSchema
+	artifactManifestSchema = artifact.ArchiveManifestSchema
 	name = ""
 
 	archive := filepath.Join(t.TempDir(), "archive.zip")
@@ -160,7 +98,7 @@ func TestArtifactManifestCommandWiring(t *testing.T) {
 			t.Errorf("artifact %s lacks --without-manifest", command.Name())
 		}
 		flag := command.Flags().Lookup("manifest-schema")
-		if flag == nil || flag.DefValue != artifactArchiveManifestSchema {
+		if flag == nil || flag.DefValue != artifact.ArchiveManifestSchema {
 			t.Errorf("artifact %s has unexpected --manifest-schema: %v", command.Name(), flag)
 		}
 	}
@@ -221,7 +159,7 @@ func TestManifestForUploadWarnsInsteadOfFailing(t *testing.T) {
 	t.Cleanup(func() {
 		artifactWithoutManifest, artifactManifestSchema, name = oldWithout, oldSchema, oldName
 	})
-	artifactWithoutManifest, artifactManifestSchema, name = false, artifactArchiveManifestSchema, ""
+	artifactWithoutManifest, artifactManifestSchema, name = false, artifact.ArchiveManifestSchema, ""
 
 	dir := t.TempDir()
 	good := filepath.Join(dir, "good.zip")

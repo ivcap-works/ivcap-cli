@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -414,7 +415,7 @@ func TestRunGenomeImport(t *testing.T) {
 		FastZip:         true,
 		ChunkSize:       -1,
 		ReportSchema:    "urn:ivcap:schema:ncbi.assembly-report.1",
-		ManifestSchema:  artifactArchiveManifestSchema,
+		ManifestSchema:  artifact.ArchiveManifestSchema,
 		Format:          "json",
 		Silent:          true,
 	}, &adapter, &out, io.Discard)
@@ -444,12 +445,12 @@ func TestRunGenomeImport(t *testing.T) {
 	if aspects[0].body["json_schema"] != ncbigenome.AssemblyDataReportSchemaURL {
 		t.Errorf("report aspect lacks the published JSON Schema URL: %+v", aspects[0].body)
 	}
-	if aspects[1].schema != artifactArchiveManifestSchema || aspects[1].body["$schema"] != artifactArchiveManifestSchema || aspects[1].body["profile"] != roCrateProfile {
+	if aspects[1].schema != artifact.ArchiveManifestSchema || aspects[1].body["$schema"] != artifact.ArchiveManifestSchema || aspects[1].body["profile"] != artifact.ROCrateProfile {
 		t.Errorf("unexpected manifest aspect: %+v", aspects[1])
 	}
 	roCrate, _ := aspects[1].body["ro_crate"].(map[string]any)
 	graph, _ := roCrate["@graph"].([]any)
-	if roCrate["@context"] != roCrateContext || len(graph) != 5 {
+	if roCrate["@context"] != artifact.ROCrateContext || len(graph) != 5 {
 		t.Errorf("unexpected embedded RO-Crate: %+v", roCrate)
 	}
 	descriptor, _ := graph[0].(map[string]any)
@@ -457,7 +458,7 @@ func TestRunGenomeImport(t *testing.T) {
 	if descriptor["@id"] != "ro-crate-metadata.json" || descriptor["@type"] != "CreativeWork" {
 		t.Errorf("unexpected RO-Crate metadata descriptor: %v", descriptor)
 	}
-	if conforms, _ := descriptor["conformsTo"].(map[string]any); conforms["@id"] != roCrateProfile {
+	if conforms, _ := descriptor["conformsTo"].(map[string]any); conforms["@id"] != artifact.ROCrateProfile {
 		t.Errorf("RO-Crate descriptor does not conform to 1.2: %v", descriptor)
 	}
 	parts, _ := root["hasPart"].([]any)

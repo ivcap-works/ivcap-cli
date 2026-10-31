@@ -33,7 +33,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 
-	sdk "github.com/ivcap-works/ivcap-cli/pkg"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	nf "github.com/ivcap-works/ivcap-cli/pkg/nextflow"
 )
 
@@ -503,7 +503,7 @@ func handleArtifactBuildSubmit(ctx context.Context, args map[string]any) (*mcp.C
 	mimeType := "application/gzip"
 	size := int64(len(tarGzData))
 
-	creq := &sdk.CreateArtifactRequest{
+	creq := &artifact.CreateArtifactRequest{
 		Name:   name,
 		Size:   size,
 		Policy: policy,
@@ -548,7 +548,7 @@ func handleArtifactBuildSubmit(ctx context.Context, args map[string]any) (*mcp.C
 	_ = os.RemoveAll(session.StagingDir)
 
 	// Get artifact details
-	art, err := readArtifactFn(ctxt, &sdk.ReadArtifactRequest{Id: artifactID}, adpt, srvCfg.Logger)
+	art, err := readArtifactFn(ctxt, &artifact.ReadArtifactRequest{Id: artifactID}, adpt, srvCfg.Logger)
 	if err != nil {
 		// Upload succeeded; return minimal info
 		return mcp.NewToolResultJSON(map[string]any{

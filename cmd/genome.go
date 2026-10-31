@@ -30,6 +30,7 @@ import (
 	humanize "github.com/dustin/go-humanize"
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	adpt "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	ncbigenome "github.com/ivcap-works/ivcap-ncbi-genome-download"
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
@@ -112,7 +113,7 @@ func init() {
 	i.Int64Var(&genomeImportChunkSize, "chunk-size", DEF_CHUNK_SIZE, fmt.Sprintf("Chunk size in bytes for splitting large files: at least %d, or -1 to upload without chunking", MIN_CHUNK_SIZE))
 	i.StringVar(&genomeImportReportSchema, "report-schema", ncbiAssemblyReportSchema,
 		"Schema URN for the assembly report aspect")
-	i.StringVar(&genomeImportManifestSchema, "manifest-schema", artifactArchiveManifestSchema,
+	i.StringVar(&genomeImportManifestSchema, "manifest-schema", artifact.ArchiveManifestSchema,
 		"Schema URN for the RO-Crate manifest aspect")
 	i.StringVar(&genomeImportLicense, "license", "",
 		"License of the imported data, recorded in the manifest: an SPDX identifier such as CC0-1.0, a license URL, "+
@@ -515,7 +516,7 @@ func genomePolicies(policy string) (artifactPolicy, aspectPolicy string) {
 // states no license: it places no restrictions itself, but submitters may claim rights that it
 // cannot assess, so this is a pointer to its policy and not a license grant.
 // Source: https://www.ncbi.nlm.nih.gov/home/about/policies/ (section on molecular data usage).
-var ncbiDataLicense = roCrateLicense{
+var ncbiDataLicense = artifact.License{
 	ID:   "https://www.ncbi.nlm.nih.gov/home/about/policies/",
 	Name: "NCBI Website and Data Usage Policies and Disclaimers",
 	Description: "NCBI itself places no restrictions on the use or distribution of this data, and does not accept " +
@@ -527,11 +528,11 @@ var ncbiDataLicense = roCrateLicense{
 // BioProject accessions (PRJNA..., PRJEB..., PRJDB...) can name many genomes.
 var ncbiBioProject = regexp.MustCompile(`(?i)^PRJ[A-Z]{2}[0-9]+$`)
 
-func resolveGenomeLicense(value string) (roCrateLicense, error) {
+func resolveGenomeLicense(value string) (artifact.License, error) {
 	if strings.TrimSpace(value) == "" {
 		return ncbiDataLicense, nil
 	}
-	return resolveLicense(value)
+	return artifact.ResolveLicense(value)
 }
 
 // genomeTooManyAssemblies explains that an accession matched several assemblies.
@@ -652,9 +653,9 @@ func runGenomeImport(
 	if err != nil {
 		return fmt.Errorf("cannot read temporary NCBI package: %w", err)
 	}
-	manifest := res.Manifest
-	if manifest == nil {
-		manifest, err = ncbigenome.ReadManifest(path)
+	ncbiManifest := res.Manifest
+	if ncbiManifest == nil {
+		ncbiManifest, err = ncbigenome.ReadManifest(path)
 		if err != nil {
 			return fmt.Errorf("cannot read temporary package manifest: %w", err)
 		}
@@ -663,14 +664,14 @@ func runGenomeImport(
 	if reports[0].AssemblyInfo != nil && reports[0].AssemblyInfo.ReleaseDate != "" {
 		published = reports[0].AssemblyInfo.ReleaseDate
 	}
-	entries := make([]archiveManifestEntry, 0, len(manifest.Files))
-	for _, file := range manifest.Files {
-		entries = append(entries, archiveManifestEntry{Name: file.Name, Size: file.Size})
+	entries := make([]artifact.Entry, 0, len(ncbiManifest.Files))
+	for _, file := range ncbiManifest.Files {
+		entries = append(entries, artifact.Entry{Name: file.Name, Size: file.Size})
 	}
-	manifestBytes, err := json.Marshal(archiveManifestAspect{
+	manifestBytes, err := json.Marshal(artifact.Aspect{
 		Schema:  o.ManifestSchema,
-		Profile: roCrateProfile,
-		ROCrate: buildROCrate(archiveManifestMetadata{
+		Profile: artifact.ROCrateProfile,
+		ROCrate: artifact.Build(artifact.Metadata{
 			Identifier:  reports[0].Accession,
 			Name:        fmt.Sprintf("NCBI genome data package %s", reports[0].Accession),
 			Description: "NCBI Datasets genome data package imported into IVCAP.",
@@ -696,7 +697,7 @@ func runGenomeImport(
 	if !uploadSilent {
 		fmt.Fprintf(stderr, "Uploading %s (%s) to IVCAP\n", artifactName, genomeBytes(info.Size()))
 	}
-	resp, err := sdk.CreateArtifact(ctxt, &sdk.CreateArtifactRequest{
+	resp, err := artifact.CreateArtifact(ctxt, &artifact.CreateArtifactRequest{
 		Name: artifactName, Size: info.Size(), Policy: artifactPolicy,
 	}, "application/zip", info.Size(), nil, adapter, logger)
 	if err != nil {
@@ -710,15 +711,15 @@ func runGenomeImport(
 	if err != nil {
 		return fmt.Errorf("cannot parse upload URL for artifact %s: %w", artifactID, err)
 	}
-	if err := sdk.UploadArtifact(ctxt, f, info.Size(), 0, o.ChunkSize, uploadPath, adapter, uploadSilent, logger); err != nil {
+	if err := artifact.UploadArtifact(ctxt, f, info.Size(), 0, o.ChunkSize, uploadPath, adapter, uploadSilent, logger); err != nil {
 		return fmt.Errorf("cannot upload artifact %s: %w", artifactID, err)
 	}
 
-	reportAspect, err := addAspectContent(ctxt, artifactID, o.ReportSchema, aspectPolicy, reportBytes, adapter)
+	reportAspect, err := sdk.AddAspectContent(ctxt, artifactID, o.ReportSchema, aspectPolicy, reportBytes, adapter, logger)
 	if err != nil {
 		return fmt.Errorf("artifact %s was uploaded, but its report aspect could not be added: %w", artifactID, err)
 	}
-	manifestAspect, err := addAspectContent(ctxt, artifactID, o.ManifestSchema, aspectPolicy, manifestBytes, adapter)
+	manifestAspect, err := sdk.AddAspectContent(ctxt, artifactID, o.ManifestSchema, aspectPolicy, manifestBytes, adapter, logger)
 	if err != nil {
 		return fmt.Errorf("artifact %s and report aspect %s were created, but the manifest aspect could not be added: %w",
 			artifactID, reportAspect, err)

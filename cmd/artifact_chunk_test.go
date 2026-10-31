@@ -16,6 +16,7 @@ package cmd
 
 import (
 	"context"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -79,7 +80,7 @@ func TestRunGenomeImportRejectsBadChunkSizeBeforeDownloading(t *testing.T) {
 			Accession:      "GCF_000001735.4",
 			ChunkSize:      chunk,
 			ReportSchema:   ncbiAssemblyReportSchema,
-			ManifestSchema: artifactArchiveManifestSchema,
+			ManifestSchema: artifact.ArchiveManifestSchema,
 			Silent:         true,
 		}, &adapter, io.Discard, io.Discard)
 		if err == nil || !strings.Contains(err.Error(), "--chunk-size") {

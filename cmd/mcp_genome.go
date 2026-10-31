@@ -24,6 +24,7 @@ import (
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	adpt "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	mcppkg "github.com/ivcap-works/ivcap-cli/pkg/mcp"
 	ncbigenome "github.com/ivcap-works/ivcap-ncbi-genome-download"
 )
@@ -60,7 +61,7 @@ func mcpGenomeImportWith(
 		Policy:          in.Policy,
 		ChunkSize:       DEF_CHUNK_SIZE,
 		ReportSchema:    ncbiAssemblyReportSchema,
-		ManifestSchema:  artifactArchiveManifestSchema,
+		ManifestSchema:  artifact.ArchiveManifestSchema,
 		License:         in.License,
 		Format:          "json",
 		Silent:          true,

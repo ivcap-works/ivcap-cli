@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -125,7 +126,7 @@ func baseImportOpts() genomeImportOpts {
 		Accession:      "GCF_000001735.4",
 		ChunkSize:      -1,
 		ReportSchema:   ncbiAssemblyReportSchema,
-		ManifestSchema: artifactArchiveManifestSchema,
+		ManifestSchema: artifact.ArchiveManifestSchema,
 		Format:         "json",
 		Silent:         true,
 	}
@@ -318,7 +319,7 @@ func TestRunGenomeImportHumanOutput(t *testing.T) {
 func TestGenomeImportFlagDefaultsMatchTheSchemas(t *testing.T) {
 	for flag, want := range map[string]string{
 		"report-schema":   ncbiAssemblyReportSchema,
-		"manifest-schema": artifactArchiveManifestSchema,
+		"manifest-schema": artifact.ArchiveManifestSchema,
 	} {
 		if f := genomeImportCmd.Flags().Lookup(flag); f == nil || f.DefValue != want {
 			t.Errorf("--%s must default to %q, got %+v", flag, want, f)

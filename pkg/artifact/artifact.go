@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package client
+package artifact
 
 import (
 	"bytes"
@@ -25,9 +25,7 @@ import (
 
 	api "github.com/ivcap-works/ivcap-core-api/http/artifact"
 
-	"github.com/k0kubun/go-ansi"
-	"github.com/schollz/progressbar/v3"
-
+	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	"github.com/ivcap-works/ivcap-cli/pkg/adapter"
 
 	log "go.uber.org/zap"
@@ -35,7 +33,7 @@ import (
 
 /**** LIST ****/
 
-func ListArtifacts(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter, logger *log.Logger) (*api.ListResponseBody, error) {
+func ListArtifacts(ctxt context.Context, cmd *sdk.ListRequest, adpt *adapter.Adapter, logger *log.Logger) (*api.ListResponseBody, error) {
 	pyl, err := ListArtifactsRaw(ctxt, cmd, adpt, logger)
 	if err != nil {
 		return nil, err
@@ -48,8 +46,8 @@ func ListArtifacts(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter
 	return &list, nil
 }
 
-func ListArtifactsRaw(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	path, err := createListPath(cmd, artifactPath(nil, adpt))
+func ListArtifactsRaw(ctxt context.Context, cmd *sdk.ListRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
+	path, err := sdk.CreateListPath(cmd, artifactPath(nil, adpt))
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +120,7 @@ func UploadArtifact(
 		fragSize = remaining // no chunking
 	}
 	if !silent {
-		reader = AddProgressBar("... uploading file", remaining, reader)
+		reader = sdk.AddProgressBar("... uploading file", remaining, reader)
 	}
 	// var pyld adapter.Payload
 	for remaining > 0 {
@@ -203,28 +201,6 @@ func uploadUnknownSize(
 	}
 }
 
-func AddProgressBar(description string, size int64, reader io.Reader) io.Reader {
-	bar := GetProgressBar(description, size)
-	return io.TeeReader(reader, bar)
-}
-
-func GetProgressBar(description string, size int64) io.Writer {
-	return progressbar.NewOptions64(size,
-		progressbar.OptionSetWriter(ansi.NewAnsiStderr()),
-		progressbar.OptionEnableColorCodes(true),
-		progressbar.OptionShowBytes(true),
-		progressbar.OptionSetWidth(30),
-		progressbar.OptionSetDescription(description),
-		progressbar.OptionSetTheme(progressbar.Theme{
-			Saucer:        "[green]=[reset]",
-			SaucerHead:    "[green]>[reset]",
-			SaucerPadding: " ",
-			BarStart:      "[",
-			BarEnd:        "]",
-		}),
-	)
-}
-
 func CreateArtifactRaw(
 	ctxt context.Context,
 	cmd *CreateArtifactRequest,
@@ -258,7 +234,7 @@ func CreateArtifactRaw(
 		contentLength = 0
 	}
 	if cmd.Name != "" {
-		headers["X-Name"] = BaseEncode(cmd.Name)
+		headers["X-Name"] = baseEncode(cmd.Name)
 	}
 	if cmd.Collection != "" {
 		headers["X-Collection"] = cmd.Collection
@@ -268,8 +244,8 @@ func CreateArtifactRaw(
 	}
 	var meta []string
 	for key, value := range cmd.Meta {
-		k := BaseEncode(key)
-		v := BaseEncode(value)
+		k := baseEncode(key)
+		v := baseEncode(value)
 		meta = append(meta, fmt.Sprintf("%s %s", k, v))
 	}
 	if len(meta) > 0 {
@@ -278,7 +254,7 @@ func CreateArtifactRaw(
 	return (*adpt).Post(ctxt, path, reader, contentLength, &headers, logger)
 }
 
-func BaseEncode(value string) string {
+func baseEncode(value string) string {
 	return base64.StdEncoding.EncodeToString([]byte(value))
 }
 

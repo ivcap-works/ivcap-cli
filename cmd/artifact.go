@@ -36,6 +36,7 @@ import (
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	asapi "github.com/ivcap-works/ivcap-core-api/http/aspect"
 
 	"github.com/jedib0t/go-pretty/v6/table"
@@ -67,8 +68,8 @@ func init() {
 	createArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, fmt.Sprintf("Chunk size in bytes for splitting large files: at least %d, or -1 to upload without chunking", MIN_CHUNK_SIZE))
 	createArtifactCmd.Flags().BoolVar(&force, "force", false, "Force creation of new artifact, even if already uploaded")
 	createArtifactCmd.Flags().BoolVar(&artifactWithoutManifest, "without-manifest", false, "Do not add a file manifest for ZIP, TAR or TAR.GZ archives")
-	createArtifactCmd.Flags().StringVar(&artifactManifestSchema, "manifest-schema", artifactArchiveManifestSchema, "Schema URN for the archive manifest aspect")
-	createArtifactCmd.Flags().StringVar(&artifactLicense, "license", licenseUndefined, "License of the content, recorded in the archive manifest: an SPDX identifier such as CC-BY-4.0 (not checked against the SPDX list), a license URL, or 'undefined'")
+	createArtifactCmd.Flags().StringVar(&artifactManifestSchema, "manifest-schema", artifact.ArchiveManifestSchema, "Schema URN for the archive manifest aspect")
+	createArtifactCmd.Flags().StringVar(&artifactLicense, "license", artifact.LicenseUndefined, "License of the content, recorded in the archive manifest: an SPDX identifier such as CC-BY-4.0 (not checked against the SPDX list), a license URL, or 'undefined'")
 
 	// UPLOAD
 	artifactCmd.AddCommand(uploadArtifactCmd)
@@ -76,8 +77,8 @@ func init() {
 	uploadArtifactCmd.Flags().StringVarP(&contentType, "content-type", "t", "", "Content type of artifact; auto-detected when omitted. Accepts a full MIME type (e.g. application/x-compressed-tar) or a bare extension (e.g. tgz, nc, fasta)")
 	uploadArtifactCmd.Flags().Int64Var(&chunkSize, "chunk-size", DEF_CHUNK_SIZE, fmt.Sprintf("Chunk size in bytes for splitting large files: at least %d, or -1 to upload without chunking", MIN_CHUNK_SIZE))
 	uploadArtifactCmd.Flags().BoolVar(&artifactWithoutManifest, "without-manifest", false, "Do not add a file manifest for ZIP, TAR or TAR.GZ archives")
-	uploadArtifactCmd.Flags().StringVar(&artifactManifestSchema, "manifest-schema", artifactArchiveManifestSchema, "Schema URN for the archive manifest aspect")
-	uploadArtifactCmd.Flags().StringVar(&artifactLicense, "license", licenseUndefined, "License of the content, recorded in the archive manifest: an SPDX identifier such as CC-BY-4.0 (not checked against the SPDX list), a license URL, or 'undefined'")
+	uploadArtifactCmd.Flags().StringVar(&artifactManifestSchema, "manifest-schema", artifact.ArchiveManifestSchema, "Schema URN for the archive manifest aspect")
+	uploadArtifactCmd.Flags().StringVar(&artifactLicense, "license", artifact.LicenseUndefined, "License of the content, recorded in the archive manifest: an SPDX identifier such as CC-BY-4.0 (not checked against the SPDX list), a license URL, or 'undefined'")
 
 	// // ADD METADATA
 	// artifactCmd.AddCommand(addArtifactMetadataCmd)
@@ -158,7 +159,7 @@ var (
 
 		RunE: func(cmd *cobra.Command, args []string) error {
 			req := createListRequest()
-			if res, err := sdk.ListArtifactsRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
+			if res, err := artifact.ListArtifactsRaw(context.Background(), req, CreateAdapter(true), logger); err == nil {
 				switch outputFormat {
 				case "json":
 					return a.ReplyPrinter(res, false)
@@ -185,21 +186,21 @@ var (
 		Args:    exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			recordID := GetHistory(args[0])
-			req := &sdk.ReadArtifactRequest{Id: recordID}
+			req := &artifact.ReadArtifactRequest{Id: recordID}
 			adapter := CreateAdapter(true)
 
 			switch outputFormat {
 			case "json", "yaml":
-				res, err := sdk.ReadArtifactRaw(context.Background(), req, adapter, logger)
+				res, err := artifact.ReadArtifactRaw(context.Background(), req, adapter, logger)
 				if err != nil {
 					return err
 				}
 				return a.ReplyPrinter(res, outputFormat == "yaml")
 			default:
-				if artifact, err := sdk.ReadArtifact(context.Background(), req, adapter, logger); err == nil {
+				if art, err := artifact.ReadArtifact(context.Background(), req, adapter, logger); err == nil {
 					selector := sdk.AspectSelector{Entity: recordID}
 					if meta, _, err := sdk.ListAspect(context.Background(), selector, adapter, logger); err == nil {
-						printArtifact(artifact, meta, false)
+						printArtifact(art, meta, false)
 					} else {
 						return err
 					}
@@ -284,8 +285,8 @@ indexed.`,
 
 			offset := int64(0)
 
-			rreq := &sdk.ReadArtifactRequest{Id: artifactID}
-			readResp, err := sdk.ReadArtifact(ctxt, rreq, adapter, logger)
+			rreq := &artifact.ReadArtifactRequest{Id: artifactID}
+			readResp, err := artifact.ReadArtifact(ctxt, rreq, adapter, logger)
 			if err != nil {
 				cobra.CompErrorln(fmt.Sprintf("while getting a status update on '%s' - %v", artifactID, err))
 				return
@@ -383,7 +384,7 @@ indexed.`,
 	// 		logger.Debug("rm collection", log.String("artifactID", artifactID), log.String("collectionName", collectionName))
 	// 		adapter := CreateAdapter(true)
 	// 		ctxt := context.Background()
-	// 		_, err := sdk.RemoveArtifactToCollection(ctxt, artifactID, collectionName, adapter, logger)
+	// 		_, err := artifact.RemoveArtifactToCollection(ctxt, artifactID, collectionName, adapter, logger)
 	// 		if err != nil {
 	// 			cobra.CompErrorln(fmt.Sprintf("while removing artifact '%s' from collection(s) '%s' - %v", artifactID, collectionName, err))
 	// 			return
@@ -406,7 +407,7 @@ indexed.`,
 
 // 			adapter := CreateAdapter(true)
 // 			ctxt := context.Background()
-// 			_, err := sdk.AddArtifactMeta(ctxt, artifactID, schemaName, reader, size, adapter, logger)
+// 			_, err := artifact.AddArtifactMeta(ctxt, artifactID, schemaName, reader, size, adapter, logger)
 // 			if err != nil {
 // 				cobra.CompErrorln(fmt.Sprintf("while adding metadata '%s' to artifact '%s' - %v", schemaName, artifactID, err))
 // 				return
@@ -426,7 +427,7 @@ indexed.`,
 //			logger.Debug("rm collection", log.String("artifactID", artifactID), log.String("collectionName", collectionName))
 //			adapter := CreateAdapter(true)
 //			ctxt := context.Background()
-//			_, err := sdk.RemoveArtifactToCollection(ctxt, artifactID, collectionName, adapter, logger)
+//			_, err := artifact.RemoveArtifactToCollection(ctxt, artifactID, collectionName, adapter, logger)
 //			if err != nil {
 //				cobra.CompErrorln(fmt.Sprintf("while removing artifact '%s' from collection(s) '%s' - %v", artifactID, collectionName, err))
 //				return
@@ -474,13 +475,13 @@ func uploadArtifact(
 	if name == "" && fileName != "-" {
 		name = filepath.Base(fileName)
 	}
-	req := &sdk.CreateArtifactRequest{
+	req := &artifact.CreateArtifactRequest{
 		Name:       name,
 		Size:       size,
 		Collection: artifactCollection,
 		Policy:     policy,
 	}
-	resp, err := sdk.CreateArtifact(ctxt, req, contentType, size, nil, adapter, logger)
+	resp, err := artifact.CreateArtifact(ctxt, req, contentType, size, nil, adapter, logger)
 	if err != nil {
 		cobra.CheckErr(fmt.Sprintf("while creating record for '%s'- %v", fileName, err))
 		return
@@ -530,14 +531,14 @@ func prepareArtifactManifest(fileName string) ([]byte, error) {
 	if artifactWithoutManifest || fileName == "" || fileName == "-" {
 		return nil, nil
 	}
-	if !isManifestArchive(fileName) {
+	if !artifact.IsArchive(fileName) {
 		return nil, nil
 	}
-	lic, err := resolveLicense(artifactLicense)
+	lic, err := artifact.ResolveLicense(artifactLicense)
 	if err != nil {
 		return nil, err
 	}
-	return archiveManifestForFile(fileName, artifactManifestSchema, archiveManifestMetadata{
+	return artifact.ForFile(fileName, artifactManifestSchema, artifact.Metadata{
 		Name:        name,
 		Description: "Files contained in the uploaded artifact archive.",
 		License:     lic,
@@ -547,7 +548,7 @@ func prepareArtifactManifest(fileName string) ([]byte, error) {
 // checkManifestFlags rejects an invalid --license before any work is done. It is checked even
 // when no manifest ends up being made, so a typo never goes unnoticed.
 func checkManifestFlags() {
-	if _, err := resolveLicense(artifactLicense); err != nil {
+	if _, err := artifact.ResolveLicense(artifactLicense); err != nil {
 		cobra.CheckErr(err)
 	}
 }
@@ -558,7 +559,7 @@ func attachArtifactManifest(ctxt context.Context, artifactID string, content []b
 	}
 	// Re-running an upload (a retry, or a file that is already uploaded) must not pile up
 	// further manifest aspects on the same artifact.
-	existing, err := findAspectID(ctxt, artifactID, artifactManifestSchema, adapter)
+	existing, err := sdk.FindAspectID(ctxt, artifactID, artifactManifestSchema, adapter, logger)
 	if err != nil {
 		return err
 	}
@@ -568,7 +569,7 @@ func attachArtifactManifest(ctxt context.Context, artifactID string, content []b
 		}
 		return nil
 	}
-	manifestID, err := addAspectContent(ctxt, artifactID, artifactManifestSchema, policy, content, adapter)
+	manifestID, err := sdk.AddAspectContent(ctxt, artifactID, artifactManifestSchema, policy, content, adapter, logger)
 	if err != nil {
 		return err
 	}
@@ -587,7 +588,7 @@ func upload(
 	offset int64,
 	adapter *a.Adapter,
 ) (err error) {
-	if err = sdk.UploadArtifact(ctxt, reader, size, offset, chunkSize, path, adapter, silent, logger); err != nil {
+	if err = artifact.UploadArtifact(ctxt, reader, size, offset, chunkSize, path, adapter, silent, logger); err != nil {
 		cobra.CompErrorln(fmt.Sprintf("while uploading data file '%s' - %v", fileName, err))
 		return
 	}
@@ -595,18 +596,18 @@ func upload(
 		return
 	}
 	fmt.Printf("Completed uploading '%s'\n", artifactID)
-	readReq := &sdk.ReadArtifactRequest{Id: artifactID}
+	readReq := &artifact.ReadArtifactRequest{Id: artifactID}
 
 	switch outputFormat {
 	case "json", "yaml":
-		res, err := sdk.ReadArtifactRaw(ctxt, readReq, adapter, logger)
+		res, err := artifact.ReadArtifactRaw(ctxt, readReq, adapter, logger)
 		if err != nil {
 			return err
 		}
 		return a.ReplyPrinter(res, outputFormat == "yaml")
 	default:
 		var readResp *api.ReadResponseBody
-		if readResp, err = sdk.ReadArtifact(ctxt, readReq, adapter, logger); err == nil {
+		if readResp, err = artifact.ReadArtifact(ctxt, readReq, adapter, logger); err == nil {
 			printArtifact(readResp, nil, false)
 		} else {
 			cobra.CompErrorln(fmt.Sprintf("while getting a status update on '%s' - %v", artifactID, err))
@@ -618,14 +619,14 @@ func upload(
 
 func downloadArtifact(cmd *cobra.Command, args []string) error {
 	recordID := GetHistory(args[0])
-	req := &sdk.ReadArtifactRequest{Id: recordID}
+	req := &artifact.ReadArtifactRequest{Id: recordID}
 	adapter := CreateAdapter(true)
 	ctxt := context.Background()
-	artifact, err := sdk.ReadArtifact(ctxt, req, adapter, logger)
+	art, err := artifact.ReadArtifact(ctxt, req, adapter, logger)
 	if err != nil {
 		return err
 	}
-	data := artifact.DataHref
+	data := art.DataHref
 	if data == nil { // } || data.Self == nil {
 		cobra.CheckErr("No data available")
 		return nil // should never get here, but linter complaints otherwise

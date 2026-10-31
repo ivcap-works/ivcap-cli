@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	"path/filepath"
 	"syscall"
 	"testing"
@@ -40,14 +41,14 @@ func TestManifestSkipsNonRegularFiles(t *testing.T) {
 		done := make(chan result, 1)
 		go func() {
 			var r result
-			r.archive = isManifestArchive(fifo)
+			r.archive = artifact.IsArchive(fifo)
 			r.content, r.err = prepareArtifactManifest(fifo)
 			done <- r
 		}()
 		select {
 		case r := <-done:
 			if r.archive {
-				t.Errorf("%s: isManifestArchive = true, want false", name)
+				t.Errorf("%s: artifact.IsArchive = true, want false", name)
 			}
 			if r.content != nil || r.err != nil {
 				t.Errorf("%s: prepareArtifactManifest = (%q, %v), want (nil, nil)", name, r.content, r.err)

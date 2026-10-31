@@ -26,8 +26,8 @@ import (
 	"strings"
 	"time"
 
-	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	log "go.uber.org/zap"
 )
 
@@ -186,7 +186,7 @@ func sourceToBytes(
 		if downloadArtifactBytes == nil {
 			return nil, "", "", fmt.Errorf("artifact sources not supported (downloadArtifactBytes is nil)")
 		}
-		art, err := sdk.ReadArtifact(ctx, &sdk.ReadArtifactRequest{Id: src.ArtifactID}, adpt, logger)
+		art, err := artifact.ReadArtifact(ctx, &artifact.ReadArtifactRequest{Id: src.ArtifactID}, adpt, logger)
 		if err != nil {
 			return nil, "", "", err
 		}
