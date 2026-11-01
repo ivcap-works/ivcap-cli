@@ -7,8 +7,11 @@ Search skills, best match first
 Rank the embedded skills against a free-text query using BM25.
 
 Matches in a skill's name and description count for more than matches in its
-body. Only skills matching at least one query term are returned. The search is
-local and needs no network access or login.
+body. Only skills matching at least one query term are returned. Use '*' as the
+query to list all skills. The search is local and needs no network access or login.
+
+The score in JSON output is a relative BM25 value used only to order results
+within a single query; don't compare it across queries or use it as a cutoff.
 
 ```
 ivcap skills search <query>... [flags]

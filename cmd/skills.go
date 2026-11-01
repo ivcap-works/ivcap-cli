@@ -95,8 +95,11 @@ var skillsSearchCmd = &cobra.Command{
 	Long: `Rank the embedded skills against a free-text query using BM25.
 
 Matches in a skill's name and description count for more than matches in its
-body. Only skills matching at least one query term are returned. The search is
-local and needs no network access or login.`,
+body. Only skills matching at least one query term are returned. Use '*' as the
+query to list all skills. The search is local and needs no network access or login.
+
+The score in JSON output is a relative BM25 value used only to order results
+within a single query; don't compare it across queries or use it as a cutoff.`,
 	Example: `  ivcap skills search upload a file
   ivcap --output json skills search "debug nextflow pipeline" --limit 3`,
 	Args: minimumNArgs(1),
@@ -106,12 +109,23 @@ local and needs no network access or login.`,
 			return err
 		}
 
-		results := skillsdoc.Search(docs, strings.Join(args, " "))
+		query := strings.TrimSpace(strings.Join(args, " "))
+		var results []skillsdoc.SearchResult
+		if query == "*" {
+			// "*" lists all skills (LoadAllSkillDocs sorts them by name).
+			for _, d := range docs {
+				results = append(results, skillsdoc.SearchResult{Doc: d})
+			}
+		} else {
+			results = skillsdoc.Search(docs, query)
+		}
 		if skillsSearchLimit > 0 && len(results) > skillsSearchLimit {
 			results = results[:skillsSearchLimit]
 		}
 
 		// Like `list`, we do NOT include the full content.
+		// Score is a relative BM25 value used only to order results within a
+		// single query; don't compare it across queries or use it as a cutoff.
 		type item struct {
 			skillsdoc.HeadMatter
 			Path   string  `json:"path" yaml:"path"`
