@@ -119,6 +119,9 @@ within a single query; don't compare it across queries or use it as a cutoff.`,
 		} else {
 			results = skillsdoc.Search(docs, query)
 		}
+		if len(results) == 0 {
+			return fmt.Errorf("no skills found matching %q", query)
+		}
 		if skillsSearchLimit > 0 && len(results) > skillsSearchLimit {
 			results = results[:skillsSearchLimit]
 		}
