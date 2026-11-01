@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Unused symbols here are intentional: artifact_build is deliberately not registered (see the note at the
+// end of this file). The code is kept so it can be re-enabled.
+//nolint:unused // remove this directive when artifact_build is registered again
+//lint:file-ignore U1000 same reason as the nolint above; staticcheck does not read nolint directives
 package mcp
 
 import (
