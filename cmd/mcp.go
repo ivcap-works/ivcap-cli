@@ -95,8 +95,6 @@ Before answering any task:
 				TimeoutSec:    timeout,
 				ChunkSize:     DEF_CHUNK_SIZE,
 				CreateAdapter: createMCPAdapter,
-				GenomeImport:  mcpGenomeImport,
-				GenomeList:    mcpGenomeList,
 				WithLogging:   mcpWithLogging,
 				LogDir:        mcpLogDir,
 			})

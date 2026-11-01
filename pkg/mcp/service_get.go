@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 
@@ -39,7 +38,7 @@ type serviceGetArgs struct {
 	ID string `json:"id"`
 }
 
-func addServiceGetTool(s *server.MCPServer) {
+func serviceGetTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -131,5 +130,9 @@ func addServiceGetTool(s *server.MCPServer) {
 		return mcp.NewToolResultJSON(toolContent)
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler, ReadOnly: true}
+}
+
+func init() {
+	Register(serviceGetTool())
 }

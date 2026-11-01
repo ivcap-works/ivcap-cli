@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
 	"github.com/ivcap-works/ivcap-cli/pkg/skillsdoc"
 	asset "github.com/ivcap-works/ivcap-cli/skills"
@@ -30,7 +29,7 @@ import (
 // This tool duplicates functionality available via resources/read but is
 // callable via tools/call.
 // Note: list_skills functionality is now provided by the unified search tool.
-func addSkillsBridgeTools(s *server.MCPServer) {
+func readSkillTool() BuiltInTool {
 	// read_skill: reads a skill document by name
 	readSkillSchema := map[string]any{
 		"type": "object",
@@ -47,7 +46,7 @@ func addSkillsBridgeTools(s *server.MCPServer) {
 		"[BUILT-IN FALLBACK TOOL - Always available] Read an IVCAP skill playbook by exact name. ⚠️ CRITICAL: (1) ALWAYS find the exact skill name FIRST with the search tool (skills='*' lists every skill, or give words such as skills='genome') - don't guess. (2) If you get an error, READ IT CAREFULLY - it tells you exactly what to do. Don't ignore errors or hallucinate solutions. Common errors: skill not found → check the search output, invalid name → copy exact name from list. Use this when resources/read is not available. Returns the full markdown skill document with instructions. Equivalent to: resources/read uri=\"skills://{name}/SKILL.md\".",
 		MapToRaw(readSkillSchema),
 	)
-	s.AddTool(readSkillTool, func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	handler := func(ctx context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := req.GetArguments()
 		nameAny, ok := args["name"]
 		if !ok {
@@ -69,5 +68,10 @@ func addSkillsBridgeTools(s *server.MCPServer) {
 			return nil, fmt.Errorf("unknown skill %q", name)
 		}
 		return mcp.NewToolResultText(d.Content), nil
-	})
+	}
+	return BuiltInTool{Tool: readSkillTool, Handler: handler, ReadOnly: true}
+}
+
+func init() {
+	Register(readSkillTool())
 }

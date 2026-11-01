@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 )
@@ -28,8 +27,7 @@ import (
 // MCP tools: genome_import and genome_list
 //
 // The genome logic lives in cmd/ next to the 'ivcap genome' commands, and pkg/mcp does not depend on
-// cmd/. So it is injected through Config.GenomeImport and Config.GenomeList, and a tool is only
-// offered when its hook is set.
+// cmd/. So cmd/ builds these tools with GenomeListTool and GenomeImportTool and registers them.
 
 // GenomeImportArgs are the arguments of the genome_import tool.
 type GenomeImportArgs struct {
@@ -55,7 +53,8 @@ type GenomeImportFunc func(ctxt context.Context, adapter *a.Adapter, args Genome
 // GenomeListFunc lists the genomes imported into IVCAP and returns a JSON-serialisable result.
 type GenomeListFunc func(ctxt context.Context, adapter *a.Adapter, args GenomeListArgs) (any, error)
 
-func addGenomeListTool(s *server.MCPServer) {
+// GenomeListTool returns the genome_list tool. The CLI supplies fn, which runs the listing.
+func GenomeListTool(fn GenomeListFunc) BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -94,9 +93,6 @@ func addGenomeListTool(s *server.MCPServer) {
 		if err := pyld.AsType(&parsed); err != nil {
 			return nil, err
 		}
-		if srvCfg.GenomeList == nil {
-			return nil, fmt.Errorf("genome_list is not available")
-		}
 		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
 			if isAuthFailure(err) {
@@ -107,7 +103,7 @@ func addGenomeListTool(s *server.MCPServer) {
 		ctxt, cancel := withTimeout(ctx)
 		defer cancel()
 
-		result, err := srvCfg.GenomeList(ctxt, adpt, parsed)
+		result, err := fn(ctxt, adpt, parsed)
 		if err != nil {
 			if isAuthFailure(err) {
 				return NewLoginRequiredResult(), nil
@@ -116,10 +112,13 @@ func addGenomeListTool(s *server.MCPServer) {
 		}
 		return mcp.NewToolResultJSON(result)
 	}
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler, ReadOnly: true,
+		Instruction: "Genomes: to answer which genomes are available on this IVCAP, call genome_list (accession, organism, assembly, " +
+			"artifact). It lists the genomes imported into the platform; a service search finds analysis services, not the genomes."}
 }
 
-func addGenomeImportTool(s *server.MCPServer) {
+// GenomeImportTool returns the genome_import tool. The CLI supplies fn, which runs the import.
+func GenomeImportTool(fn GenomeImportFunc) BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -184,9 +183,6 @@ func addGenomeImportTool(s *server.MCPServer) {
 		if parsed.Accession == "" {
 			return nil, fmt.Errorf("accession is required")
 		}
-		if srvCfg.GenomeImport == nil {
-			return nil, fmt.Errorf("genome_import is not available")
-		}
 		adpt, err := createAdapter(srvCfg.TimeoutSec)
 		if err != nil {
 			if isAuthFailure(err) {
@@ -200,7 +196,7 @@ func addGenomeImportTool(s *server.MCPServer) {
 		ctxt, cancel := context.WithCancel(ctx)
 		defer cancel()
 
-		result, err := srvCfg.GenomeImport(ctxt, adpt, parsed)
+		result, err := fn(ctxt, adpt, parsed)
 		if err != nil {
 			if isAuthFailure(err) {
 				return NewLoginRequiredResult(), nil
@@ -209,5 +205,6 @@ func addGenomeImportTool(s *server.MCPServer) {
 		}
 		return mcp.NewToolResultJSON(result)
 	}
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler,
+		Instruction: "genome_import downloads one NCBI genome into IVCAP. It WRITES data, so confirm with the user first."}
 }

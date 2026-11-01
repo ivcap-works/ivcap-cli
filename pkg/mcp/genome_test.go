@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 	"testing"
@@ -33,13 +34,34 @@ import (
 	aspect "github.com/ivcap-works/ivcap-core-api/http/aspect"
 )
 
-// genomeTestServer builds a server and restores the process-wide state afterwards.
-func genomeTestServer(t *testing.T, cfg Config) *server.MCPServer {
+// genomeHooks are the genome functions a test wants the server to offer. A nil field leaves that tool out.
+type genomeHooks struct {
+	list     GenomeListFunc
+	importFn GenomeImportFunc
+}
+
+// genomeTestServer builds a server with the given genome tools registered, and restores the
+// process-wide state (the registry and srvCfg and the lookup functions) afterwards.
+func genomeTestServer(t *testing.T, cfg Config, hooks ...genomeHooks) *server.MCPServer {
 	t.Helper()
 	oldCfg, oldList, oldServices, oldRead := srvCfg, listAspectFn, listServicesRawFn, readServiceRawFn
+	oldRegistry := registry
+	registry = maps.Clone(registry)
 	t.Cleanup(func() {
 		srvCfg, listAspectFn, listServicesRawFn, readServiceRawFn = oldCfg, oldList, oldServices, oldRead
+		registry = oldRegistry
 	})
+	// Each server starts with exactly the genome tools its hooks ask for, even when a test builds several.
+	delete(registry, "genome_list")
+	delete(registry, "genome_import")
+	for _, h := range hooks {
+		if h.list != nil {
+			Register(GenomeListTool(h.list))
+		}
+		if h.importFn != nil {
+			Register(GenomeImportTool(h.importFn))
+		}
+	}
 	listAspectFn = func(ctx context.Context, selector sdk.AspectSelector, adpt *a.Adapter, logger *zap.Logger) (*aspect.ListResponseBody, a.Payload, error) {
 		return &aspect.ListResponseBody{}, nil, nil
 	}
@@ -136,9 +158,9 @@ func TestGenomeToolsAreOfferedOnlyWithHooks(t *testing.T) {
 	if without["genome_import"] || without["genome_list"] {
 		t.Errorf("the genome tools must not be offered without their hooks: %v", without)
 	}
-	with := names(genomeTestServer(t, Config{
-		GenomeImport: func(context.Context, *a.Adapter, GenomeImportArgs) (any, error) { return nil, nil },
-		GenomeList:   func(context.Context, *a.Adapter, GenomeListArgs) (any, error) { return nil, nil },
+	with := names(genomeTestServer(t, Config{}, genomeHooks{
+		importFn: func(context.Context, *a.Adapter, GenomeImportArgs) (any, error) { return nil, nil },
+		list:     func(context.Context, *a.Adapter, GenomeListArgs) (any, error) { return nil, nil },
 	}))
 	if !with["genome_import"] || !with["genome_list"] {
 		t.Errorf("the genome tools must be offered when the hooks are set: %v", with)
@@ -150,7 +172,7 @@ func TestGenomeToolsAreOfferedOnlyWithHooks(t *testing.T) {
 
 func TestGenomeListToolPassesArguments(t *testing.T) {
 	var got GenomeListArgs
-	s := genomeTestServer(t, Config{GenomeList: func(ctx context.Context, _ *a.Adapter, args GenomeListArgs) (any, error) {
+	s := genomeTestServer(t, Config{}, genomeHooks{list: func(ctx context.Context, _ *a.Adapter, args GenomeListArgs) (any, error) {
 		got = args
 		return map[string]any{"genomes": []any{map[string]any{"accession": "GCF_1.1"}}}, nil
 	}})
@@ -173,7 +195,7 @@ func TestGenomeListToolPassesArguments(t *testing.T) {
 func TestGenomeImportToolPassesArgumentsAndHasNoDeadline(t *testing.T) {
 	var got GenomeImportArgs
 	var hadDeadline bool
-	s := genomeTestServer(t, Config{GenomeImport: func(ctx context.Context, _ *a.Adapter, args GenomeImportArgs) (any, error) {
+	s := genomeTestServer(t, Config{}, genomeHooks{importFn: func(ctx context.Context, _ *a.Adapter, args GenomeImportArgs) (any, error) {
 		got = args
 		_, hadDeadline = ctx.Deadline()
 		return map[string]any{"artifact": "urn:ivcap:artifact:x"}, nil
@@ -201,7 +223,7 @@ func TestGenomeImportToolPassesArgumentsAndHasNoDeadline(t *testing.T) {
 func TestGenomeImportToolInputAndErrorHandling(t *testing.T) {
 	called := false
 	var hookErr error
-	s := genomeTestServer(t, Config{GenomeImport: func(context.Context, *a.Adapter, GenomeImportArgs) (any, error) {
+	s := genomeTestServer(t, Config{}, genomeHooks{importFn: func(context.Context, *a.Adapter, GenomeImportArgs) (any, error) {
 		called = true
 		return nil, hookErr
 	}})
@@ -224,9 +246,9 @@ func TestGenomeImportToolInputAndErrorHandling(t *testing.T) {
 }
 
 func TestGenomeImportToolSchema(t *testing.T) {
-	s := genomeTestServer(t, Config{
-		GenomeImport: func(context.Context, *a.Adapter, GenomeImportArgs) (any, error) { return nil, nil },
-		GenomeList:   func(context.Context, *a.Adapter, GenomeListArgs) (any, error) { return nil, nil },
+	s := genomeTestServer(t, Config{}, genomeHooks{
+		importFn: func(context.Context, *a.Adapter, GenomeImportArgs) (any, error) { return nil, nil },
+		list:     func(context.Context, *a.Adapter, GenomeListArgs) (any, error) { return nil, nil },
 	})
 	for _, tool := range genomeToolList(t, s) {
 		if tool["name"] != "genome_import" {
@@ -251,8 +273,8 @@ func TestGenomeImportToolSchema(t *testing.T) {
 }
 
 func TestGenomeImportToolExplainsItsOptions(t *testing.T) {
-	s := genomeTestServer(t, Config{
-		GenomeImport: func(context.Context, *a.Adapter, GenomeImportArgs) (any, error) { return nil, nil },
+	s := genomeTestServer(t, Config{}, genomeHooks{
+		importFn: func(context.Context, *a.Adapter, GenomeImportArgs) (any, error) { return nil, nil },
 	})
 	for _, tool := range genomeToolList(t, s) {
 		if tool["name"] != "genome_import" {
@@ -304,9 +326,9 @@ func hasName(names []string, name string) bool {
 // An agent that discovers tools through `search` must be led to the built-in genome tools, and not
 // only to deployed services that happen to deal with genes.
 func TestSearchAlsoFindsBuiltInTools(t *testing.T) {
-	s := genomeTestServer(t, Config{
-		GenomeImport: func(context.Context, *a.Adapter, GenomeImportArgs) (any, error) { return nil, nil },
-		GenomeList:   func(context.Context, *a.Adapter, GenomeListArgs) (any, error) { return nil, nil },
+	s := genomeTestServer(t, Config{}, genomeHooks{
+		importFn: func(context.Context, *a.Adapter, GenomeImportArgs) (any, error) { return nil, nil },
+		list:     func(context.Context, *a.Adapter, GenomeListArgs) (any, error) { return nil, nil },
 	})
 	search := func(query string) []string {
 		r := callGenomeTool(t, s, "search", fmt.Sprintf(`{"tools":%q}`, query))
@@ -366,8 +388,8 @@ func TestSearchToolDescriptionMentionsBuiltInTools(t *testing.T) {
 }
 
 func TestServerInstructions(t *testing.T) {
-	instructions := func(cfg Config) string {
-		s := genomeTestServer(t, cfg)
+	instructions := func(cfg Config, hooks ...genomeHooks) string {
+		s := genomeTestServer(t, cfg, hooks...)
 		sess := server.NewInProcessSession("test", nil)
 		ctx := s.WithContext(context.Background(), sess)
 		out := s.HandleMessage(ctx, json.RawMessage(`{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-03-26","capabilities":{},"clientInfo":{"name":"test","version":"0"}}}`))
@@ -388,9 +410,9 @@ func TestServerInstructions(t *testing.T) {
 		return parsed.Instructions
 	}
 
-	with := instructions(Config{
-		GenomeImport: func(context.Context, *a.Adapter, GenomeImportArgs) (any, error) { return nil, nil },
-		GenomeList:   func(context.Context, *a.Adapter, GenomeListArgs) (any, error) { return nil, nil },
+	with := instructions(Config{}, genomeHooks{
+		importFn: func(context.Context, *a.Adapter, GenomeImportArgs) (any, error) { return nil, nil },
+		list:     func(context.Context, *a.Adapter, GenomeListArgs) (any, error) { return nil, nil },
 	})
 	for _, want := range []string{"genome_list", "genome_import", "which genomes are available", "read_skill", "skills='*'", "builtin_tools", "confirm"} {
 		if !strings.Contains(with, want) {
@@ -407,8 +429,8 @@ func TestServerInstructions(t *testing.T) {
 }
 
 func TestGenomeListToolRoutesQuestionsAboutAvailableGenomes(t *testing.T) {
-	s := genomeTestServer(t, Config{
-		GenomeList: func(context.Context, *a.Adapter, GenomeListArgs) (any, error) { return nil, nil },
+	s := genomeTestServer(t, Config{}, genomeHooks{
+		list: func(context.Context, *a.Adapter, GenomeListArgs) (any, error) { return nil, nil },
 	})
 	for _, tool := range genomeToolList(t, s) {
 		if tool["name"] != "genome_list" {

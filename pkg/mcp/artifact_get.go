@@ -27,7 +27,6 @@ import (
 	"sync"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
@@ -50,7 +49,7 @@ type tarArtifactCache struct {
 
 var lastTarCache tarArtifactCache
 
-func addArtifactGetTool(s *server.MCPServer) {
+func artifactGetTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -153,7 +152,7 @@ func addArtifactGetTool(s *server.MCPServer) {
 		return toolResultBlob(data, mimeType, parsed.Accept)
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler, ReadOnly: true}
 }
 
 func toolResultBlob(b []byte, mimeType string, accept []string) (*mcp.CallToolResult, error) {
@@ -381,4 +380,8 @@ func detectMimeType(filePath string, data []byte) string {
 	default:
 		return "application/octet-stream"
 	}
+}
+
+func init() {
+	Register(artifactGetTool())
 }

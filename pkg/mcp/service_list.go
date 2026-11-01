@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
@@ -36,7 +35,7 @@ type serviceListArgs struct {
 	Search *string `json:"search,omitempty"`
 }
 
-func addServiceListTool(s *server.MCPServer) {
+func serviceListTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -95,5 +94,9 @@ func addServiceListTool(s *server.MCPServer) {
 		return mcp.NewToolResultText(string(res.AsBytes())), nil
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler, ReadOnly: true}
+}
+
+func init() {
+	Register(serviceListTool())
 }

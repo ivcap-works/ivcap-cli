@@ -16,14 +16,12 @@ package mcp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
 	"unicode"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 	log "go.uber.org/zap"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
@@ -42,7 +40,7 @@ type unifiedSearchArgs struct {
 // addUnifiedSearchTool adds a single "search" tool that can search both tools/services
 // and embedded skills at the same time, helping prevent LLM clients from getting stuck
 // in a tools-skills list loop.
-func addUnifiedSearchTool(s *server.MCPServer) {
+func searchTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -99,7 +97,7 @@ func addUnifiedSearchTool(s *server.MCPServer) {
 
 		// Built-in tools are not platform services, so the service search above can never find them.
 		if parsed.Tools != nil && *parsed.Tools != "" {
-			if hits := builtinToolMatches(s, *parsed.Tools, parsed.Limit); len(hits) > 0 {
+			if hits := builtinToolMatches(*parsed.Tools, parsed.Limit); len(hits) > 0 {
 				result["builtin_tools"] = hits
 			}
 		}
@@ -123,7 +121,11 @@ func addUnifiedSearchTool(s *server.MCPServer) {
 		return mcp.NewToolResultJSON(result)
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler, ReadOnly: true}
+}
+
+func init() {
+	Register(searchTool())
 }
 
 // searchServices queries the IVCAP platform for matching services.
@@ -260,7 +262,7 @@ func searchWords(query string) []string {
 // builtinToolMatches finds the built-in tools (the ones that are always listed, such as genome_list or
 // artifact_get) that match a search question. The service search cannot return them, because they are
 // not platform services. Read-only tools come first among equally good matches.
-func builtinToolMatches(s *server.MCPServer, query string, limit int) []builtinToolHit {
+func builtinToolMatches(query string, limit int) []builtinToolHit {
 	words := searchWords(query)
 	if len(words) == 0 {
 		return nil
@@ -268,43 +270,23 @@ func builtinToolMatches(s *server.MCPServer, query string, limit int) []builtinT
 	if limit <= 0 {
 		limit = 10
 	}
-	// Without a session the tool list is exactly the built-in tools.
-	res, ok := s.HandleMessage(context.Background(),
-		json.RawMessage(`{"jsonrpc":"2.0","id":0,"method":"tools/list","params":{}}`)).(mcp.JSONRPCResponse)
-	if !ok {
-		return nil
-	}
-	b, err := json.Marshal(res.Result)
-	if err != nil {
-		return nil
-	}
-	var listed struct {
-		Tools []struct {
-			Name        string `json:"name"`
-			Description string `json:"description"`
-		} `json:"tools"`
-	}
-	if err := json.Unmarshal(b, &listed); err != nil {
-		return nil
-	}
-
 	type scored struct {
 		hit      builtinToolHit
 		score    int
 		readOnly bool
 	}
 	var found []scored
-	for _, t := range listed.Tools {
-		if !builtInToolNames[t.Name] || t.Name == "search" || t.Name == "select_tools" {
+	for _, b := range builtInTools() {
+		name, desc := b.Tool.Name, b.Tool.Description
+		if name == "search" || name == "select_tools" {
 			continue
 		}
-		text := strings.ToLower(t.Name + " " + t.Description)
-		score := matchScore(text, words)
+		score := matchScore(strings.ToLower(name+" "+desc), words)
 		if score > 0 {
 			found = append(found, scored{
-				hit:      builtinToolHit{Name: t.Name, Description: t.Description, Note: "built-in tool: call it directly, it is not a platform service"},
+				hit:      builtinToolHit{Name: name, Description: desc, Note: "built-in tool: call it directly, it is not a platform service"},
 				score:    score,
-				readOnly: strings.Contains(text, "read-only"),
+				readOnly: b.ReadOnly,
 			})
 		}
 	}

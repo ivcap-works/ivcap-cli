@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
@@ -64,7 +63,7 @@ type artifactCreateArgs struct {
 	Content []mcpContentPart `json:"content"`
 }
 
-func addArtifactCreateTool(s *server.MCPServer) {
+func artifactCreateTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -210,7 +209,7 @@ func addArtifactCreateTool(s *server.MCPServer) {
 		})
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler}
 }
 
 func mcpContentToArtifactPayload(ctx context.Context, parts []mcpContentPart) (io.Reader, string, int64, error) {
@@ -402,4 +401,8 @@ func extFromMediaType(mt string) string {
 		return "txt"
 	}
 	return "bin"
+}
+
+func init() {
+	Register(artifactCreateTool())
 }

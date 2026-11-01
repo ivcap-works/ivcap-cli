@@ -33,10 +33,10 @@ import (
 // 'ivcap genome list'. In STDIO mode stdout carries the MCP protocol, so nothing here may print
 // to it: both run in their machine-readable, silent mode and their output is parsed back.
 
-var (
-	_ mcppkg.GenomeImportFunc = mcpGenomeImport
-	_ mcppkg.GenomeListFunc   = mcpGenomeList
-)
+func init() {
+	mcppkg.Register(mcppkg.GenomeImportTool(mcpGenomeImport))
+	mcppkg.Register(mcppkg.GenomeListTool(mcpGenomeList))
+}
 
 func mcpGenomeImport(ctxt context.Context, adapter *adpt.Adapter, in mcppkg.GenomeImportArgs) (any, error) {
 	return mcpGenomeImportWith(ctxt, ncbiNewClient("", true, io.Discard), adapter, in)

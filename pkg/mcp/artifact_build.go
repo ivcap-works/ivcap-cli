@@ -31,7 +31,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
 	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	nf "github.com/ivcap-works/ivcap-cli/pkg/nextflow"
@@ -59,7 +58,7 @@ var (
 	buildSessions   = map[string]*artifactBuildSession{}
 )
 
-func addArtifactBuildTool(s *server.MCPServer) {
+func artifactBuildTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -136,7 +135,7 @@ func addArtifactBuildTool(s *server.MCPServer) {
 		}
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler}
 }
 
 func handleArtifactBuildInit(ctx context.Context, args map[string]any) (*mcp.CallToolResult, error) {
@@ -651,3 +650,13 @@ func createTarGzFromSession(session *artifactBuildSession) ([]byte, []map[string
 
 	return buf.Bytes(), manifest, nil
 }
+
+// artifact_build is deliberately not registered (not offered to clients) for now.
+// It is the only built-in tool that keeps local state between calls: it stages files in a temp
+// directory per session. We need more experience with the current MCP setup (how clients and
+// sessions behave across calls) before deciding whether that state is worth the risk.
+// The code is kept so it can be re-enabled by restoring this init() registration.
+//
+// func init() {
+// 	Register(artifactBuildTool())
+// }

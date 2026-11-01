@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 )
 
 // MCP tool: verify_url
@@ -29,7 +28,7 @@ import (
 // Verify the existence of a URL by performing an HTTP HEAD request.
 // Returns status code and headers information.
 
-func addVerifyURLTool(s *server.MCPServer) {
+func verifyURLTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -99,5 +98,9 @@ func addVerifyURLTool(s *server.MCPServer) {
 		return mcp.NewToolResultJSON(result)
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler, ReadOnly: true}
+}
+
+func init() {
+	Register(verifyURLTool())
 }

@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
@@ -38,7 +37,7 @@ type aspectSearchArgs struct {
 	Page        string `json:"page,omitempty"`
 }
 
-func addAspectSearchTool(s *server.MCPServer) {
+func aspectSearchTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -133,5 +132,9 @@ func addAspectSearchTool(s *server.MCPServer) {
 		return mcp.NewToolResultJSON(list)
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler, ReadOnly: true}
+}
+
+func init() {
+	Register(aspectSearchTool())
 }

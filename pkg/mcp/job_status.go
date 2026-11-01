@@ -20,7 +20,6 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
@@ -35,7 +34,7 @@ type jobStatusArgs struct {
 	ServiceID string `json:"service_id,omitempty"`
 }
 
-func addJobStatusTool(s *server.MCPServer) {
+func jobStatusTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -163,7 +162,7 @@ func addJobStatusTool(s *server.MCPServer) {
 		})
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler, ReadOnly: true}
 }
 
 // estimatePollInterval returns a suggested poll interval based on job status
@@ -274,4 +273,8 @@ func waitForServiceJobOptimistic(
 		IsComplete: false,
 		Message:    fmt.Sprintf("Job still %s. Estimated wait: 2-3 minutes.", status),
 	}, nil
+}
+
+func init() {
+	Register(jobStatusTool())
 }
