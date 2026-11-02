@@ -52,7 +52,7 @@ func ListQueuesRaw(
 	adpt *adapter.Adapter,
 	logger *log.Logger,
 ) (adapter.Payload, error) {
-	u, err := createListPath(cmd, queuePath(nil))
+	u, err := CreateListPath(cmd, queuePath(nil))
 	if err != nil {
 		return nil, err
 	}

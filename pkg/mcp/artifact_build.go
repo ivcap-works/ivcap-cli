@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Unused symbols here are intentional: artifact_build is deliberately not registered (see the note at the
+// end of this file). The code is kept so it can be re-enabled.
+//nolint:unused // remove this directive when artifact_build is registered again
+//lint:file-ignore U1000 same reason as the nolint above; staticcheck does not read nolint directives
 package mcp
 
 import (
@@ -31,9 +35,8 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
-	sdk "github.com/ivcap-works/ivcap-cli/pkg"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	nf "github.com/ivcap-works/ivcap-cli/pkg/nextflow"
 )
 
@@ -59,7 +62,7 @@ var (
 	buildSessions   = map[string]*artifactBuildSession{}
 )
 
-func addArtifactBuildTool(s *server.MCPServer) {
+func artifactBuildTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -136,7 +139,7 @@ func addArtifactBuildTool(s *server.MCPServer) {
 		}
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler}
 }
 
 func handleArtifactBuildInit(ctx context.Context, args map[string]any) (*mcp.CallToolResult, error) {
@@ -503,7 +506,7 @@ func handleArtifactBuildSubmit(ctx context.Context, args map[string]any) (*mcp.C
 	mimeType := "application/gzip"
 	size := int64(len(tarGzData))
 
-	creq := &sdk.CreateArtifactRequest{
+	creq := &artifact.CreateArtifactRequest{
 		Name:   name,
 		Size:   size,
 		Policy: policy,
@@ -548,7 +551,7 @@ func handleArtifactBuildSubmit(ctx context.Context, args map[string]any) (*mcp.C
 	_ = os.RemoveAll(session.StagingDir)
 
 	// Get artifact details
-	art, err := readArtifactFn(ctxt, &sdk.ReadArtifactRequest{Id: artifactID}, adpt, srvCfg.Logger)
+	art, err := readArtifactFn(ctxt, &artifact.ReadArtifactRequest{Id: artifactID}, adpt, srvCfg.Logger)
 	if err != nil {
 		// Upload succeeded; return minimal info
 		return mcp.NewToolResultJSON(map[string]any{
@@ -651,3 +654,13 @@ func createTarGzFromSession(session *artifactBuildSession) ([]byte, []map[string
 
 	return buf.Bytes(), manifest, nil
 }
+
+// artifact_build is deliberately not registered (not offered to clients) for now.
+// It is the only built-in tool that keeps local state between calls: it stages files in a temp
+// directory per session. We need more experience with the current MCP setup (how clients and
+// sessions behave across calls) before deciding whether that state is worth the risk.
+// The code is kept so it can be re-enabled by restoring this init() registration.
+//
+// func init() {
+// 	Register(artifactBuildTool())
+// }

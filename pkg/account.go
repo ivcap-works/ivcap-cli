@@ -63,7 +63,7 @@ func invitationPath(suffix string) string {
 /**** ACCOUNTS ****/
 
 func ListAccountsRaw(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	u, err := createListPath(cmd, accountPath(nil))
+	u, err := CreateListPath(cmd, accountPath(nil))
 	if err != nil {
 		return nil, err
 	}
@@ -113,7 +113,7 @@ func RemoveAccountMemberRaw(ctxt context.Context, accountID, userID string, adpt
 /**** PROJECTS ****/
 
 func ListProjectsRaw(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	u, err := createListPath(cmd, projectPath(nil))
+	u, err := CreateListPath(cmd, projectPath(nil))
 	if err != nil {
 		return nil, err
 	}

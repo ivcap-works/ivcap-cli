@@ -40,12 +40,15 @@ func init() {
 	aspectUpdateCmd.Flags().StringVarP(&aspectFile, "file", "f", "", "Path to file containing metdata")
 
 	datafabricCmd.AddCommand(aspectGetCmd)
-	aspectGetCmd.Flags().BoolVar(&aspectContentOnly, "content-only", false, "if set, only display the aspect's content part")
+	aspectGetCmd.Flags().BoolVar(&aspectFullRecord, "full-record", false,
+		"print the entire aspect record (id, entity, schema, validity, ... and content), not only its content")
 
 	datafabricCmd.AddCommand(datafabricQueryCmd)
 	addFlags(datafabricQueryCmd, []Flag{SchemaPrefix, Entity})
 	datafabricQueryCmd.Flags().StringVar(&schemaPrefix, "schema", "", "Alias for --schema-prefix")
 	datafabricQueryCmd.Flags().BoolVarP(&aspectGetIfOne, "get-if-one", "g", false, "if only one found, get it immediately")
+	datafabricQueryCmd.Flags().BoolVar(&aspectFullRecord, "full-record", false,
+		"with --get-if-one, print the entire aspect record, not only its content")
 	datafabricQueryCmd.Flags().StringVarP(&aspectJsonFilter, "content-path", "c", "", "json path filter on aspect's content ('$.images[*] ? (@.size > 10000)')")
 	datafabricQueryCmd.Flags().BoolVar(&aspectIncludeContent, "include-content", false, "if set, also include aspect's content in list")
 	addListFlags(datafabricQueryCmd)
@@ -59,7 +62,7 @@ var (
 	aspectJsonFilter     string
 	aspectIncludeContent bool
 	aspectGetIfOne       bool
-	aspectContentOnly    bool
+	aspectFullRecord     bool
 )
 
 var (
@@ -93,9 +96,17 @@ var (
 
 	aspectGetCmd = &cobra.Command{
 		Use:     "get aspectURN",
-		Short:   "Get a specific aspect record",
+		Short:   "Get the content of a specific aspect",
 		Aliases: []string{"g"},
-		// Long:    `.....`,
+		Long: `Print the content of the aspect with the given URN (or @n reference).
+
+By default only the content is printed: as YAML, or as JSON with --output json. Use --full-record to
+print the entire record instead: its id, entity, schema, content type, asserter, validity times and the
+content. Without --output the full record is shown as a table.`,
+		Example: `  ivcap datafabric get @1
+  ivcap --output json datafabric get @1
+  ivcap datafabric get --full-record @1
+  ivcap --output json datafabric get --full-record @1`,
 		Args: exactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 			return getAspect(GetHistory(args[0]))
@@ -161,40 +172,45 @@ var (
 )
 
 func getAspect(aspectID string) error {
-	ctxt := context.Background()
-	if aspectContentOnly && outputFormat == "" {
-		outputFormat = "yaml"
+	return getAspectWith(context.Background(), CreateAdapter(true), aspectID, outputFormat, aspectFullRecord)
+}
+
+// getAspectWith prints an aspect. By default only its content is printed, as YAML unless the format is
+// "json". With fullRecord the entire record is printed instead: as a table, or as JSON or YAML for a format.
+func getAspectWith(ctxt context.Context, adapter *a.Adapter, aspectID, format string, fullRecord bool) error {
+	if !fullRecord && format == "" {
+		format = "yaml"
 	}
-	switch outputFormat {
+	switch format {
 	case "json", "yaml":
-		if res, err := sdk.GetAspectRaw(ctxt, aspectID, CreateAdapter(true), logger); err == nil {
-			if aspectContentOnly {
-				if o, err := res.AsObject(); err == nil {
-					if c, ok := o["content"]; ok {
-						if s, err := a.ToString(c, outputFormat == "yaml"); err == nil {
-							fmt.Printf("%s\n", s)
-							return nil
-						} else {
-							return err
-						}
-					} else {
-						return fmt.Errorf("aspect does not contain a 'Content' field")
-					}
-				} else {
-					return err
-				}
-			}
-			return a.ReplyPrinter(res, outputFormat == "yaml")
-		} else {
+		res, err := sdk.GetAspectRaw(ctxt, aspectID, adapter, logger)
+		if err != nil {
 			return err
 		}
+		if fullRecord {
+			return a.ReplyPrinter(res, format == "yaml")
+		}
+		o, err := res.AsObject()
+		if err != nil {
+			return err
+		}
+		content, ok := o["content"]
+		if !ok {
+			return fmt.Errorf("the aspect record has no 'content' field; use --full-record to see the whole record")
+		}
+		s, err := a.ToString(content, format == "yaml")
+		if err != nil {
+			return err
+		}
+		fmt.Printf("%s\n", s)
+		return nil
 	default:
-		if res, err := sdk.GetAspect(ctxt, aspectID, CreateAdapter(true), logger); err == nil {
-			printAspectDetail(res)
-			return nil
-		} else {
+		res, err := sdk.GetAspect(ctxt, aspectID, adapter, logger)
+		if err != nil {
 			return err
 		}
+		printAspectDetail(res)
+		return nil
 	}
 }
 

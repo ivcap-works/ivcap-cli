@@ -27,10 +27,9 @@ import (
 	"time"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
-	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	nf "github.com/ivcap-works/ivcap-cli/pkg/nextflow"
 )
 
@@ -64,7 +63,7 @@ type artifactCreateArgs struct {
 	Content []mcpContentPart `json:"content"`
 }
 
-func addArtifactCreateTool(s *server.MCPServer) {
+func artifactCreateTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -164,7 +163,7 @@ func addArtifactCreateTool(s *server.MCPServer) {
 			return nil, err
 		}
 
-		creq := &sdk.CreateArtifactRequest{
+		creq := &artifact.CreateArtifactRequest{
 			Name:       parsed.Name,
 			Size:       size,
 			Collection: parsed.Collection,
@@ -196,7 +195,7 @@ func addArtifactCreateTool(s *server.MCPServer) {
 			return nil, err
 		}
 
-		art, err := readArtifactFn(ctxt, &sdk.ReadArtifactRequest{Id: artifactID}, adpt, srvCfg.Logger)
+		art, err := readArtifactFn(ctxt, &artifact.ReadArtifactRequest{Id: artifactID}, adpt, srvCfg.Logger)
 		if err != nil {
 			// Upload succeeded; still return minimal info.
 			return mcp.NewToolResultJSON(map[string]any{"id": artifactID, "mime_type": mimeType, "size": size})
@@ -210,7 +209,7 @@ func addArtifactCreateTool(s *server.MCPServer) {
 		})
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler}
 }
 
 func mcpContentToArtifactPayload(ctx context.Context, parts []mcpContentPart) (io.Reader, string, int64, error) {
@@ -402,4 +401,8 @@ func extFromMediaType(mt string) string {
 		return "txt"
 	}
 	return "bin"
+}
+
+func init() {
+	Register(artifactCreateTool())
 }

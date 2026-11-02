@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 )
@@ -34,7 +33,7 @@ type serviceRunArgs struct {
 	Input     map[string]any `json:"input,omitempty"`
 }
 
-func addServiceRunTool(s *server.MCPServer) {
+func serviceRunTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -142,5 +141,9 @@ func addServiceRunTool(s *server.MCPServer) {
 		return mcp.NewToolResultJSON(reply)
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler}
+}
+
+func init() {
+	Register(serviceRunTool())
 }

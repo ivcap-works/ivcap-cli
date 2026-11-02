@@ -62,27 +62,6 @@ func (d *mcpDiscoveryState) setDiscoveredTools(tools map[string]mcpDiscoveredToo
 	d.discovered = tools
 }
 
-// builtInToolNames are always visible (independent of select_tools allowlisting).
-// Keep this list small and stable.
-var builtInToolNames = map[string]bool{
-	"select_tools":    true,
-	"artifact_create": true,
-	"artifact_get":    true,
-	"artifact_build":  true,
-	"aspect_search":   true,
-	"aspect_get":      true,
-	"aspect_create":   true,
-	"nextflow_create": true,
-	"nextflow_run":    true,
-	"service_list":    true,
-	"service_get":     true,
-	"service_run":     true,
-	"job_status":      true,
-	"verify_url":      true,
-	"read_skill":      true,
-	"search":          true,
-}
-
 var (
 	sessionToolAllowlistsMu sync.RWMutex
 	// sessionID -> toolName -> allowed
@@ -134,7 +113,7 @@ func filterToolsBySessionAllowlist(ctx context.Context, tools []mcp.Tool) []mcp.
 		// Default: built-in tools only.
 		res := make([]mcp.Tool, 0, 6)
 		for _, t := range tools {
-			if builtInToolNames[t.Name] {
+			if isBuiltIn(t.Name) {
 				res = append(res, t)
 			}
 		}
@@ -170,10 +149,9 @@ func filterToolsBySessionAllowlist(ctx context.Context, tools []mcp.Tool) []mcp.
 	if selectTools != nil {
 		res = append(res, *selectTools)
 	}
-	// Keep stable order for built-ins after select_tools.
-	builtInOrder := []string{"artifact_create", "artifact_get", "artifact_build", "aspect_search", "aspect_get", "aspect_create", "service_list", "service_get", "service_run", "job_status", "verify_url", "nextflow_create", "nextflow_run", "read_skill", "search"}
-	for _, n := range builtInOrder {
-		if t, ok := toolMap[n]; ok {
+	// Built-ins after select_tools, in the registry's display order.
+	for _, b := range builtInTools() {
+		if t, ok := toolMap[b.Tool.Name]; ok && b.Tool.Name != "select_tools" {
 			res = append(res, t)
 		}
 	}

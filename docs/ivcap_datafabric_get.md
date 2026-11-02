@@ -1,16 +1,33 @@
 ## ivcap datafabric get
 
-Get a specific aspect record
+Get the content of a specific aspect
+
+### Synopsis
+
+Print the content of the aspect with the given URN (or @n reference).
+
+By default only the content is printed: as YAML, or as JSON with --output json. Use --full-record to
+print the entire record instead: its id, entity, schema, content type, asserter, validity times and the
+content. Without --output the full record is shown as a table.
 
 ```
 ivcap datafabric get aspectURN [flags]
 ```
 
+### Examples
+
+```
+  ivcap datafabric get @1
+  ivcap --output json datafabric get @1
+  ivcap datafabric get --full-record @1
+  ivcap --output json datafabric get --full-record @1
+```
+
 ### Options
 
 ```
-      --content-only   if set, only display the aspect's content part
-  -h, --help           help for get
+      --full-record   print the entire aspect record (id, entity, schema, validity, ... and content), not only its content
+  -h, --help          help for get
 ```
 
 ### Options inherited from parent commands

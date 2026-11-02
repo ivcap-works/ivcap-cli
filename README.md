@@ -21,6 +21,7 @@ __IVCAP__ has an extensive REST API which is usually called directly from applic
   * [Queues](#queue)
   * [Secrets](#secret)
   * [Package](#package)
+  * [Genomes](#genome)
 * [Agent / automation usage](#agent--automation-usage)
   * [MCP-Provisioned Skills (Resources + Prompts)](#mcp-provisioned-skills-resources--prompts)
 * [Build from source](#build)
@@ -65,6 +66,7 @@ Commands:
   collection    Create and manage collections
   context       Manage deployment access, projects, and accounts
   datafabric    Query the datafabric and create and manage aspects within
+  genome        Look up, download and import genomes from NCBI
   job           Create and manage jobs
   nextflow      Commands for working with Nextflow-based services
   package       Push/pull and manage service packages
@@ -504,6 +506,18 @@ To download the content associated with the artifact.
 Successfully wrote 50855 bytes to /tmp/out.png
 ```
 
+When `artifact create` uploads a local file named `*.zip`, `*.tar`, `*.tar.gz` or `*.tgz` it also adds a
+manifest aspect: an RO-Crate 1.2 JSON-LD document listing the files in the archive (schema
+`urn:ivcap:schema:artifact.archive-manifest.1`). Only the file name decides, so other ZIP-based formats such
+as `.docx` are not indexed. Use `--without-manifest` to skip it, or `--manifest-schema` to use another schema
+URN. `--license` records the license of the content in the manifest: an SPDX identifier such as `CC-BY-4.0`, a
+license URL, or `undefined`, the default. The manifest is a convenience: if an archive cannot be indexed, or the aspect cannot be added, a
+warning is printed and the upload still completes; run the same command again to retry the manifest, which
+never adds a second one. Content read from stdin is not indexed.
+
+`--chunk-size` (bytes per upload request) must be at least 65536, or -1 to upload without chunking, which
+needs a known size and so does not work for stdin.
+
 Follow this [link](./docs/ivcap_artifact.md) for more details about the `artifact` command.
 
 ### Collections <a name="collection"></a>
@@ -775,6 +789,84 @@ registry.kube-system.svc.cluster.local/0f0e3f57-80f7-4899-9b69-459af2efd789/pyth
 ```
 
 Follow this [link](./docs/ivcap_package.md) for more details about the `package` command.
+
+### Genomes <a name="genome"></a>
+
+The `genome` command looks up genome assemblies at [NCBI Datasets](https://www.ncbi.nlm.nih.gov/datasets/),
+downloads their data packages and imports them into IVCAP. `reports` and `download` talk to NCBI directly,
+so they need no context and no login; `import` also needs a logged-in IVCAP context. It is built on the
+[ivcap-ncbi-genome-download](https://github.com/ivcap-works/ivcap-ncbi-genome-download) library.
+
+Look up the assemblies behind an accession, either an assembly accession such as `GCF_000001735.4` or a
+BioProject such as `PRJNA10719` (which expands to its assemblies):
+
+```
+ivcap genome reports GCF_000001735.4
+```
+
+Download the data package of one genome:
+
+```
+ivcap genome download GCF_000001735.4 --include genome,gff3,seq-report -f TAIR10.1.zip
+```
+
+Import a genome into IVCAP instead of keeping a local file:
+
+```
+ivcap genome import GCF_000001735.4 --include genome,gff3,seq-report
+```
+
+* `import` takes the same package options as `download`. The package goes to a temporary file that is removed
+  afterwards, and is uploaded as an artifact (named `<ACCESSION>.zip` unless `--name` is given).
+* Two aspects are added to that artifact: the NCBI assembly report (schema
+  `urn:ivcap:schema:ncbi.assembly-data-report.1`) and an RO-Crate 1.2 manifest of the files in the package
+  (schema `urn:ivcap:schema:artifact.archive-manifest.1`). `--report-schema` and `--manifest-schema` override
+  the schema URNs, and `--policy` sets the policy for the artifact and both aspects.
+* The manifest records a license for the data. NCBI itself states none: it places no restrictions on use or
+  distribution, but submitters may claim rights that it cannot assess. So by default the manifest links to
+  NCBI's data usage policy, which is a pointer and not a license grant. `--license` states another one (an
+  SPDX identifier, a license URL, or `undefined`).
+* The artifact and both aspects get the open policies (`urn:ivcap:policy:ivcap.open.artifact` and
+  `urn:ivcap:policy:ivcap.open.metadata`), because the imported data is public NCBI data. `--policy` gives all
+  three another policy.
+* `import` checks the accession, the license and the chunk size before it downloads anything, and it stops
+  if NCBI answers the report and the download request with different assemblies.
+* `--output json|yaml` prints the artifact URN and the two aspect IDs. If an aspect cannot be added after the
+  upload, the error names the artifact.
+* Running `import` again creates a new artifact.
+
+* A download covers **exactly one genome**. Pass an assembly accession (`GCF_...` or `GCA_...`); a BioProject
+  is rejected because it can name many genomes. Use `ivcap genome reports` to find the assembly first.
+* `--include` chooses the files in the package: `genome` (genomic FASTA, the default), `rna` (transcripts),
+  `protein` (amino acid sequences), `cds` (nucleotide coding sequences), `gff3` or `gtf` (annotation), `gbff`
+  (GenBank flat file), `seq-report` (per-sequence report), `all` (every type, on its own) or `none` (metadata
+  only, on its own).
+* `--assembly-version` decides which version is used. By default a versioned accession such as `GCF_000001735.4`
+  is used as given and an unversioned one means its current version. `current` (the same as `latest`) ignores
+  the version in the accession and takes the current one. `all` selects every version, which `download` and
+  `import` reject unless there is exactly one, so it is only useful with `reports`.
+* `--chromosomes` limits the genome FASTA to the named chromosomes, or `all`; the names are passed to NCBI
+  unchanged.
+* Without `-f` the package is written to `./<ACCESSION>.zip`. The command refuses to replace an existing
+  file unless `--force` is given, and `-f -` writes the zip to stdout.
+* `--output json|yaml` prints the result of a download (accession, file, size and the list of files in the
+  package), or the full reports for `reports`. Each report follows the JSON Schema published with the
+  library.
+* NCBI limits request rates. An NCBI API key raises the limit: set `NCBI_API_KEY` or use `--ncbi-api-key`.
+
+List the genomes that have been imported:
+
+```
+ivcap genome list
+```
+
+`list` shows one row per import that has an assembly report aspect: the accession from the report, the report
+aspect, and the artifact the aspect belongs to. The two URNs are shown as short `@n` references that other
+commands accept in place of the URN; `--no-history` shows the full URNs instead. `--output json|yaml` prints the same rows, with the organism and assembly name of each report, as `genomes`, plus `next_page`
+when there are more results, which `--page` takes to continue. It only talks to IVCAP, so it needs a context and
+login but no NCBI access.
+
+Follow this [link](./docs/ivcap_genome.md) for more details about the `genome` command.
 
 ## Agent / automation usage
 

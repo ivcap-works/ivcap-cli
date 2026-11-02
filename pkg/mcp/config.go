@@ -16,6 +16,7 @@ package mcp
 
 import (
 	"errors"
+	"strings"
 
 	mcpgo "github.com/mark3labs/mcp-go/mcp"
 	mcpserver "github.com/mark3labs/mcp-go/server"
@@ -96,27 +97,17 @@ func NewServer(cfg Config) *mcpserver.MCPServer {
 		// Only expose the built-in discovery tool by default.
 		// After select_tools, we update the allowlist for this session.
 		mcpserver.WithToolFilter(filterToolsBySessionAllowlist),
+		// Tells clients (and through them the model) how to find things; many clients show it to the model.
+		mcpserver.WithInstructions(serverInstructions(cfg)),
 	)
 
 	// Always expose a single built-in tool for discovery.
 	addToolDiscoveryTool(s, disco)
-	// Always expose built-in tools that are implemented locally (not discovered from platform services).
-	addArtifactCreateTool(s)
-	addArtifactGetTool(s)
-	addAspectSearchTool(s)
-	addAspectGetTool(s)
-	addAspectCreateTool(s)
-	addArtifactBuildTool(s)
-	addServiceListTool(s)
-	addServiceGetTool(s)
-	addServiceRunTool(s)
-	addJobStatusTool(s)
-	addVerifyURLTool(s)
-	addNextflowCreateTool(s)
-	addNextflowRunTool(s)
+	// Built-in tools come from the registry (see registry.go), so this list is never edited by hand.
+	for _, t := range builtInTools() {
+		s.AddTool(t.Tool, t.Handler)
+	}
 	addSkillsResourcesAndPrompts(s)
-	addSkillsBridgeTools(s) // Workaround for clients that don't expose resources/read to LLMs
-	addUnifiedSearchTool(s) // Combined tools + skills search to prevent LLM loop
 
 	// Ensure we surface a stable built-in list_changed method constant, even if unused.
 	_ = mcpgo.MethodNotificationToolsListChanged
@@ -128,3 +119,20 @@ func NewServer(cfg Config) *mcpserver.MCPServer {
 // This is process-scoped state; `ivcap mcp` runs one server per process.
 // Tests may overwrite this.
 var srvCfg Config
+
+// serverInstructions is what the server tells every client when it connects.
+func serverInstructions(cfg Config) string {
+	var b strings.Builder
+	b.WriteString("IVCAP MCP server.\n")
+	b.WriteString("- Built-in tools (" + strings.Join(builtInToolNamesList(), ", ") + ") are always listed and callable directly. " +
+		"Prefer one of them when it fits the task. `search` finds deployed platform services and skills, and also returns " +
+		"matching built-in tools as builtin_tools.\n")
+	for _, t := range builtInTools() {
+		if t.Instruction != "" {
+			b.WriteString("- " + t.Instruction + "\n")
+		}
+	}
+	b.WriteString("- Skills (playbooks) cannot be read as MCP resources in every client: use search with skills='*' to list them " +
+		"and read_skill to read one before a non-trivial task.\n")
+	return b.String()
+}

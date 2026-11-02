@@ -19,7 +19,6 @@ import (
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
 )
@@ -30,7 +29,7 @@ type aspectGetArgs struct {
 	ID string `json:"id"`
 }
 
-func addAspectGetTool(s *server.MCPServer) {
+func aspectGetTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -86,5 +85,9 @@ func addAspectGetTool(s *server.MCPServer) {
 		return mcp.NewToolResultText(string(res.AsBytes())), nil
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler, ReadOnly: true}
+}
+
+func init() {
+	Register(aspectGetTool())
 }

@@ -247,7 +247,7 @@ For this session, load and follow IVCAP agent best-practices and any relevant sk
 If your MCP client doesn't expose resources/read as a callable method, use these bridge tools instead:
 
 1) Discover available skills:
-   - tools/call name="list_skills"
+   - tools/call name="search" arguments={"skills": "*"}  (or words, e.g. {"skills": "genome"})
 
 2) Read a specific skill:
    - tools/call name="read_skill" arguments={"name": "skill-name"}

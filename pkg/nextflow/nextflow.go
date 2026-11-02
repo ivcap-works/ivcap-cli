@@ -45,6 +45,7 @@ import (
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	log "go.uber.org/zap"
 )
 
@@ -797,7 +798,7 @@ func UploadArchiveAsArtifact(
 
 	if mid, ok := ReadUploadMeta(archivePath, size, mtimeUnix); ok {
 		artifactID = mid
-		readResp, err := sdk.ReadArtifact(ctxt, &sdk.ReadArtifactRequest{Id: artifactID}, adapter, logger)
+		readResp, err := artifact.ReadArtifact(ctxt, &artifact.ReadArtifactRequest{Id: artifactID}, adapter, logger)
 		if err != nil {
 			// Clean up metadata on read error to force fresh upload
 			DeleteUploadMeta(archivePath)
@@ -830,8 +831,8 @@ func UploadArchiveAsArtifact(
 		return artifactID, nil
 	}
 
-	req := &sdk.CreateArtifactRequest{Name: toolName, Size: size}
-	resp, err := sdk.CreateArtifact(ctxt, req, ct, size, nil, adapter, logger)
+	req := &artifact.CreateArtifactRequest{Name: toolName, Size: size}
+	resp, err := artifact.CreateArtifact(ctxt, req, ct, size, nil, adapter, logger)
 	if err != nil {
 		return "", err
 	}
@@ -878,7 +879,7 @@ func tusUploadWithResume(
 		if err != nil {
 			return err
 		}
-		err = sdk.UploadArtifact(ctxt, f, size, offset, chunkSize, uploadPath, adapter, silent, logger)
+		err = artifact.UploadArtifact(ctxt, f, size, offset, chunkSize, uploadPath, adapter, silent, logger)
 		_ = f.Close()
 		if err == nil {
 			return nil

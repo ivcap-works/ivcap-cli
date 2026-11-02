@@ -7,7 +7,5 @@ data/.direnv/
 data/
 .dbg-env
 read-for-agents.plan.md
-ivcap-*
-!man/ivcap-*.1
 design/
 site/

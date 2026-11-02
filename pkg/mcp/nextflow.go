@@ -19,10 +19,10 @@ import (
 	"fmt"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 	nf "github.com/ivcap-works/ivcap-cli/pkg/nextflow"
 )
 
@@ -48,7 +48,7 @@ type nextflowRunArgs struct {
 	AspectURN string `json:"aspect_urn,omitempty"`
 }
 
-func addNextflowCreateTool(s *server.MCPServer) {
+func nextflowCreateTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -58,7 +58,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 			},
 			"artifact_id": map[string]any{
 				"type":        "string",
-				"description": "Artifact URN/ID containing the pipeline tar.gz package. Use the artifact_build tool to create and upload the artifact first.",
+				"description": "Artifact URN/ID containing the pipeline tar.gz package. Use the artifact_create tool to create and upload the artifact first.",
 			},
 			"name": map[string]any{
 				"type":        "string",
@@ -74,7 +74,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 
 	tool := mcp.NewToolWithRawSchema(
 		"nextflow_create",
-		"Deploy a Nextflow pipeline from a pre-built artifact. The artifact must contain the pipeline tar.gz package with ivcap.yaml or ivcap-tool.yaml. Use the artifact_build tool to create and upload the artifact first. For pipeline development best practices: see skills://nextflow-mcp-tools/SKILL.md (MCP tools usage), skills://nextflow-pipeline-deployment/SKILL.md (deployment), or skills://nextflow-mcp-debugging/SKILL.md (debugging). Use resources/read (preferred) or the built-in read_skill tool.",
+		"Deploy a Nextflow pipeline from a pre-built artifact. The artifact must contain the pipeline tar.gz package with ivcap.yaml or ivcap-tool.yaml. Use the artifact_create tool to create and upload the artifact first. For pipeline development best practices: see skills://nextflow-mcp-tools/SKILL.md (MCP tools usage), skills://nextflow-pipeline-deployment/SKILL.md (deployment), or skills://nextflow-mcp-debugging/SKILL.md (debugging). Use resources/read (preferred) or the built-in read_skill tool.",
 		MapToRaw(schema),
 	)
 
@@ -103,7 +103,7 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		defer cancel()
 
 		// Fetch artifact metadata to get the data URL
-		art, err := readArtifactFn(ctxt, &sdk.ReadArtifactRequest{Id: parsed.ArtifactID}, adpt, srvCfg.Logger)
+		art, err := readArtifactFn(ctxt, &artifact.ReadArtifactRequest{Id: parsed.ArtifactID}, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
 				return NewLoginRequiredResult(), nil
@@ -166,10 +166,14 @@ func addNextflowCreateTool(s *server.MCPServer) {
 		})
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler}
 }
 
-func addNextflowRunTool(s *server.MCPServer) {
+func init() {
+	Register(nextflowCreateTool())
+}
+
+func nextflowRunTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -292,5 +296,9 @@ func addNextflowRunTool(s *server.MCPServer) {
 		return mcp.NewToolResultJSON(reply)
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler}
+}
+
+func init() {
+	Register(nextflowRunTool())
 }

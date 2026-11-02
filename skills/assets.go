@@ -34,5 +34,5 @@ import "embed"
 // Note: go:embed does not support recursive globstars, so we embed directories
 // explicitly.
 //
-//go:embed CONTEXT.md SKILLS.md artifact collection service job datafabric nextflow references
+//go:embed CONTEXT.md SKILLS.md artifact collection service job datafabric nextflow genome references
 var FS embed.FS

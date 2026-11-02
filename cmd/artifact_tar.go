@@ -29,6 +29,7 @@ import (
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 
 	"github.com/jedib0t/go-pretty/v6/table"
 	"github.com/spf13/cobra"
@@ -196,17 +197,17 @@ func tarCleanFunc(cmd *cobra.Command, args []string) error {
 
 // downloadTarArtifact downloads an artifact and returns its data and mime type
 func downloadTarArtifact(ctx context.Context, artifactID string, adapter *a.Adapter) ([]byte, string, error) {
-	req := &sdk.ReadArtifactRequest{Id: artifactID}
-	artifact, err := sdk.ReadArtifact(ctx, req, adapter, logger)
+	req := &artifact.ReadArtifactRequest{Id: artifactID}
+	art, err := artifact.ReadArtifact(ctx, req, adapter, logger)
 	if err != nil {
 		return nil, "", err
 	}
 
-	if artifact.DataHref == nil {
+	if art.DataHref == nil {
 		return nil, "", fmt.Errorf("artifact has no data")
 	}
 
-	dataURL, err := url.ParseRequestURI(*artifact.DataHref)
+	dataURL, err := url.ParseRequestURI(*art.DataHref)
 	if err != nil {
 		return nil, "", err
 	}
@@ -239,8 +240,8 @@ func downloadTarArtifact(ctx context.Context, artifactID string, adapter *a.Adap
 	}
 
 	mimeType := "application/octet-stream"
-	if artifact.MimeType != nil {
-		mimeType = *artifact.MimeType
+	if art.MimeType != nil {
+		mimeType = *art.MimeType
 	}
 
 	if !silent {

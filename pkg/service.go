@@ -61,7 +61,7 @@ func ListServices(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter,
 }
 
 func ListServicesRaw(ctxt context.Context, cmd *ListRequest, adpt *adapter.Adapter, logger *log.Logger) (adapter.Payload, error) {
-	u, err := createListPath(cmd, servicePath(nil))
+	u, err := CreateListPath(cmd, servicePath(nil))
 	if err != nil {
 		return nil, err
 	}

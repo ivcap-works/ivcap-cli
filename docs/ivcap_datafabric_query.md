@@ -13,6 +13,7 @@ ivcap datafabric query [-e entity] [-s schemaPrefix] [flags]
   -c, --content-path string    json path filter on aspect's content ('$.images[*] ? (@.size > 10000)')
   -e, --entity string          URN/UUID of entity
       --filter string          filter list (e.g. "name~=Fred")
+      --full-record            with --get-if-one, print the entire aspect record, not only its content
   -g, --get-if-one             if only one found, get it immediately
   -h, --help                   help for query
       --include-content        if set, also include aspect's content in list

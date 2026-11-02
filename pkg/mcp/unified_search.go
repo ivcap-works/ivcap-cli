@@ -17,10 +17,11 @@ package mcp
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strings"
+	"unicode"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 	log "go.uber.org/zap"
 
 	sdk "github.com/ivcap-works/ivcap-cli/pkg"
@@ -39,7 +40,7 @@ type unifiedSearchArgs struct {
 // addUnifiedSearchTool adds a single "search" tool that can search both tools/services
 // and embedded skills at the same time, helping prevent LLM clients from getting stuck
 // in a tools-skills list loop.
-func addUnifiedSearchTool(s *server.MCPServer) {
+func searchTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -49,7 +50,7 @@ func addUnifiedSearchTool(s *server.MCPServer) {
 			},
 			"skills": map[string]any{
 				"type":        "string",
-				"description": "Optional search string for embedded skill playbooks. Free-text query; results are ranked by relevance (BM25) over skill names, descriptions and bodies, best match first.",
+				"description": "Optional search string for embedded skill playbooks: a skill name, a keyword or a question. Searches skill names and descriptions by the words of the string, best matches first. Use '*' to list all skills.",
 			},
 			"limit": map[string]any{
 				"type":        "integer",
@@ -64,7 +65,7 @@ func addUnifiedSearchTool(s *server.MCPServer) {
 
 	tool := mcp.NewToolWithRawSchema(
 		"search",
-		"[UNIFIED SEARCH] Search for both IVCAP tools/services AND embedded skills in a single call. Provide 'tools' to search services, 'skills' to search skill playbooks, or both to get combined results. Returns matching tools and skills together, preventing the tools↔skills loop. SPECIAL: Use skills='*' to list ALL available skills (no auth needed).",
+		"[UNIFIED SEARCH] Search for both IVCAP tools/services AND embedded skills in a single call. Provide 'tools' to search services, 'skills' to search skill playbooks, or both to get combined results. Returns matching tools and skills together, preventing the tools↔skills loop. SPECIAL: Use skills='*' to list ALL available skills (no auth needed). The 'tools' query also returns matching BUILT-IN tools (such as genome_list, artifact_get or aspect_search) as 'builtin_tools'. They are not platform services and are always callable directly; for the tasks they cover they are a better choice than any service that was found.",
 		MapToRaw(schema),
 	)
 
@@ -94,6 +95,13 @@ func addUnifiedSearchTool(s *server.MCPServer) {
 			}
 		}
 
+		// Built-in tools are not platform services, so the service search above can never find them.
+		if parsed.Tools != nil && *parsed.Tools != "" {
+			if hits := builtinToolMatches(*parsed.Tools, parsed.Limit); len(hits) > 0 {
+				result["builtin_tools"] = hits
+			}
+		}
+
 		// Search skills if query provided
 		if parsed.Skills != nil && *parsed.Skills != "" {
 			skills, err := searchSkillsLocal(*parsed.Skills, parsed.Limit)
@@ -113,7 +121,11 @@ func addUnifiedSearchTool(s *server.MCPServer) {
 		return mcp.NewToolResultJSON(result)
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler, ReadOnly: true}
+}
+
+func init() {
+	Register(searchTool())
 }
 
 // searchServices queries the IVCAP platform for matching services.
@@ -155,6 +167,8 @@ func searchServices(ctx context.Context, query string, limit int, page *string) 
 // Does NOT require authentication/platform access.
 // Pass query="*" to list all available skills (sorted by name).
 func searchSkillsLocal(query string, limit int) ([]*skillsManifestItem, error) {
+	// "*" lists every skill unless the caller gave a limit; a search returns at most 10 by default.
+	explicitLimit := limit > 0
 	if limit == 0 {
 		limit = 10
 	}
@@ -172,7 +186,7 @@ func searchSkillsLocal(query string, limit int) ([]*skillsManifestItem, error) {
 	}
 
 	// LoadAllSkillDocs returns docs sorted by name, which is the order we want
-	// for "list all"; otherwise rank by relevance.
+	// for "list all"; otherwise rank by relevance (BM25, see skillsdoc.Search).
 	ranked := docs
 	if !listAll {
 		hits := skillsdoc.Search(docs, query)
@@ -184,7 +198,7 @@ func searchSkillsLocal(query string, limit int) ([]*skillsManifestItem, error) {
 	if len(ranked) == 0 {
 		return nil, fmt.Errorf("no skills found matching %q", query)
 	}
-	if limit > 0 && len(ranked) > limit {
+	if (!listAll || explicitLimit) && len(ranked) > limit {
 		ranked = ranked[:limit]
 	}
 
@@ -198,4 +212,97 @@ func searchSkillsLocal(query string, limit int) ([]*skillsManifestItem, error) {
 		})
 	}
 	return results, nil
+}
+
+// builtinToolHit is a built-in tool that matched a search.
+type builtinToolHit struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	Note        string `json:"note"`
+}
+
+// searchStopWords are left out of a search, so that a question such as "which genomes are available"
+// is matched on "genomes" and not on every tool that mentions "available".
+var searchStopWords = map[string]bool{
+	"the": true, "and": true, "for": true, "what": true, "which": true, "are": true, "there": true,
+	"that": true, "this": true, "with": true, "from": true, "any": true, "kind": true, "kinds": true,
+	"available": true, "ivcap": true, "platform": true, "have": true, "can": true, "show": true,
+}
+
+func searchWords(query string) []string {
+	var words []string
+	for _, w := range strings.FieldsFunc(strings.ToLower(query), func(r rune) bool {
+		return !unicode.IsLetter(r) && !unicode.IsDigit(r) && r != '_'
+	}) {
+		if len(w) < 3 || searchStopWords[w] {
+			continue
+		}
+		words = append(words, w)
+	}
+	return words
+}
+
+// builtinToolMatches finds the built-in tools (the ones that are always listed, such as genome_list or
+// artifact_get) that match a search question. The service search cannot return them, because they are
+// not platform services. Read-only tools come first among equally good matches.
+func builtinToolMatches(query string, limit int) []builtinToolHit {
+	words := searchWords(query)
+	if len(words) == 0 {
+		return nil
+	}
+	if limit <= 0 {
+		limit = 10
+	}
+	type scored struct {
+		hit      builtinToolHit
+		score    int
+		readOnly bool
+	}
+	var found []scored
+	for _, b := range builtInTools() {
+		name, desc := b.Tool.Name, b.Tool.Description
+		if name == "search" || name == "select_tools" {
+			continue
+		}
+		score := matchScore(strings.ToLower(name+" "+desc), words)
+		if score > 0 {
+			found = append(found, scored{
+				hit:      builtinToolHit{Name: name, Description: desc, Note: "built-in tool: call it directly, it is not a platform service"},
+				score:    score,
+				readOnly: b.ReadOnly,
+			})
+		}
+	}
+	sort.SliceStable(found, func(i, j int) bool {
+		if found[i].score != found[j].score {
+			return found[i].score > found[j].score
+		}
+		if found[i].readOnly != found[j].readOnly {
+			return found[i].readOnly
+		}
+		return found[i].hit.Name < found[j].hit.Name
+	})
+	hits := make([]builtinToolHit, 0, len(found))
+	for i, f := range found {
+		if i >= limit {
+			break
+		}
+		hits = append(hits, f.hit)
+	}
+	return hits
+}
+
+// matchScore rates how well a text matches the words of a question: a word found as it is counts 2, a
+// plural word ("genomes") found only as its singular ("genome") counts 1.
+func matchScore(text string, words []string) int {
+	score := 0
+	for _, w := range words {
+		switch {
+		case strings.Contains(text, w):
+			score += 2
+		case len(w) > 3 && strings.HasSuffix(w, "s") && strings.Contains(text, strings.TrimSuffix(w, "s")):
+			score++
+		}
+	}
+	return score
 }

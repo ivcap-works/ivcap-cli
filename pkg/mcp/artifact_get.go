@@ -27,10 +27,9 @@ import (
 	"sync"
 
 	"github.com/mark3labs/mcp-go/mcp"
-	"github.com/mark3labs/mcp-go/server"
 
-	sdk "github.com/ivcap-works/ivcap-cli/pkg"
 	a "github.com/ivcap-works/ivcap-cli/pkg/adapter"
+	"github.com/ivcap-works/ivcap-cli/pkg/artifact"
 )
 
 type artifactGetArgs struct {
@@ -50,7 +49,7 @@ type tarArtifactCache struct {
 
 var lastTarCache tarArtifactCache
 
-func addArtifactGetTool(s *server.MCPServer) {
+func artifactGetTool() BuiltInTool {
 	schema := map[string]any{
 		"type": "object",
 		"properties": map[string]any{
@@ -108,7 +107,7 @@ func addArtifactGetTool(s *server.MCPServer) {
 		ctxt, cancel := withTimeout(ctx)
 		defer cancel()
 
-		art, err := readArtifactFn(ctxt, &sdk.ReadArtifactRequest{Id: parsed.ID}, adpt, srvCfg.Logger)
+		art, err := readArtifactFn(ctxt, &artifact.ReadArtifactRequest{Id: parsed.ID}, adpt, srvCfg.Logger)
 		if err != nil {
 			if isAuthFailure(err) {
 				return NewLoginRequiredResult(), nil
@@ -153,7 +152,7 @@ func addArtifactGetTool(s *server.MCPServer) {
 		return toolResultBlob(data, mimeType, parsed.Accept)
 	}
 
-	s.AddTool(tool, handler)
+	return BuiltInTool{Tool: tool, Handler: handler, ReadOnly: true}
 }
 
 func toolResultBlob(b []byte, mimeType string, accept []string) (*mcp.CallToolResult, error) {
@@ -381,4 +380,8 @@ func detectMimeType(filePath string, data []byte) string {
 	default:
 		return "application/octet-stream"
 	}
+}
+
+func init() {
+	Register(artifactGetTool())
 }
