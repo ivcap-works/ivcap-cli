@@ -3,7 +3,7 @@
 List an account's members and their capabilities
 
 ```
-ivcap context account members account_id [flags]
+ivcap context account members [account_id] [flags]
 ```
 
 ### Options

@@ -1,6 +1,6 @@
 ## ivcap whoami
 
-Show the currently authenticated identity and accessible accounts/projects
+Show the currently authenticated identity, current project and account
 
 ```
 ivcap whoami [flags]

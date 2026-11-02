@@ -3,7 +3,7 @@
 List a project's members and their capabilities
 
 ```
-ivcap context project members project_id [flags]
+ivcap context project members [project_id] [flags]
 ```
 
 ### Options

@@ -3,7 +3,7 @@
 List the pending invitations on a project
 
 ```
-ivcap context project invitations project_id [flags]
+ivcap context project invitations [project_id] [flags]
 ```
 
 ### Options

@@ -26,5 +26,5 @@ ivcap skills show <skill-name> [flags]
 
 ### SEE ALSO
 
-* [ivcap skills](ivcap_skills.md)	 - List and show agent skill docs embedded in this CLI release
+* [ivcap skills](ivcap_skills.md)	 - List, search and show agent skill docs embedded in this CLI release
 

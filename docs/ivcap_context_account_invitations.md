@@ -3,7 +3,7 @@
 List the pending invitations on an account
 
 ```
-ivcap context account invitations account_id [flags]
+ivcap context account invitations [account_id] [flags]
 ```
 
 ### Options

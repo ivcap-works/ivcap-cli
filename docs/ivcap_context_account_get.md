@@ -3,7 +3,7 @@
 Fetch details about a single account
 
 ```
-ivcap context account get [flags] account_id
+ivcap context account get [flags] [account_id]
 ```
 
 ### Options

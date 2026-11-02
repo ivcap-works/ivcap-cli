@@ -3,7 +3,7 @@
 Fetch details about a single project
 
 ```
-ivcap context project get [flags] project_id
+ivcap context project get [flags] [project_id]
 ```
 
 ### Options
