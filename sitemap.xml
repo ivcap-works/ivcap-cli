@@ -293,6 +293,26 @@
          <lastmod>2026-11-02</lastmod>
     </url>
     <url>
+         <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_genome/</loc>
+         <lastmod>2026-11-02</lastmod>
+    </url>
+    <url>
+         <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_genome_download/</loc>
+         <lastmod>2026-11-02</lastmod>
+    </url>
+    <url>
+         <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_genome_import/</loc>
+         <lastmod>2026-11-02</lastmod>
+    </url>
+    <url>
+         <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_genome_list/</loc>
+         <lastmod>2026-11-02</lastmod>
+    </url>
+    <url>
+         <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_genome_reports/</loc>
+         <lastmod>2026-11-02</lastmod>
+    </url>
+    <url>
          <loc>https://ivcap-works.github.io/ivcap-cli/ivcap_job/</loc>
          <lastmod>2026-11-02</lastmod>
     </url>

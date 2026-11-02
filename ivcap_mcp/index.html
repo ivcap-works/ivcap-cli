@@ -453,6 +453,8 @@
       
         
       
+        
+      
     
     
     
@@ -597,6 +599,34 @@
     
   
     datafabric
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../ivcap_genome/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    genome
   
 
     
@@ -1211,8 +1241,13 @@ the ivcap-cli release's embedded agent skills via MCP Resources and Prompts
   - skills://SKILLS.md        Top-level skills tree index
   - skills://{name}/SKILL.md  Skill playbook body (markdown)
   - skills://file/{path}      Any embedded markdown file (e.g. category SKILLS.md)</p>
+<p>Genome tools:
+  - genome_import             Import an NCBI genome into IVCAP (artifact, assembly report and manifest aspects)
+  - genome_list               List the genomes imported into IVCAP</p>
 <p>Bridge Tools (fallback for clients that don't expose resources/read):
-  - list_skills               List available skill playbooks (same as skills://manifest)
+  - search                    skills='*' lists all skill playbooks (same as skills://manifest) and
+                              skills='<words>' finds the matching ones; tools='<words>' searches the
+                              deployed services and the built-in tools
   - read_skill                Read a skill playbook by name (same as skills://{name}/SKILL.md)</p>
 <p>Prompts:
   - use-ivcap-best-practices  Instructs an agent to load CONTEXT + relevant skills
@@ -1223,9 +1258,9 @@ tools/call until client support improves.</p>
 <p>Recommended MCP client system prompt:</p>
 <p>Before answering any task:
 1. Call resources/list on all connected MCP servers (if available)
-2. Identify resources matching: *SKILL.md, <em>instructions</em>, <em>prompt</em>
+2. Identify resources matching: <em>SKILL.md, <em>instructions</em>, <em>prompt</em>
 3. Fetch and read matching resources via resources/read (if available)
-4. Otherwise use list_skills and read_skill tools
+4. Otherwise use the search tool (skills='</em>') and the read_skill tool
 5. Apply those instructions when completing the user's request</p>
 <div class="highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>ivcap mcp [flags]
 </code></pre></div>
