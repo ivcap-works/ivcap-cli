@@ -162,9 +162,10 @@ func searchServices(ctx context.Context, query string, limit int, page *string) 
 	return string(res.AsBytes()), nil
 }
 
-// searchSkillsLocal performs substring matching against embedded skills locally.
+// searchSkillsLocal ranks the embedded skills against query using BM25 (see
+// skillsdoc.Search), best match first, and returns at most limit of them.
 // Does NOT require authentication/platform access.
-// Pass query="*" to list all available skills.
+// Pass query="*" to list all available skills (sorted by name).
 func searchSkillsLocal(query string, limit int) ([]*skillsManifestItem, error) {
 	// "*" lists every skill unless the caller gave a limit; a search returns at most 10 by default.
 	explicitLimit := limit > 0
@@ -184,50 +185,32 @@ func searchSkillsLocal(query string, limit int) ([]*skillsManifestItem, error) {
 		return nil, err
 	}
 
-	// Match on the words of the query, so that a question works as well as a keyword: every skill whose
-	// name or description contains one of them is returned, best matches first. The whole query found in
-	// a name or description counts most, so an exact skill name comes first.
-	words := searchWords(query)
-	queryLower := strings.ToLower(query)
-	type scoredSkill struct {
-		item  *skillsManifestItem
-		score int
-	}
-	var scored []scoredSkill
-	for _, d := range docs {
-		score := 1
-		if !listAll {
-			text := strings.ToLower(d.Name + " " + d.Description)
-			score = matchScore(text, words)
-			if strings.Contains(text, queryLower) {
-				score += 10
-			}
-		}
-		if score > 0 {
-			scored = append(scored, scoredSkill{
-				item:  &skillsManifestItem{Name: d.Name, URI: skillDocURI(d.Name), Version: d.Version, Description: d.Description},
-				score: score,
-			})
+	// LoadAllSkillDocs returns docs sorted by name, which is the order we want
+	// for "list all"; otherwise rank by relevance (BM25, see skillsdoc.Search).
+	ranked := docs
+	if !listAll {
+		hits := skillsdoc.Search(docs, query)
+		ranked = make([]*skillsdoc.SkillDoc, 0, len(hits))
+		for _, h := range hits {
+			ranked = append(ranked, h.Doc)
 		}
 	}
-	sort.SliceStable(scored, func(i, j int) bool {
-		if scored[i].score != scored[j].score {
-			return scored[i].score > scored[j].score
-		}
-		return scored[i].item.Name < scored[j].item.Name
-	})
-	var results []*skillsManifestItem
-	for i, r := range scored {
-		if (!listAll || explicitLimit) && i >= limit {
-			break
-		}
-		results = append(results, r.item)
-	}
-
-	if len(results) == 0 {
+	if len(ranked) == 0 {
 		return nil, fmt.Errorf("no skills found matching %q", query)
 	}
+	if (!listAll || explicitLimit) && len(ranked) > limit {
+		ranked = ranked[:limit]
+	}
 
+	results := make([]*skillsManifestItem, 0, len(ranked))
+	for _, d := range ranked {
+		results = append(results, &skillsManifestItem{
+			Name:        d.Name,
+			URI:         skillDocURI(d.Name),
+			Version:     d.Version,
+			Description: d.Description,
+		})
+	}
 	return results, nil
 }
 
